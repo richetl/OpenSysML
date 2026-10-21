@@ -14,7 +14,9 @@ namespace OpenMBEE.OpenSysML;
 /// this client did not start is never stopped by it.
 /// </summary>
 /// <remarks>
-/// This release connects to a service that is already running, named by
+/// A connection speaks gRPC, or the Connect protocol with protobuf or JSON bodies, as
+/// <see cref="ConnectionOptions.Protocol"/> and <see cref="ConnectionOptions.Encoding"/> say, and
+/// never another. This release connects to a service that is already running, named by
 /// <see cref="ConnectionOptions.Address"/> or <see cref="ConnectionOptions.ServiceVariable"/>; it
 /// does not yet start a private one.
 /// </remarks>
@@ -45,6 +47,9 @@ public sealed partial class Connection : IAsyncDisposable
 
     /// <summary>The protocol the connection speaks.</summary>
     public Protocol Protocol => transport.Protocol;
+
+    /// <summary>How the connection encodes messages.</summary>
+    public MessageEncoding Encoding => transport.Encoding;
 
     /// <summary>What the service said of itself when the connection opened.</summary>
     public ServerInfo ServerInfo => serverInfo ?? throw new InvalidOperationException("The connection has not finished opening.");
@@ -160,7 +165,8 @@ public sealed partial class Connection : IAsyncDisposable
         options.Validate();
         var address = ResolveAddress(options, environment);
         cancellationToken.ThrowIfCancellationRequested();
-        return await OpenAsync(new GrpcTransport(address, options), address, options, cancellationToken).ConfigureAwait(false);
+        ITransport transport = options.Protocol == Protocol.Connect ? new ConnectTransport(address, options) : new GrpcTransport(address, options);
+        return await OpenAsync(transport, address, options, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>Opens a connection over a transport, which the connection then owns, even when the open fails.</summary>
@@ -187,7 +193,7 @@ public sealed partial class Connection : IAsyncDisposable
             throw;
         }
 
-        LogOpened(connection.logger, address, connection.serverInfo);
+        LogOpened(connection.logger, address, connection.Protocol, connection.Encoding, connection.serverInfo);
         return connection;
     }
 
@@ -318,8 +324,8 @@ public sealed partial class Connection : IAsyncDisposable
         }
     }
 
-    [LoggerMessage(Level = LogLevel.Debug, Message = "Connected to {Address}: {ServerInfo}")]
-    private static partial void LogOpened(ILogger logger, Uri address, ServerInfo serverInfo);
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Connected to {Address} over {Protocol} with {Encoding}: {ServerInfo}")]
+    private static partial void LogOpened(ILogger logger, Uri address, Protocol protocol, MessageEncoding encoding, ServerInfo serverInfo);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "The service at {Address} did not answer GetServerInfo; it is assumed to advertise no capability")]
     private static partial void LogServerInfoUnanswered(ILogger logger, Uri address);

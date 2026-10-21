@@ -89,6 +89,7 @@ OpenMBEE.OpenSysML.Connection.Address.get -> System.Uri!
 OpenMBEE.OpenSysML.Connection.CallAsync<TRequest, TResponse>(string! method, TRequest! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<TResponse!>!
 OpenMBEE.OpenSysML.Connection.Capabilities.get -> OpenMBEE.OpenSysML.Capabilities!
 OpenMBEE.OpenSysML.Connection.DisposeAsync() -> System.Threading.Tasks.ValueTask
+OpenMBEE.OpenSysML.Connection.Encoding.get -> OpenMBEE.OpenSysML.MessageEncoding
 OpenMBEE.OpenSysML.Connection.Protocol.get -> OpenMBEE.OpenSysML.Protocol
 OpenMBEE.OpenSysML.Connection.ServerInfo.get -> OpenMBEE.OpenSysML.ServerInfo!
 OpenMBEE.OpenSysML.ConnectionOptions
@@ -97,6 +98,8 @@ OpenMBEE.OpenSysML.ConnectionOptions.Address.init -> void
 OpenMBEE.OpenSysML.ConnectionOptions.AutoStart.get -> bool
 OpenMBEE.OpenSysML.ConnectionOptions.AutoStart.init -> void
 OpenMBEE.OpenSysML.ConnectionOptions.ConnectionOptions() -> void
+OpenMBEE.OpenSysML.ConnectionOptions.Encoding.get -> OpenMBEE.OpenSysML.MessageEncoding
+OpenMBEE.OpenSysML.ConnectionOptions.Encoding.init -> void
 OpenMBEE.OpenSysML.ConnectionOptions.Headers.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string!>!
 OpenMBEE.OpenSysML.ConnectionOptions.Headers.init -> void
 OpenMBEE.OpenSysML.ConnectionOptions.HttpMessageHandler.get -> System.Net.Http.HttpMessageHandler?
@@ -118,11 +121,15 @@ OpenMBEE.OpenSysML.ConnectionOptions.Version.init -> void
 OpenMBEE.OpenSysML.InvalidRequestException
 OpenMBEE.OpenSysML.InvalidRequestException.InvalidRequestException(string! message) -> void
 OpenMBEE.OpenSysML.InvalidRequestException.InvalidRequestException(string! message, System.Exception? innerException) -> void
+OpenMBEE.OpenSysML.MessageEncoding
+OpenMBEE.OpenSysML.MessageEncoding.Json = 1 -> OpenMBEE.OpenSysML.MessageEncoding
+OpenMBEE.OpenSysML.MessageEncoding.Protobuf = 0 -> OpenMBEE.OpenSysML.MessageEncoding
 OpenMBEE.OpenSysML.OpenSysMLException
 OpenMBEE.OpenSysML.OpenSysMLException.OpenSysMLException() -> void
 OpenMBEE.OpenSysML.OpenSysMLException.OpenSysMLException(string! message) -> void
 OpenMBEE.OpenSysML.OpenSysMLException.OpenSysMLException(string! message, System.Exception? innerException) -> void
 OpenMBEE.OpenSysML.Protocol
+OpenMBEE.OpenSysML.Protocol.Connect = 1 -> OpenMBEE.OpenSysML.Protocol
 OpenMBEE.OpenSysML.Protocol.Grpc = 0 -> OpenMBEE.OpenSysML.Protocol
 OpenMBEE.OpenSysML.ServerInfo
 OpenMBEE.OpenSysML.ServerInfo.Answered.get -> bool

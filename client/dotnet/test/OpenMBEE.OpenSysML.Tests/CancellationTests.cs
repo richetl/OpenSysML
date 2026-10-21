@@ -10,10 +10,11 @@ namespace OpenMBEE.OpenSysML.Tests;
 [Trait(Category.Name, Category.Unit)]
 public sealed class CancellationTests
 {
-    [Fact]
-    public async Task ACallerTokenCancelledBeforehandSendsNothing()
+    [Theory]
+    [MemberData(nameof(ClientWires.All), MemberType = typeof(ClientWires))]
+    public async Task ACallerTokenCancelledBeforehandSendsNothing(ClientWire wire)
     {
-        using var handler = new FakeGrpcHandler();
+        using var handler = new FakeServiceHandler(wire);
         await using var connection = await FakeConnection.OpenAsync(handler);
         using var cancel = new CancellationTokenSource();
         await cancel.CancelAsync();
@@ -24,11 +25,12 @@ public sealed class CancellationTests
         Assert.Empty(handler.RequestsFor("GetSymbol"));
     }
 
-    [Fact]
-    public async Task ACallerTokenCancelledMidFlightIsAnOperationCanceledExceptionCarryingIt()
+    [Theory]
+    [MemberData(nameof(ClientWires.All), MemberType = typeof(ClientWires))]
+    public async Task ACallerTokenCancelledMidFlightIsAnOperationCanceledExceptionCarryingIt(ClientWire wire)
     {
         var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        using var handler = new FakeGrpcHandler
+        using var handler = new FakeServiceHandler(wire)
         {
             Respond = async (_, token) =>
             {
@@ -49,10 +51,11 @@ public sealed class CancellationTests
         Assert.IsNotType<TransportException>(error.InnerException?.InnerException);
     }
 
-    [Fact]
-    public async Task ADeadlineWithoutCancellationIsATransportDeadlineExceeded()
+    [Theory]
+    [MemberData(nameof(ClientWires.All), MemberType = typeof(ClientWires))]
+    public async Task ADeadlineWithoutCancellationIsATransportDeadlineExceeded(ClientWire wire)
     {
-        using var handler = new FakeGrpcHandler
+        using var handler = new FakeServiceHandler(wire)
         {
             Respond = async (_, token) =>
             {
@@ -62,17 +65,21 @@ public sealed class CancellationTests
         };
         await using var connection = await FakeConnection.OpenAsync(handler, FakeConnection.Options(handler, requestTimeout: TimeSpan.FromMilliseconds(200)));
 
-        var error = await Assert.ThrowsAsync<TransportException>(() => connection.GetSymbolAsync());
+        // Only the client's own deadline can end the call; the caller's token is a backstop that fails the test instead of hanging it.
+        using var backstop = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        backstop.CancelAfter(TimeSpan.FromSeconds(10));
+        var error = await Assert.ThrowsAsync<TransportException>(() => connection.CallGetSymbolAsync(backstop.Token));
 
         Assert.Equal(StatusCode.DeadlineExceeded, error.StatusCode);
         Assert.Contains("did not complete before its deadline", error.Message, StringComparison.Ordinal);
     }
 
-    [Fact]
-    public async Task WhenTheDeadlineAndTheCallerBothFiredTheCallerWins()
+    [Theory]
+    [MemberData(nameof(ClientWires.All), MemberType = typeof(ClientWires))]
+    public async Task WhenTheDeadlineAndTheCallerBothFiredTheCallerWins(ClientWire wire)
     {
-        using var cancel = new CancellationTokenSource();
-        using var handler = new FakeGrpcHandler
+        using var cancel = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        using var handler = new FakeServiceHandler(wire)
         {
             Respond = async (_, token) =>
             {
@@ -132,10 +139,11 @@ public sealed class CancellationTests
         Assert.Equal("answered", response.Error);
     }
 
-    [Fact]
-    public async Task AServiceThatSaysCancelledWithoutTheCallerCancellingIsTheServices()
+    [Theory]
+    [MemberData(nameof(ClientWires.All), MemberType = typeof(ClientWires))]
+    public async Task AServiceThatSaysCancelledWithoutTheCallerCancellingIsTheServices(ClientWire wire)
     {
-        using var handler = new FakeGrpcHandler { Respond = (_, _) => Task.FromResult(FakeGrpcHandler.TrailersOnly(1, "shutting down")) };
+        using var handler = new FakeServiceHandler(wire) { Respond = (_, _) => Task.FromResult(FakeServiceHandler.RefuseOn(wire, StatusCode.Cancelled, "shutting down")) };
         await using var connection = await FakeConnection.OpenAsync(handler);
         using var cancel = new CancellationTokenSource();
 
@@ -148,10 +156,11 @@ public sealed class CancellationTests
 [Trait(Category.Name, Category.Unit)]
 public sealed class DisposalTests
 {
-    [Fact]
-    public async Task ACallAfterDisposalIsRefusedAndSendsNothing()
+    [Theory]
+    [MemberData(nameof(ClientWires.All), MemberType = typeof(ClientWires))]
+    public async Task ACallAfterDisposalIsRefusedAndSendsNothing(ClientWire wire)
     {
-        using var handler = new FakeGrpcHandler();
+        using var handler = new FakeServiceHandler(wire);
         var connection = await FakeConnection.OpenAsync(handler);
         await connection.DisposeAsync();
 
@@ -162,12 +171,13 @@ public sealed class DisposalTests
         Assert.Equal(0, handler.Disposals);
     }
 
-    [Fact]
-    public async Task DisposingCancelsACallInFlightAndWaitsForIt()
+    [Theory]
+    [MemberData(nameof(ClientWires.All), MemberType = typeof(ClientWires))]
+    public async Task DisposingCancelsACallInFlightAndWaitsForIt(ClientWire wire)
     {
         var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var finished = 0;
-        using var handler = new FakeGrpcHandler
+        using var handler = new FakeServiceHandler(wire)
         {
             Respond = async (_, token) =>
             {
@@ -223,10 +233,11 @@ public sealed class DisposalTests
         Assert.Equal("channel would not close", warning.Exception?.Message);
     }
 
-    [Fact]
-    public async Task ABorrowedHandlerOutlivesEveryConnectionThroughIt()
+    [Theory]
+    [MemberData(nameof(ClientWires.All), MemberType = typeof(ClientWires))]
+    public async Task ABorrowedHandlerOutlivesEveryConnectionThroughIt(ClientWire wire)
     {
-        using var handler = new FakeGrpcHandler { Respond = (_, _) => Task.FromResult(FakeGrpcHandler.Message(new Wire.SymbolResponse())) };
+        using var handler = new FakeServiceHandler(wire) { Respond = (_, _) => Task.FromResult(FakeServiceHandler.AnswerOn(wire, new Wire.SymbolResponse())) };
         var first = await FakeConnection.OpenAsync(handler);
         await using var second = await FakeConnection.OpenAsync(handler);
 
@@ -240,12 +251,17 @@ public sealed class DisposalTests
 [Trait(Category.Name, Category.Unit)]
 public sealed class RawCallTests
 {
+    public static MatrixTheoryData<ClientWire, string> QualifiedAndBare =>
+        new([ClientWire.Grpc, ClientWire.ConnectProto, ClientWire.ConnectJson], ["GetSymbol", "sysml.SysMLService/GetSymbol"]);
+
+    public static MatrixTheoryData<ClientWire, string> NotMethods =>
+        new([ClientWire.Grpc, ClientWire.ConnectProto, ClientWire.ConnectJson], ["GetSymbols", "getSymbol", "/sysml.SysMLService/GetSymbol", "other.Service/GetSymbol"]);
+
     [Theory]
-    [InlineData("GetSymbol")]
-    [InlineData("sysml.SysMLService/GetSymbol")]
-    public async Task ARawCallNamesItsMethodBareOrQualifiedAndReturnsTheResponseUninterpreted(string method)
+    [MemberData(nameof(QualifiedAndBare))]
+    public async Task ARawCallNamesItsMethodBareOrQualifiedAndReturnsTheResponseUninterpreted(ClientWire wire, string method)
     {
-        using var handler = new FakeGrpcHandler { Respond = (_, _) => Task.FromResult(FakeGrpcHandler.Message(new Wire.SymbolResponse { Error = "symbol not found: A" })) };
+        using var handler = new FakeServiceHandler(wire) { Respond = (_, _) => Task.FromResult(FakeServiceHandler.AnswerOn(wire, new Wire.SymbolResponse { Error = "symbol not found: A" })) };
         await using var connection = await FakeConnection.OpenAsync(handler);
         var request = new Wire.GetSymbolRequest { ModelHash = "m", SymbolId = "A" };
 
@@ -256,13 +272,10 @@ public sealed class RawCallTests
     }
 
     [Theory]
-    [InlineData("GetSymbols")]
-    [InlineData("getSymbol")]
-    [InlineData("/sysml.SysMLService/GetSymbol")]
-    [InlineData("other.Service/GetSymbol")]
-    public async Task AnUnknownMethodSendsNothing(string method)
+    [MemberData(nameof(NotMethods))]
+    public async Task AnUnknownMethodSendsNothing(ClientWire wire, string method)
     {
-        using var handler = new FakeGrpcHandler();
+        using var handler = new FakeServiceHandler(wire);
         await using var connection = await FakeConnection.OpenAsync(handler);
 
         var error = await Assert.ThrowsAsync<InvalidRequestException>(() =>
@@ -272,10 +285,11 @@ public sealed class RawCallTests
         Assert.Single(handler.Requests);
     }
 
-    [Fact]
-    public async Task WrongMessageTypesSendNothing()
+    [Theory]
+    [MemberData(nameof(ClientWires.All), MemberType = typeof(ClientWires))]
+    public async Task WrongMessageTypesSendNothing(ClientWire wire)
     {
-        using var handler = new FakeGrpcHandler();
+        using var handler = new FakeServiceHandler(wire);
         await using var connection = await FakeConnection.OpenAsync(handler);
 
         var request = await Assert.ThrowsAsync<InvalidRequestException>(() =>
@@ -288,10 +302,11 @@ public sealed class RawCallTests
         Assert.Single(handler.Requests);
     }
 
-    [Fact]
-    public async Task NullArgumentsAreRefused()
+    [Theory]
+    [MemberData(nameof(ClientWires.All), MemberType = typeof(ClientWires))]
+    public async Task NullArgumentsAreRefused(ClientWire wire)
     {
-        using var handler = new FakeGrpcHandler();
+        using var handler = new FakeServiceHandler(wire);
         await using var connection = await FakeConnection.OpenAsync(handler);
 
         await Assert.ThrowsAsync<ArgumentNullException>(() =>

@@ -10,7 +10,7 @@ namespace OpenMBEE.OpenSysML.Tests;
 [Trait(Category.Name, Category.Unit)]
 public sealed class ConnectionOptionsTests
 {
-    public static TheoryData<string, Func<System.Net.Http.HttpMessageHandler, ConnectionOptions>> InvalidOptions => new()
+    public static TheoryData<string, Func<FakeServiceHandler, ConnectionOptions>> InvalidOptions => new()
     {
         { "RequestTimeout", handler => FakeConnection.Options(handler, requestTimeout: TimeSpan.Zero) },
         { "RequestTimeout", handler => FakeConnection.Options(handler, requestTimeout: TimeSpan.FromSeconds(-1)) },
@@ -20,7 +20,9 @@ public sealed class ConnectionOptionsTests
         { "MaxResponseSize", handler => FakeConnection.Options(handler, maxResponseSize: -1) },
         { "Version", handler => FakeConnection.Options(handler, version: " ") },
         { "RequireCapabilities", handler => FakeConnection.Options(handler, requireCapabilities: ["query", ""]) },
-        { "Protocol", handler => new ConnectionOptions { Address = FakeGrpcHandler.Address, HttpMessageHandler = handler, Protocol = (Protocol)7 } },
+        { "Protocol", handler => new ConnectionOptions { Address = FakeServiceHandler.Address, HttpMessageHandler = handler, Protocol = (Protocol)7 } },
+        { "Encoding", handler => new ConnectionOptions { Address = FakeServiceHandler.Address, HttpMessageHandler = handler, Protocol = Protocol.Connect, Encoding = (MessageEncoding)9 } },
+        { "Encoding is Json, which gRPC does not carry", handler => new ConnectionOptions { Address = FakeServiceHandler.Address, HttpMessageHandler = handler, Encoding = MessageEncoding.Json } },
         { "Address", handler => new ConnectionOptions { Address = "ftp://host:1", HttpMessageHandler = handler } },
         { "Header", handler => FakeConnection.Options(handler, headers: new Dictionary<string, string> { ["Content-Type"] = "text/plain" }) },
     };
@@ -32,6 +34,7 @@ public sealed class ConnectionOptionsTests
 
         Assert.Null(options.Address);
         Assert.Equal(Protocol.Grpc, options.Protocol);
+        Assert.Equal(MessageEncoding.Protobuf, options.Encoding);
         Assert.True(options.AutoStart);
         Assert.Equal(TimeSpan.FromSeconds(60), options.RequestTimeout);
         Assert.Equal(512 * 1024 * 1024, options.MaxRequestSize);
@@ -74,13 +77,26 @@ public sealed class ConnectionOptionsTests
 
     [Theory]
     [MemberData(nameof(InvalidOptions))]
-    public async Task AnInvalidOptionFailsTheOpenBeforeAnythingIsSent(string option, Func<System.Net.Http.HttpMessageHandler, ConnectionOptions> options)
+    public async Task AnInvalidOptionFailsTheOpenBeforeAnythingIsSent(string option, Func<FakeServiceHandler, ConnectionOptions> options)
     {
-        using var handler = new FakeGrpcHandler();
+        using var handler = new FakeServiceHandler();
 
         var error = await Assert.ThrowsAsync<InvalidRequestException>(() => FakeConnection.OpenAsync(handler, options(handler)));
 
         Assert.Contains(option, error.Message, StringComparison.Ordinal);
+        Assert.Empty(handler.Requests);
+        Assert.Equal(0, handler.Disposals);
+    }
+
+    [Fact]
+    public async Task JsonOverGrpcIsRefusedBeforeAChannelIsMade()
+    {
+        using var handler = new FakeServiceHandler();
+        var options = new ConnectionOptions { Address = FakeServiceHandler.Address, HttpMessageHandler = handler, Protocol = Protocol.Grpc, Encoding = MessageEncoding.Json };
+
+        var error = await Assert.ThrowsAsync<InvalidRequestException>(() => FakeConnection.OpenAsync(handler, options));
+
+        Assert.Contains("use Protocol.Connect for Json, or MessageEncoding.Protobuf over gRPC", error.Message, StringComparison.Ordinal);
         Assert.Empty(handler.Requests);
         Assert.Equal(0, handler.Disposals);
     }

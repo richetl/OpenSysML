@@ -69,6 +69,9 @@ internal sealed class GrpcTransport : ITransport
     /// <inheritdoc/>
     public Protocol Protocol => Protocol.Grpc;
 
+    /// <inheritdoc/>
+    public MessageEncoding Encoding => MessageEncoding.Protobuf;
+
     /// <summary>The service's base URL.</summary>
     internal Uri Address { get; }
 
@@ -143,13 +146,13 @@ internal sealed class GrpcTransport : ITransport
         }
 
         // gRPC's status-code table makes a response the client cannot parse INTERNAL; the library says Unavailable.
-        if (Find<InvalidProtocolBufferException>(cause) is not null)
+        if (Causes.Find<InvalidProtocolBufferException>(cause) is not null)
         {
             status = StatusCode.Internal;
         }
 
         // gRPC makes a connection that could not be established UNAVAILABLE; the library says Internal for some, as a failed TLS handshake.
-        if (Find<HttpRequestException>(cause) is
+        if (Causes.Find<HttpRequestException>(cause) is
             {
                 HttpRequestError: HttpRequestError.NameResolutionError or HttpRequestError.ConnectionError
                     or HttpRequestError.SecureConnectionError or HttpRequestError.ProxyTunnelError,
@@ -165,19 +168,20 @@ internal sealed class GrpcTransport : ITransport
                 ? $"{method}: the service at {address} reports that the call outlived its deadline."
                 : $"{method} did not complete before its deadline; the service at {address} may still be running it.";
         }
-        else if (status == StatusCode.Internal && Find<HttpProtocolException>(cause) is { } protocol)
+        else if (status == StatusCode.Internal && Causes.Find<HttpProtocolException>(cause) is { } protocol)
         {
             message = $"{method}: {address} did not answer as an HTTP/2 gRPC endpoint (HTTP/2 protocol error "
-                + $"{protocol.ErrorCode.ToString(CultureInfo.InvariantCulture)}). A server or proxy that speaks only HTTP/1.1 answers gRPC this way.";
+                + $"{protocol.ErrorCode.ToString(CultureInfo.InvariantCulture)}). A server or proxy that speaks only HTTP/1.1 answers gRPC this way; "
+                + "if it serves the Connect protocol, connect with ConnectionOptions.Protocol set to Protocol.Connect.";
         }
-        else if (Find<HttpRequestException>(cause) is not null || Find<SocketException>(cause) is not null)
+        else if (Causes.Find<HttpRequestException>(cause) is not null || Causes.Find<SocketException>(cause) is not null)
         {
-            message = $"{method} failed with {status} talking to {address}: {Innermost(cause!).Message} "
+            message = $"{method} failed with {status} talking to {address}: {Causes.Innermost(cause!).Message} "
                 + "Whether the service received the call is unknown.";
         }
         else if (cause is not null)
         {
-            message = $"{method} failed with {status}: the answer from {address} could not be read: {Innermost(cause).Message}";
+            message = $"{method} failed with {status}: the answer from {address} could not be read: {Causes.Innermost(cause).Message}";
         }
         else
         {
@@ -192,30 +196,6 @@ internal sealed class GrpcTransport : ITransport
         PooledConnectionLifetime = TimeSpan.FromMinutes(5),
         EnableMultipleHttp2Connections = true,
     };
-
-    private static T? Find<T>(Exception? error)
-        where T : Exception
-    {
-        for (; error is not null; error = error.InnerException)
-        {
-            if (error is T found)
-            {
-                return found;
-            }
-        }
-
-        return null;
-    }
-
-    private static Exception Innermost(Exception error)
-    {
-        while (error.InnerException is not null)
-        {
-            error = error.InnerException;
-        }
-
-        return error;
-    }
 
     /// <summary>What the response to one call carried, as the handler saw it.</summary>
     private sealed class ResponseObservation

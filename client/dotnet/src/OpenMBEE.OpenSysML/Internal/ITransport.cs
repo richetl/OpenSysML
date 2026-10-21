@@ -16,6 +16,9 @@ internal interface ITransport : IAsyncDisposable
     /// <summary>The protocol this transport speaks.</summary>
     Protocol Protocol { get; }
 
+    /// <summary>How this transport encodes messages.</summary>
+    MessageEncoding Encoding { get; }
+
     /// <summary>Makes one unary call.</summary>
     /// <typeparam name="TRequest">The request message.</typeparam>
     /// <typeparam name="TResponse">The response message.</typeparam>

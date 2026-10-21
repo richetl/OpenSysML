@@ -3,10 +3,10 @@
 `OpenMBEE.OpenSysML` is the C# client for the `sysml-grpc` service, built from a checkout
 of this repository and consumed by `ProjectReference`. It is not published to NuGet.
 
-> **Status:** the client connects over gRPC to a `sysml-grpc` that is already running,
-> reports what that service is and can do, and calls any of its methods through a raw,
-> schema-checked escape hatch. It does not yet start a service of its own, speak the Connect
-> protocol, load models or offer the typed service operations. The other clients
+> **Status:** the client connects to a `sysml-grpc` that is already running, over gRPC or the
+> Connect protocol with protobuf or JSON bodies, reports what that service is and can do, and
+> calls any of its methods through a raw, schema-checked escape hatch. It does not yet start a
+> service of its own, load models or offer the typed service operations. The other clients
 > ([Python](../python/), [Java](../java/), [Rust](../rust/), [Node](../node/)) are the ones
 > to use for those today.
 
@@ -84,11 +84,45 @@ refused, and header values are never logged. A handler given as `HttpMessageHand
 borrowed, never disposed, so it can serve several connections; otherwise the connection
 makes its own and disposes it.
 
+The client never retries a call, hedges it or falls back to another protocol: a call that
+failed in transport may still have run.
+
+### Protocols
+
+`ConnectionOptions.Protocol` and `ConnectionOptions.Encoding` choose how a connection speaks to
+the service, and `Connection.Protocol` and `Connection.Encoding` report it:
+
+| `Protocol` | `Encoding` | On the wire |
+| --- | --- | --- |
+| `Grpc` (default) | `Protobuf` (default) | gRPC over HTTP/2 (cleartext h2c for `http`) |
+| `Connect` | `Protobuf` | One HTTP/1.1 `POST /sysml.SysMLService/<Method>` per call, `application/proto` |
+| `Connect` | `Json` | The same, `application/json`, in the protobuf JSON mapping |
+
+`Grpc` with `Json` is refused when the connection opens, before anything is sent: gRPC carries
+protobuf alone. A connection speaks the one protocol it was given; if the service does not
+answer it, the call fails rather than trying another. The service's default `connect`
+transport answers all three; its `grpc` transport speaks gRPC alone and resets a Connect
+request's connection, which the client reports as a `TransportException` with `Unavailable`.
+Connect suits a proxy that does not carry HTTP/2, and JSON one that must read the traffic;
+protobuf is smaller than JSON and faster to decode.
+
 The gRPC channel advertises only the identity encoding. A message size limit in the
 underlying library bounds a compressed frame, not what it inflates to, so accepting
-compressed responses would let one exceed `MaxResponseSize`. The client never retries a
-call, hedges it or falls back to another protocol: a call that failed in transport may
-still have run.
+compressed responses would let one exceed `MaxResponseSize`.
+
+Over Connect, the client asks for gzip and reads it itself, so that `MaxResponseSize` bounds
+the body after inflation, and the compressed body by the most a deflate encoder can make of
+that many bytes; no buffer of the limit's size is made up front. A gzip body must be one gzip
+member, as HTTP servers write one, and its CRC-32 and length are checked: the .NET inflater
+alone returns a body cut short as if it were whole. A Connect call sends its deadline as
+`Connect-Timeout-Ms` and also enforces it itself, because the service does not cut a call
+that is already running short. The connection's own HTTP handler follows no redirect and keeps
+no cookies; a borrowed `HttpMessageHandler` is used as it is configured.
+
+With `Json`, the size limits measure the JSON text. A response field this client does not
+know is ignored, so that a newer service can still be read, and so is an enum value given by
+a name the client has no number for: it reads as the enum's zero value. Protobuf keeps such a
+value's number, and JSON keeps one the service sends as a number; the service sends names.
 
 ### Raw calls
 
@@ -112,22 +146,33 @@ use after disposal, which are the standard exceptions:
 | The service is not the `Version` asked for | `StaleServiceException` |
 | The service lacks a required capability | `CapabilityException`, with `Capability` and `Remedy` |
 | The service answered with a status other than OK, `Unavailable` included | `ServiceException`, with `StatusCode`, `ServiceMessage` and `Method` |
-| No well-formed answer was read: the endpoint was unreachable or not gRPC over HTTP/2, the answer was malformed or over a size limit, or the deadline passed | `TransportException`, with `StatusCode`, `Method` and the cause as `InnerException` |
+| No well-formed answer was read: the endpoint was unreachable or did not speak the protocol, a Connect refusal was not a Connect error, the answer was malformed or over a size limit, or the deadline passed | `TransportException`, with `StatusCode`, `Method` and the cause as `InnerException` |
 | The caller's token was cancelled | `OperationCanceledException` carrying that token |
 | The connection was disposed before or during the call | `ObjectDisposedException` |
 
-A status is the service's only when the response carried it and the gRPC library raised it
-unchanged; a status the library made up for a broken connection or a malformed answer is a
-`TransportException`. A deadline is always a `TransportException` with `DeadlineExceeded`,
-whether the client or the service saw it pass. When both the caller's token and the deadline
-fired, the caller's cancellation is reported, and an answer already received is returned
-whatever happens to the token afterwards. An endpoint that speaks only HTTP/1.1 fails with
-`Internal`, and the message says so.
+A status is the service's only when the service sent it. Over gRPC, that is when the response
+carried it and the gRPC library raised it unchanged; a status the library made up for a broken
+connection or a malformed answer is a `TransportException`. Over Connect, it is when the body
+of a refusal is a Connect error, `{"code": …, "message": …}` with one of the protocol's codes,
+which is JSON whatever the request's encoding; the code, not the HTTP status, is the status.
+Any other refusal, such as a proxy's HTML page or the plain 404 an HTTP router answers for a
+method it does not have, is a `TransportException` whose status is inferred from the HTTP
+status as the Connect protocol specifies, quoting up to 200 characters of what was answered
+with control characters blanked. So over Connect, a service too old to have `GetServerInfo`
+fails to open rather than answering `Unimplemented`.
 
-`StatusCode` numbers its values as gRPC does. Where the gRPC library's status disagrees with
-gRPC's own definitions, the client reports gRPC's: an answer that does not parse is
-`Internal`, and a connection that could not be established (name lookup, refusal, TLS) is
-`Unavailable`.
+A deadline is always a `TransportException` with `DeadlineExceeded`, whether the client or the
+service saw it pass. When both the caller's token and the deadline fired, the caller's
+cancellation is reported, and an answer already received is returned whatever happens to the
+token afterwards. An endpoint that speaks only HTTP/1.1 fails a gRPC connection with
+`Internal`, and the message says so and names `Protocol.Connect`.
+
+`StatusCode` numbers its values as gRPC does and the Connect protocol names them. Where the
+gRPC library's status disagrees with gRPC's own definitions, the client reports gRPC's: an
+answer that does not parse is `Internal`, and a connection that could not be established (name
+lookup, refusal, TLS) is `Unavailable`. Connect failures are classified the same way: an
+answer that does not parse, is cut short or is not HTTP is `Internal`, and a connection that
+could not be made or was lost before an answer is `Unavailable`.
 
 `DisposeAsync` refuses new calls, cancels the calls in flight, waits for them and closes the
 channel. It is idempotent, safe to call concurrently, and never throws: a failure to close
@@ -154,8 +199,10 @@ form `dotnet test <solution>` is not supported. Every test declares a `Category`
 `Unit` or `Integration`, and a test enforces that, so a filter never silently drops one.
 
 Integration tests run against the binary `OPENSYSML_GRPC_BINARY` names, which they start
-themselves on ports the kernel chooses and reach by address, once serving its default
-`connect` transport and once its grpc-go-only `grpc` transport. They skip without a binary;
+themselves on ports the kernel chooses and reach by address: once serving its default
+`connect` transport, reached over gRPC, Connect with protobuf and Connect with JSON, and once
+its grpc-go-only `grpc` transport, reached over gRPC, where Connect must be refused. Unit tests
+of behavior every protocol shares run over all three wires too. They skip without a binary;
 set `OPENSYSML_REQUIRE_SERVICE=1` to turn that skip into a failure, as CI does. `make
 dotnet-test` also runs the Vehicle sample against such a service, under the same rule:
 

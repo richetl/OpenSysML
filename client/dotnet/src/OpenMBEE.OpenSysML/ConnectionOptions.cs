@@ -44,8 +44,18 @@ public sealed class ConnectionOptions
     /// </summary>
     public string? Address { get; init; }
 
-    /// <summary>The protocol to speak; <see cref="Protocol.Grpc"/> by default.</summary>
+    /// <summary>
+    /// The protocol to speak; <see cref="Protocol.Grpc"/> by default. The connection speaks it alone:
+    /// a call that fails is never retried over another.
+    /// </summary>
     public Protocol Protocol { get; init; } = Protocol.Grpc;
+
+    /// <summary>
+    /// How messages are encoded; <see cref="MessageEncoding.Protobuf"/> by default.
+    /// <see cref="MessageEncoding.Json"/> needs <see cref="Protocol.Connect"/>: gRPC carries protobuf
+    /// alone, so asking for JSON over it fails the open before anything is sent.
+    /// </summary>
+    public MessageEncoding Encoding { get; init; } = MessageEncoding.Protobuf;
 
     /// <summary>
     /// Whether to start a private service when none is named; true by default. This release of the
@@ -121,12 +131,15 @@ public sealed class ConnectionOptions
     /// </summary>
     public HttpMessageHandler? HttpMessageHandler { get; init; }
 
-    /// <summary>The largest request message to send, in bytes; positive, <see cref="DefaultMaxMessageSize"/> by default.</summary>
+    /// <summary>
+    /// The largest request message to send, in bytes as <see cref="Encoding"/> encodes it; positive,
+    /// <see cref="DefaultMaxMessageSize"/> by default. A larger request fails without being sent.
+    /// </summary>
     public int MaxRequestSize { get; init; } = DefaultMaxMessageSize;
 
     /// <summary>
-    /// The largest response message to accept, in bytes, after any decompression; positive,
-    /// <see cref="DefaultMaxMessageSize"/> by default.
+    /// The largest response message to accept, in bytes as <see cref="Encoding"/> encodes it and
+    /// after any decompression; positive, <see cref="DefaultMaxMessageSize"/> by default.
     /// </summary>
     public int MaxResponseSize { get; init; } = DefaultMaxMessageSize;
 
@@ -137,6 +150,17 @@ public sealed class ConnectionOptions
         if (!Enum.IsDefined(Protocol))
         {
             throw new InvalidRequestException($"ConnectionOptions.Protocol is {(int)Protocol}, which is no protocol of this client.");
+        }
+
+        if (!Enum.IsDefined(Encoding))
+        {
+            throw new InvalidRequestException($"ConnectionOptions.Encoding is {(int)Encoding}, which is no encoding of this client.");
+        }
+
+        if (Protocol == Protocol.Grpc && Encoding != MessageEncoding.Protobuf)
+        {
+            throw new InvalidRequestException(
+                $"ConnectionOptions.Encoding is {Encoding}, which gRPC does not carry: use Protocol.Connect for {Encoding}, or MessageEncoding.Protobuf over gRPC.");
         }
 
         if (RequestTimeout <= TimeSpan.Zero || RequestTimeout > MaxRequestTimeout)
