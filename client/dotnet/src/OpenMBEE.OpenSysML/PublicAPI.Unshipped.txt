@@ -1,4 +1,7 @@
 #nullable enable
+abstract OpenMBEE.OpenSysML.Value.Equals(OpenMBEE.OpenSysML.Value? other) -> bool
+abstract OpenMBEE.OpenSysML.Value.Kind.get -> OpenMBEE.OpenSysML.ValueKind
+abstract OpenMBEE.OpenSysML.Value.NumberValue.ToDouble() -> double
 const OpenMBEE.OpenSysML.Capabilities.ActionBodyStatementAuthoring = "action_body_statement_authoring" -> string!
 const OpenMBEE.OpenSysML.Capabilities.ApplyEdits = "apply_edits" -> string!
 const OpenMBEE.OpenSysML.Capabilities.Authoring = "authoring" -> string!
@@ -131,6 +134,24 @@ OpenMBEE.OpenSysML.OpenSysMLException.OpenSysMLException(string! message, System
 OpenMBEE.OpenSysML.Protocol
 OpenMBEE.OpenSysML.Protocol.Connect = 1 -> OpenMBEE.OpenSysML.Protocol
 OpenMBEE.OpenSysML.Protocol.Grpc = 0 -> OpenMBEE.OpenSysML.Protocol
+OpenMBEE.OpenSysML.Quantity
+OpenMBEE.OpenSysML.Quantity.<Clone>$() -> OpenMBEE.OpenSysML.Quantity!
+OpenMBEE.OpenSysML.Quantity.Equals(OpenMBEE.OpenSysML.Quantity? other) -> bool
+OpenMBEE.OpenSysML.Quantity.IsExact.get -> bool
+OpenMBEE.OpenSysML.Quantity.Magnitude.get -> OpenMBEE.OpenSysML.Value.NumberValue!
+OpenMBEE.OpenSysML.Quantity.Quantity(OpenMBEE.OpenSysML.Value.NumberValue! magnitude, string! unit, OpenMBEE.OpenSysML.UnitTerm? reduction) -> void
+OpenMBEE.OpenSysML.Quantity.Reduction.get -> OpenMBEE.OpenSysML.UnitTerm?
+OpenMBEE.OpenSysML.Quantity.Unit.get -> string!
+OpenMBEE.OpenSysML.Rational
+OpenMBEE.OpenSysML.Rational.CompareTo(object? obj) -> int
+OpenMBEE.OpenSysML.Rational.CompareTo(OpenMBEE.OpenSysML.Rational? other) -> int
+OpenMBEE.OpenSysML.Rational.Denominator.get -> System.Numerics.BigInteger
+OpenMBEE.OpenSysML.Rational.Equals(OpenMBEE.OpenSysML.Rational? other) -> bool
+OpenMBEE.OpenSysML.Rational.IsInteger.get -> bool
+OpenMBEE.OpenSysML.Rational.Numerator.get -> System.Numerics.BigInteger
+OpenMBEE.OpenSysML.Rational.Rational(System.Numerics.BigInteger numerator, System.Numerics.BigInteger denominator) -> void
+OpenMBEE.OpenSysML.Rational.ToDouble() -> double
+OpenMBEE.OpenSysML.Rational.TryGetExactDouble(out double value) -> bool
 OpenMBEE.OpenSysML.ServerInfo
 OpenMBEE.OpenSysML.ServerInfo.Answered.get -> bool
 OpenMBEE.OpenSysML.ServerInfo.Capabilities.get -> OpenMBEE.OpenSysML.Capabilities!
@@ -173,15 +194,307 @@ OpenMBEE.OpenSysML.TransportException
 OpenMBEE.OpenSysML.TransportException.Method.get -> string!
 OpenMBEE.OpenSysML.TransportException.StatusCode.get -> OpenMBEE.OpenSysML.StatusCode
 OpenMBEE.OpenSysML.TransportException.TransportException(OpenMBEE.OpenSysML.StatusCode statusCode, string! message, string! method, System.Exception? innerException = null) -> void
+OpenMBEE.OpenSysML.UnitFactor
+OpenMBEE.OpenSysML.UnitFactor.<Clone>$() -> OpenMBEE.OpenSysML.UnitFactor!
+OpenMBEE.OpenSysML.UnitFactor.Equals(OpenMBEE.OpenSysML.UnitFactor? other) -> bool
+OpenMBEE.OpenSysML.UnitFactor.Exponent.get -> double
+OpenMBEE.OpenSysML.UnitFactor.UnitFactor(string! unitId, double exponent) -> void
+OpenMBEE.OpenSysML.UnitFactor.UnitId.get -> string!
+OpenMBEE.OpenSysML.UnitTerm
+OpenMBEE.OpenSysML.UnitTerm.<Clone>$() -> OpenMBEE.OpenSysML.UnitTerm!
+OpenMBEE.OpenSysML.UnitTerm.Equals(OpenMBEE.OpenSysML.UnitTerm? other) -> bool
+OpenMBEE.OpenSysML.UnitTerm.Factors.get -> OpenMBEE.OpenSysML.ValueList<OpenMBEE.OpenSysML.UnitFactor!>
+OpenMBEE.OpenSysML.UnitTerm.ScaleDenominator.get -> double
+OpenMBEE.OpenSysML.UnitTerm.ScaleNumerator.get -> double
+OpenMBEE.OpenSysML.UnitTerm.UnitTerm(double scaleNumerator, double scaleDenominator, System.Collections.Generic.IEnumerable<OpenMBEE.OpenSysML.UnitFactor!>! factors) -> void
+OpenMBEE.OpenSysML.UnsupportedValueException
+OpenMBEE.OpenSysML.UnsupportedValueException.Method.get -> string!
+OpenMBEE.OpenSysML.UnsupportedValueException.Path.get -> string!
+OpenMBEE.OpenSysML.UnsupportedValueException.UnsupportedValueException(string! message, string! method, string! path, System.ReadOnlySpan<byte> valueBytes) -> void
+OpenMBEE.OpenSysML.UnsupportedValueException.ValueBytes.get -> System.ReadOnlyMemory<byte>
+OpenMBEE.OpenSysML.Value
+OpenMBEE.OpenSysML.Value.ArrayValue
+OpenMBEE.OpenSysML.Value.ArrayValue.ArrayValue(System.Collections.Generic.IEnumerable<long>! dimensions, System.Collections.Generic.IEnumerable<OpenMBEE.OpenSysML.Value!>! elements) -> void
+OpenMBEE.OpenSysML.Value.ArrayValue.Dimensions.get -> OpenMBEE.OpenSysML.ValueList<long>
+OpenMBEE.OpenSysML.Value.ArrayValue.Elements.get -> OpenMBEE.OpenSysML.ValueList<OpenMBEE.OpenSysML.Value!>
+OpenMBEE.OpenSysML.Value.ArrayValue.Get(params System.ReadOnlySpan<long> index) -> OpenMBEE.OpenSysML.Value!
+OpenMBEE.OpenSysML.Value.ArrayValue.Rank.get -> int
+OpenMBEE.OpenSysML.Value.BigIntegerValue
+OpenMBEE.OpenSysML.Value.BigIntegerValue.BigIntegerValue(System.Numerics.BigInteger value) -> void
+OpenMBEE.OpenSysML.Value.BigIntegerValue.Value.get -> System.Numerics.BigInteger
+OpenMBEE.OpenSysML.Value.BooleanValue
+OpenMBEE.OpenSysML.Value.BooleanValue.BooleanValue(bool value) -> void
+OpenMBEE.OpenSysML.Value.BooleanValue.Value.get -> bool
+OpenMBEE.OpenSysML.Value.ComplexValue
+OpenMBEE.OpenSysML.Value.ComplexValue.ComplexValue(double real, double imaginary) -> void
+OpenMBEE.OpenSysML.Value.ComplexValue.Imaginary.get -> double
+OpenMBEE.OpenSysML.Value.ComplexValue.Real.get -> double
+OpenMBEE.OpenSysML.Value.EnumLiteralValue
+OpenMBEE.OpenSysML.Value.EnumLiteralValue.EnumerationId.get -> string!
+OpenMBEE.OpenSysML.Value.EnumLiteralValue.EnumLiteralValue(string! literalId, string! enumerationId, string! name, OpenMBEE.OpenSysML.Value? scalar = null) -> void
+OpenMBEE.OpenSysML.Value.EnumLiteralValue.LiteralId.get -> string!
+OpenMBEE.OpenSysML.Value.EnumLiteralValue.Name.get -> string!
+OpenMBEE.OpenSysML.Value.EnumLiteralValue.Scalar.get -> OpenMBEE.OpenSysML.Value?
+OpenMBEE.OpenSysML.Value.FunctionValue
+OpenMBEE.OpenSysML.Value.FunctionValue.CalcId.get -> string!
+OpenMBEE.OpenSysML.Value.FunctionValue.FunctionValue(string! calcId, long? selfId = null) -> void
+OpenMBEE.OpenSysML.Value.FunctionValue.SelfId.get -> long?
+OpenMBEE.OpenSysML.Value.InfinityValue
+OpenMBEE.OpenSysML.Value.InfinityValue.InfinityValue() -> void
+OpenMBEE.OpenSysML.Value.InstanceRefValue
+OpenMBEE.OpenSysML.Value.InstanceRefValue.InstanceId.get -> long
+OpenMBEE.OpenSysML.Value.InstanceRefValue.InstanceRefValue(long instanceId) -> void
+OpenMBEE.OpenSysML.Value.IntegerValue
+OpenMBEE.OpenSysML.Value.IntegerValue.IntegerValue(long value) -> void
+OpenMBEE.OpenSysML.Value.IntegerValue.Value.get -> long
+OpenMBEE.OpenSysML.Value.MeasurementRefValue
+OpenMBEE.OpenSysML.Value.MeasurementRefValue.MeasurementRefValue(string! unit, OpenMBEE.OpenSysML.UnitTerm! reduction, string? unitId = null) -> void
+OpenMBEE.OpenSysML.Value.MeasurementRefValue.Reduction.get -> OpenMBEE.OpenSysML.UnitTerm!
+OpenMBEE.OpenSysML.Value.MeasurementRefValue.Unit.get -> string!
+OpenMBEE.OpenSysML.Value.MeasurementRefValue.UnitId.get -> string?
+OpenMBEE.OpenSysML.Value.MetaobjectValue
+OpenMBEE.OpenSysML.Value.MetaobjectValue.ElementId.get -> string!
+OpenMBEE.OpenSysML.Value.MetaobjectValue.MetaclassId.get -> string!
+OpenMBEE.OpenSysML.Value.MetaobjectValue.MetaobjectValue(string! elementId, string! metaclassId = "") -> void
+OpenMBEE.OpenSysML.Value.NullValue
+OpenMBEE.OpenSysML.Value.NullValue.IsUnsupported.get -> bool
+OpenMBEE.OpenSysML.Value.NullValue.NullValue(string! unsupported = "") -> void
+OpenMBEE.OpenSysML.Value.NullValue.Unsupported.get -> string!
+OpenMBEE.OpenSysML.Value.NumberValue
+OpenMBEE.OpenSysML.Value.QuantityValue
+OpenMBEE.OpenSysML.Value.QuantityValue.Quantity.get -> OpenMBEE.OpenSysML.Quantity!
+OpenMBEE.OpenSysML.Value.QuantityValue.QuantityValue(OpenMBEE.OpenSysML.Quantity! quantity) -> void
+OpenMBEE.OpenSysML.Value.RationalValue
+OpenMBEE.OpenSysML.Value.RationalValue.RationalValue(OpenMBEE.OpenSysML.Rational! value) -> void
+OpenMBEE.OpenSysML.Value.RationalValue.Value.get -> OpenMBEE.OpenSysML.Rational!
+OpenMBEE.OpenSysML.Value.RealValue
+OpenMBEE.OpenSysML.Value.RealValue.RealValue(double value) -> void
+OpenMBEE.OpenSysML.Value.RealValue.Value.get -> double
+OpenMBEE.OpenSysML.Value.SequenceValue
+OpenMBEE.OpenSysML.Value.SequenceValue.Elements.get -> OpenMBEE.OpenSysML.ValueList<OpenMBEE.OpenSysML.Value!>
+OpenMBEE.OpenSysML.Value.SequenceValue.SequenceValue(System.Collections.Generic.IEnumerable<OpenMBEE.OpenSysML.Value!>! elements) -> void
+OpenMBEE.OpenSysML.Value.SetValue
+OpenMBEE.OpenSysML.Value.SetValue.Contains(OpenMBEE.OpenSysML.Value! value) -> bool
+OpenMBEE.OpenSysML.Value.SetValue.Count.get -> int
+OpenMBEE.OpenSysML.Value.SetValue.Elements.get -> OpenMBEE.OpenSysML.ValueList<OpenMBEE.OpenSysML.Value!>
+OpenMBEE.OpenSysML.Value.SetValue.SetValue(System.Collections.Generic.IEnumerable<OpenMBEE.OpenSysML.Value!>! elements) -> void
+OpenMBEE.OpenSysML.Value.TensorQuantityValue
+OpenMBEE.OpenSysML.Value.TensorQuantityValue.Components.get -> OpenMBEE.OpenSysML.ValueList<OpenMBEE.OpenSysML.Quantity!>
+OpenMBEE.OpenSysML.Value.TensorQuantityValue.Dimensions.get -> OpenMBEE.OpenSysML.ValueList<long>
+OpenMBEE.OpenSysML.Value.TensorQuantityValue.Get(params System.ReadOnlySpan<long> index) -> OpenMBEE.OpenSysML.Quantity!
+OpenMBEE.OpenSysML.Value.TensorQuantityValue.Rank.get -> int
+OpenMBEE.OpenSysML.Value.TensorQuantityValue.TensorQuantityValue(System.Collections.Generic.IEnumerable<long>! dimensions, System.Collections.Generic.IEnumerable<OpenMBEE.OpenSysML.Quantity!>! components) -> void
+OpenMBEE.OpenSysML.Value.TensorQuantityValue.Unit.get -> string?
+OpenMBEE.OpenSysML.Value.TextValue
+OpenMBEE.OpenSysML.Value.TextValue.TextValue(string! value) -> void
+OpenMBEE.OpenSysML.Value.TextValue.Value.get -> string!
+OpenMBEE.OpenSysML.Value.UndeterminedValue
+OpenMBEE.OpenSysML.Value.UndeterminedValue.CountLower.get -> string!
+OpenMBEE.OpenSysML.Value.UndeterminedValue.CountUpper.get -> string!
+OpenMBEE.OpenSysML.Value.UndeterminedValue.Reason.get -> string!
+OpenMBEE.OpenSysML.Value.UndeterminedValue.UndeterminedValue(string! reason, string! countLower, string! countUpper) -> void
+OpenMBEE.OpenSysML.Value.UnsetValue
+OpenMBEE.OpenSysML.Value.UnsetValue.UnsetValue() -> void
+OpenMBEE.OpenSysML.Value.VectorQuantityValue
+OpenMBEE.OpenSysML.Value.VectorQuantityValue.Components.get -> OpenMBEE.OpenSysML.ValueList<OpenMBEE.OpenSysML.Quantity!>
+OpenMBEE.OpenSysML.Value.VectorQuantityValue.Dimension.get -> int
+OpenMBEE.OpenSysML.Value.VectorQuantityValue.Unit.get -> string?
+OpenMBEE.OpenSysML.Value.VectorQuantityValue.VectorQuantityValue(System.Collections.Generic.IEnumerable<OpenMBEE.OpenSysML.Quantity!>! components) -> void
+OpenMBEE.OpenSysML.Value.VectorValue
+OpenMBEE.OpenSysML.Value.VectorValue.Components.get -> OpenMBEE.OpenSysML.ValueList<OpenMBEE.OpenSysML.Value.NumberValue!>
+OpenMBEE.OpenSysML.Value.VectorValue.Dimension.get -> int
+OpenMBEE.OpenSysML.Value.VectorValue.VectorValue(System.Collections.Generic.IEnumerable<OpenMBEE.OpenSysML.Value.NumberValue!>! components) -> void
+OpenMBEE.OpenSysML.ValueDictionary<TValue>
+OpenMBEE.OpenSysML.ValueDictionary<TValue>.ContainsKey(string! key) -> bool
+OpenMBEE.OpenSysML.ValueDictionary<TValue>.Count.get -> int
+OpenMBEE.OpenSysML.ValueDictionary<TValue>.Equals(OpenMBEE.OpenSysML.ValueDictionary<TValue> other) -> bool
+OpenMBEE.OpenSysML.ValueDictionary<TValue>.GetEnumerator() -> System.Collections.Generic.IEnumerator<System.Collections.Generic.KeyValuePair<string!, TValue>>!
+OpenMBEE.OpenSysML.ValueDictionary<TValue>.IsEmpty.get -> bool
+OpenMBEE.OpenSysML.ValueDictionary<TValue>.Keys.get -> System.Collections.Generic.IEnumerable<string!>!
+OpenMBEE.OpenSysML.ValueDictionary<TValue>.this[string! key].get -> TValue
+OpenMBEE.OpenSysML.ValueDictionary<TValue>.TryGetValue(string! key, out TValue value) -> bool
+OpenMBEE.OpenSysML.ValueDictionary<TValue>.ValueDictionary() -> void
+OpenMBEE.OpenSysML.ValueDictionary<TValue>.ValueDictionary(System.Collections.Generic.IEnumerable<System.Collections.Generic.KeyValuePair<string!, TValue>>! entries) -> void
+OpenMBEE.OpenSysML.ValueDictionary<TValue>.Values.get -> System.Collections.Generic.IEnumerable<TValue>!
+OpenMBEE.OpenSysML.ValueKind
+OpenMBEE.OpenSysML.ValueKind.Array = 12 -> OpenMBEE.OpenSysML.ValueKind
+OpenMBEE.OpenSysML.ValueKind.BigInteger = 1 -> OpenMBEE.OpenSysML.ValueKind
+OpenMBEE.OpenSysML.ValueKind.Boolean = 5 -> OpenMBEE.OpenSysML.ValueKind
+OpenMBEE.OpenSysML.ValueKind.Complex = 4 -> OpenMBEE.OpenSysML.ValueKind
+OpenMBEE.OpenSysML.ValueKind.EnumLiteral = 8 -> OpenMBEE.OpenSysML.ValueKind
+OpenMBEE.OpenSysML.ValueKind.Function = 17 -> OpenMBEE.OpenSysML.ValueKind
+OpenMBEE.OpenSysML.ValueKind.Infinity = 22 -> OpenMBEE.OpenSysML.ValueKind
+OpenMBEE.OpenSysML.ValueKind.InstanceRef = 7 -> OpenMBEE.OpenSysML.ValueKind
+OpenMBEE.OpenSysML.ValueKind.Integer = 0 -> OpenMBEE.OpenSysML.ValueKind
+OpenMBEE.OpenSysML.ValueKind.MeasurementRef = 16 -> OpenMBEE.OpenSysML.ValueKind
+OpenMBEE.OpenSysML.ValueKind.Metaobject = 18 -> OpenMBEE.OpenSysML.ValueKind
+OpenMBEE.OpenSysML.ValueKind.Null = 19 -> OpenMBEE.OpenSysML.ValueKind
+OpenMBEE.OpenSysML.ValueKind.Quantity = 11 -> OpenMBEE.OpenSysML.ValueKind
+OpenMBEE.OpenSysML.ValueKind.Rational = 3 -> OpenMBEE.OpenSysML.ValueKind
+OpenMBEE.OpenSysML.ValueKind.Real = 2 -> OpenMBEE.OpenSysML.ValueKind
+OpenMBEE.OpenSysML.ValueKind.Sequence = 9 -> OpenMBEE.OpenSysML.ValueKind
+OpenMBEE.OpenSysML.ValueKind.Set = 10 -> OpenMBEE.OpenSysML.ValueKind
+OpenMBEE.OpenSysML.ValueKind.TensorQuantity = 15 -> OpenMBEE.OpenSysML.ValueKind
+OpenMBEE.OpenSysML.ValueKind.Text = 6 -> OpenMBEE.OpenSysML.ValueKind
+OpenMBEE.OpenSysML.ValueKind.Undetermined = 21 -> OpenMBEE.OpenSysML.ValueKind
+OpenMBEE.OpenSysML.ValueKind.Unset = 20 -> OpenMBEE.OpenSysML.ValueKind
+OpenMBEE.OpenSysML.ValueKind.Vector = 13 -> OpenMBEE.OpenSysML.ValueKind
+OpenMBEE.OpenSysML.ValueKind.VectorQuantity = 14 -> OpenMBEE.OpenSysML.ValueKind
+OpenMBEE.OpenSysML.ValueList<T>
+OpenMBEE.OpenSysML.ValueList<T>.AsSpan() -> System.ReadOnlySpan<T>
+OpenMBEE.OpenSysML.ValueList<T>.Count.get -> int
+OpenMBEE.OpenSysML.ValueList<T>.Equals(OpenMBEE.OpenSysML.ValueList<T> other) -> bool
+OpenMBEE.OpenSysML.ValueList<T>.GetEnumerator() -> System.Collections.Generic.IEnumerator<T>!
+OpenMBEE.OpenSysML.ValueList<T>.IsEmpty.get -> bool
+OpenMBEE.OpenSysML.ValueList<T>.this[int index].get -> T
+OpenMBEE.OpenSysML.ValueList<T>.ValueList() -> void
+OpenMBEE.OpenSysML.ValueList<T>.ValueList(System.Collections.Generic.IEnumerable<T>! items) -> void
+override abstract OpenMBEE.OpenSysML.Value.GetHashCode() -> int
+override abstract OpenMBEE.OpenSysML.Value.ToString() -> string!
 override OpenMBEE.OpenSysML.Capabilities.Equals(object? obj) -> bool
 override OpenMBEE.OpenSysML.Capabilities.GetHashCode() -> int
 override OpenMBEE.OpenSysML.Capabilities.ToString() -> string!
+override OpenMBEE.OpenSysML.Quantity.Equals(object? obj) -> bool
+override OpenMBEE.OpenSysML.Quantity.GetHashCode() -> int
+override OpenMBEE.OpenSysML.Quantity.ToString() -> string!
+override OpenMBEE.OpenSysML.Rational.Equals(object? obj) -> bool
+override OpenMBEE.OpenSysML.Rational.GetHashCode() -> int
+override OpenMBEE.OpenSysML.Rational.ToString() -> string!
 override OpenMBEE.OpenSysML.ServerInfo.Equals(object? obj) -> bool
 override OpenMBEE.OpenSysML.ServerInfo.GetHashCode() -> int
 override OpenMBEE.OpenSysML.ServerInfo.ToString() -> string!
+override OpenMBEE.OpenSysML.UnitFactor.Equals(object? obj) -> bool
+override OpenMBEE.OpenSysML.UnitFactor.GetHashCode() -> int
+override OpenMBEE.OpenSysML.UnitFactor.ToString() -> string!
+override OpenMBEE.OpenSysML.UnitTerm.Equals(object? obj) -> bool
+override OpenMBEE.OpenSysML.UnitTerm.GetHashCode() -> int
+override OpenMBEE.OpenSysML.UnitTerm.ToString() -> string!
+override OpenMBEE.OpenSysML.Value.ArrayValue.Equals(OpenMBEE.OpenSysML.Value? other) -> bool
+override OpenMBEE.OpenSysML.Value.ArrayValue.GetHashCode() -> int
+override OpenMBEE.OpenSysML.Value.ArrayValue.Kind.get -> OpenMBEE.OpenSysML.ValueKind
+override OpenMBEE.OpenSysML.Value.ArrayValue.ToString() -> string!
+override OpenMBEE.OpenSysML.Value.BigIntegerValue.Equals(OpenMBEE.OpenSysML.Value? other) -> bool
+override OpenMBEE.OpenSysML.Value.BigIntegerValue.GetHashCode() -> int
+override OpenMBEE.OpenSysML.Value.BigIntegerValue.Kind.get -> OpenMBEE.OpenSysML.ValueKind
+override OpenMBEE.OpenSysML.Value.BigIntegerValue.ToDouble() -> double
+override OpenMBEE.OpenSysML.Value.BigIntegerValue.ToString() -> string!
+override OpenMBEE.OpenSysML.Value.BooleanValue.Equals(OpenMBEE.OpenSysML.Value? other) -> bool
+override OpenMBEE.OpenSysML.Value.BooleanValue.GetHashCode() -> int
+override OpenMBEE.OpenSysML.Value.BooleanValue.Kind.get -> OpenMBEE.OpenSysML.ValueKind
+override OpenMBEE.OpenSysML.Value.BooleanValue.ToString() -> string!
+override OpenMBEE.OpenSysML.Value.ComplexValue.Equals(OpenMBEE.OpenSysML.Value? other) -> bool
+override OpenMBEE.OpenSysML.Value.ComplexValue.GetHashCode() -> int
+override OpenMBEE.OpenSysML.Value.ComplexValue.Kind.get -> OpenMBEE.OpenSysML.ValueKind
+override OpenMBEE.OpenSysML.Value.ComplexValue.ToString() -> string!
+override OpenMBEE.OpenSysML.Value.EnumLiteralValue.Equals(OpenMBEE.OpenSysML.Value? other) -> bool
+override OpenMBEE.OpenSysML.Value.EnumLiteralValue.GetHashCode() -> int
+override OpenMBEE.OpenSysML.Value.EnumLiteralValue.Kind.get -> OpenMBEE.OpenSysML.ValueKind
+override OpenMBEE.OpenSysML.Value.EnumLiteralValue.ToString() -> string!
+override OpenMBEE.OpenSysML.Value.FunctionValue.Equals(OpenMBEE.OpenSysML.Value? other) -> bool
+override OpenMBEE.OpenSysML.Value.FunctionValue.GetHashCode() -> int
+override OpenMBEE.OpenSysML.Value.FunctionValue.Kind.get -> OpenMBEE.OpenSysML.ValueKind
+override OpenMBEE.OpenSysML.Value.FunctionValue.ToString() -> string!
+override OpenMBEE.OpenSysML.Value.InfinityValue.Equals(OpenMBEE.OpenSysML.Value? other) -> bool
+override OpenMBEE.OpenSysML.Value.InfinityValue.GetHashCode() -> int
+override OpenMBEE.OpenSysML.Value.InfinityValue.Kind.get -> OpenMBEE.OpenSysML.ValueKind
+override OpenMBEE.OpenSysML.Value.InfinityValue.ToString() -> string!
+override OpenMBEE.OpenSysML.Value.InstanceRefValue.Equals(OpenMBEE.OpenSysML.Value? other) -> bool
+override OpenMBEE.OpenSysML.Value.InstanceRefValue.GetHashCode() -> int
+override OpenMBEE.OpenSysML.Value.InstanceRefValue.Kind.get -> OpenMBEE.OpenSysML.ValueKind
+override OpenMBEE.OpenSysML.Value.InstanceRefValue.ToString() -> string!
+override OpenMBEE.OpenSysML.Value.IntegerValue.Equals(OpenMBEE.OpenSysML.Value? other) -> bool
+override OpenMBEE.OpenSysML.Value.IntegerValue.GetHashCode() -> int
+override OpenMBEE.OpenSysML.Value.IntegerValue.Kind.get -> OpenMBEE.OpenSysML.ValueKind
+override OpenMBEE.OpenSysML.Value.IntegerValue.ToDouble() -> double
+override OpenMBEE.OpenSysML.Value.IntegerValue.ToString() -> string!
+override OpenMBEE.OpenSysML.Value.MeasurementRefValue.Equals(OpenMBEE.OpenSysML.Value? other) -> bool
+override OpenMBEE.OpenSysML.Value.MeasurementRefValue.GetHashCode() -> int
+override OpenMBEE.OpenSysML.Value.MeasurementRefValue.Kind.get -> OpenMBEE.OpenSysML.ValueKind
+override OpenMBEE.OpenSysML.Value.MeasurementRefValue.ToString() -> string!
+override OpenMBEE.OpenSysML.Value.MetaobjectValue.Equals(OpenMBEE.OpenSysML.Value? other) -> bool
+override OpenMBEE.OpenSysML.Value.MetaobjectValue.GetHashCode() -> int
+override OpenMBEE.OpenSysML.Value.MetaobjectValue.Kind.get -> OpenMBEE.OpenSysML.ValueKind
+override OpenMBEE.OpenSysML.Value.MetaobjectValue.ToString() -> string!
+override OpenMBEE.OpenSysML.Value.NullValue.Equals(OpenMBEE.OpenSysML.Value? other) -> bool
+override OpenMBEE.OpenSysML.Value.NullValue.GetHashCode() -> int
+override OpenMBEE.OpenSysML.Value.NullValue.Kind.get -> OpenMBEE.OpenSysML.ValueKind
+override OpenMBEE.OpenSysML.Value.NullValue.ToString() -> string!
+override OpenMBEE.OpenSysML.Value.QuantityValue.Equals(OpenMBEE.OpenSysML.Value? other) -> bool
+override OpenMBEE.OpenSysML.Value.QuantityValue.GetHashCode() -> int
+override OpenMBEE.OpenSysML.Value.QuantityValue.Kind.get -> OpenMBEE.OpenSysML.ValueKind
+override OpenMBEE.OpenSysML.Value.QuantityValue.ToString() -> string!
+override OpenMBEE.OpenSysML.Value.RationalValue.Equals(OpenMBEE.OpenSysML.Value? other) -> bool
+override OpenMBEE.OpenSysML.Value.RationalValue.GetHashCode() -> int
+override OpenMBEE.OpenSysML.Value.RationalValue.Kind.get -> OpenMBEE.OpenSysML.ValueKind
+override OpenMBEE.OpenSysML.Value.RationalValue.ToDouble() -> double
+override OpenMBEE.OpenSysML.Value.RationalValue.ToString() -> string!
+override OpenMBEE.OpenSysML.Value.RealValue.Equals(OpenMBEE.OpenSysML.Value? other) -> bool
+override OpenMBEE.OpenSysML.Value.RealValue.GetHashCode() -> int
+override OpenMBEE.OpenSysML.Value.RealValue.Kind.get -> OpenMBEE.OpenSysML.ValueKind
+override OpenMBEE.OpenSysML.Value.RealValue.ToDouble() -> double
+override OpenMBEE.OpenSysML.Value.RealValue.ToString() -> string!
+override OpenMBEE.OpenSysML.Value.SequenceValue.Equals(OpenMBEE.OpenSysML.Value? other) -> bool
+override OpenMBEE.OpenSysML.Value.SequenceValue.GetHashCode() -> int
+override OpenMBEE.OpenSysML.Value.SequenceValue.Kind.get -> OpenMBEE.OpenSysML.ValueKind
+override OpenMBEE.OpenSysML.Value.SequenceValue.ToString() -> string!
+override OpenMBEE.OpenSysML.Value.SetValue.Equals(OpenMBEE.OpenSysML.Value? other) -> bool
+override OpenMBEE.OpenSysML.Value.SetValue.GetHashCode() -> int
+override OpenMBEE.OpenSysML.Value.SetValue.Kind.get -> OpenMBEE.OpenSysML.ValueKind
+override OpenMBEE.OpenSysML.Value.SetValue.ToString() -> string!
+override OpenMBEE.OpenSysML.Value.TensorQuantityValue.Equals(OpenMBEE.OpenSysML.Value? other) -> bool
+override OpenMBEE.OpenSysML.Value.TensorQuantityValue.GetHashCode() -> int
+override OpenMBEE.OpenSysML.Value.TensorQuantityValue.Kind.get -> OpenMBEE.OpenSysML.ValueKind
+override OpenMBEE.OpenSysML.Value.TensorQuantityValue.ToString() -> string!
+override OpenMBEE.OpenSysML.Value.TextValue.Equals(OpenMBEE.OpenSysML.Value? other) -> bool
+override OpenMBEE.OpenSysML.Value.TextValue.GetHashCode() -> int
+override OpenMBEE.OpenSysML.Value.TextValue.Kind.get -> OpenMBEE.OpenSysML.ValueKind
+override OpenMBEE.OpenSysML.Value.TextValue.ToString() -> string!
+override OpenMBEE.OpenSysML.Value.UndeterminedValue.Equals(OpenMBEE.OpenSysML.Value? other) -> bool
+override OpenMBEE.OpenSysML.Value.UndeterminedValue.GetHashCode() -> int
+override OpenMBEE.OpenSysML.Value.UndeterminedValue.Kind.get -> OpenMBEE.OpenSysML.ValueKind
+override OpenMBEE.OpenSysML.Value.UndeterminedValue.ToString() -> string!
+override OpenMBEE.OpenSysML.Value.UnsetValue.Equals(OpenMBEE.OpenSysML.Value? other) -> bool
+override OpenMBEE.OpenSysML.Value.UnsetValue.GetHashCode() -> int
+override OpenMBEE.OpenSysML.Value.UnsetValue.Kind.get -> OpenMBEE.OpenSysML.ValueKind
+override OpenMBEE.OpenSysML.Value.UnsetValue.ToString() -> string!
+override OpenMBEE.OpenSysML.Value.VectorQuantityValue.Equals(OpenMBEE.OpenSysML.Value? other) -> bool
+override OpenMBEE.OpenSysML.Value.VectorQuantityValue.GetHashCode() -> int
+override OpenMBEE.OpenSysML.Value.VectorQuantityValue.Kind.get -> OpenMBEE.OpenSysML.ValueKind
+override OpenMBEE.OpenSysML.Value.VectorQuantityValue.ToString() -> string!
+override OpenMBEE.OpenSysML.Value.VectorValue.Equals(OpenMBEE.OpenSysML.Value? other) -> bool
+override OpenMBEE.OpenSysML.Value.VectorValue.GetHashCode() -> int
+override OpenMBEE.OpenSysML.Value.VectorValue.Kind.get -> OpenMBEE.OpenSysML.ValueKind
+override OpenMBEE.OpenSysML.Value.VectorValue.ToString() -> string!
+override OpenMBEE.OpenSysML.ValueDictionary<TValue>.Equals(object? obj) -> bool
+override OpenMBEE.OpenSysML.ValueDictionary<TValue>.GetHashCode() -> int
+override OpenMBEE.OpenSysML.ValueDictionary<TValue>.ToString() -> string!
+override OpenMBEE.OpenSysML.ValueList<T>.Equals(object? obj) -> bool
+override OpenMBEE.OpenSysML.ValueList<T>.GetHashCode() -> int
+override OpenMBEE.OpenSysML.ValueList<T>.ToString() -> string!
+override sealed OpenMBEE.OpenSysML.Value.Equals(object? obj) -> bool
 static OpenMBEE.OpenSysML.Capabilities.None.get -> OpenMBEE.OpenSysML.Capabilities!
 static OpenMBEE.OpenSysML.Capabilities.UpgradeRemedy(string! capability) -> string!
 static OpenMBEE.OpenSysML.Connection.OpenAsync(OpenMBEE.OpenSysML.ConnectionOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<OpenMBEE.OpenSysML.Connection!>!
 static OpenMBEE.OpenSysML.ConnectionOptions.Default.get -> OpenMBEE.OpenSysML.ConnectionOptions!
 static OpenMBEE.OpenSysML.ConnectionOptions.DefaultRequestTimeout.get -> System.TimeSpan
 static OpenMBEE.OpenSysML.ConnectionOptions.MaxRequestTimeout.get -> System.TimeSpan
+static OpenMBEE.OpenSysML.Quantity.operator !=(OpenMBEE.OpenSysML.Quantity? left, OpenMBEE.OpenSysML.Quantity? right) -> bool
+static OpenMBEE.OpenSysML.Quantity.operator ==(OpenMBEE.OpenSysML.Quantity? left, OpenMBEE.OpenSysML.Quantity? right) -> bool
+static OpenMBEE.OpenSysML.Rational.operator !=(OpenMBEE.OpenSysML.Rational? left, OpenMBEE.OpenSysML.Rational? right) -> bool
+static OpenMBEE.OpenSysML.Rational.operator <(OpenMBEE.OpenSysML.Rational? left, OpenMBEE.OpenSysML.Rational? right) -> bool
+static OpenMBEE.OpenSysML.Rational.operator <=(OpenMBEE.OpenSysML.Rational? left, OpenMBEE.OpenSysML.Rational? right) -> bool
+static OpenMBEE.OpenSysML.Rational.operator ==(OpenMBEE.OpenSysML.Rational? left, OpenMBEE.OpenSysML.Rational? right) -> bool
+static OpenMBEE.OpenSysML.Rational.operator >(OpenMBEE.OpenSysML.Rational? left, OpenMBEE.OpenSysML.Rational? right) -> bool
+static OpenMBEE.OpenSysML.Rational.operator >=(OpenMBEE.OpenSysML.Rational? left, OpenMBEE.OpenSysML.Rational? right) -> bool
+static OpenMBEE.OpenSysML.UnitFactor.operator !=(OpenMBEE.OpenSysML.UnitFactor? left, OpenMBEE.OpenSysML.UnitFactor? right) -> bool
+static OpenMBEE.OpenSysML.UnitFactor.operator ==(OpenMBEE.OpenSysML.UnitFactor? left, OpenMBEE.OpenSysML.UnitFactor? right) -> bool
+static OpenMBEE.OpenSysML.UnitTerm.One.get -> OpenMBEE.OpenSysML.UnitTerm!
+static OpenMBEE.OpenSysML.UnitTerm.operator !=(OpenMBEE.OpenSysML.UnitTerm? left, OpenMBEE.OpenSysML.UnitTerm? right) -> bool
+static OpenMBEE.OpenSysML.UnitTerm.operator ==(OpenMBEE.OpenSysML.UnitTerm? left, OpenMBEE.OpenSysML.UnitTerm? right) -> bool
+static OpenMBEE.OpenSysML.Value.FromInteger(System.Numerics.BigInteger value) -> OpenMBEE.OpenSysML.Value.NumberValue!
+static OpenMBEE.OpenSysML.Value.operator !=(OpenMBEE.OpenSysML.Value? left, OpenMBEE.OpenSysML.Value? right) -> bool
+static OpenMBEE.OpenSysML.Value.operator ==(OpenMBEE.OpenSysML.Value? left, OpenMBEE.OpenSysML.Value? right) -> bool
+static OpenMBEE.OpenSysML.ValueDictionary<TValue>.operator !=(OpenMBEE.OpenSysML.ValueDictionary<TValue> left, OpenMBEE.OpenSysML.ValueDictionary<TValue> right) -> bool
+static OpenMBEE.OpenSysML.ValueDictionary<TValue>.operator ==(OpenMBEE.OpenSysML.ValueDictionary<TValue> left, OpenMBEE.OpenSysML.ValueDictionary<TValue> right) -> bool
+static OpenMBEE.OpenSysML.ValueList<T>.operator !=(OpenMBEE.OpenSysML.ValueList<T> left, OpenMBEE.OpenSysML.ValueList<T> right) -> bool
+static OpenMBEE.OpenSysML.ValueList<T>.operator ==(OpenMBEE.OpenSysML.ValueList<T> left, OpenMBEE.OpenSysML.ValueList<T> right) -> bool

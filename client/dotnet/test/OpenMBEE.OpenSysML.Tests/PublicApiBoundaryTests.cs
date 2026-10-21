@@ -36,9 +36,10 @@ public sealed partial class PublicApiBoundaryTests
         var baseline = Baseline();
         var handwritten = typeof(RpcMethods).Assembly.GetExportedTypes()
             .Where(type => type.Namespace != WireNamespace)
-            .Select(type => type.FullName!.Replace('+', '.'))
+            .Select(BaselineName)
             .ToList();
 
+        Assert.Contains("OpenMBEE.OpenSysML.ValueList<T>", handwritten);
         Assert.All(handwritten, name => Assert.Contains(baseline, line => line == name || line.StartsWith(name + ".", StringComparison.Ordinal)));
     }
 
@@ -108,6 +109,15 @@ public sealed partial class PublicApiBoundaryTests
         var section = Assert.Single(sections);
         var exempted = section.Groups[2].Value.Split(',').Select(name => $"{section.Groups[1].Value}{name}{section.Groups[3].Value}");
         Assert.Equal(GeneratedFiles, exempted.Order(StringComparer.Ordinal));
+    }
+
+    // A type as the baseline spells it: nested types dotted, a generic one with its parameters, as ValueList<T>.
+    private static string BaselineName(Type type)
+    {
+        var name = type.FullName!.Replace('+', '.');
+        return type.IsGenericTypeDefinition
+            ? $"{name[..name.IndexOf('`', StringComparison.Ordinal)]}<{string.Join(", ", type.GetGenericArguments().Select(parameter => parameter.Name))}>"
+            : name;
     }
 
     private static string[] Baseline() =>

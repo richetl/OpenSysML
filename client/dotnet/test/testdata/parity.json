@@ -1137,140 +1137,163 @@
     "arms": {
       "int_value": {
         "kind": "Integer",
-        "status": "deferred",
-        "send": "ungated"
+        "status": "implemented",
+        "send": "ungated",
+        "test": "ValueArmTests.IntegerArm"
       },
       "real_value": {
         "kind": "Real",
-        "status": "deferred",
-        "send": "ungated"
+        "status": "implemented",
+        "send": "ungated",
+        "test": "ValueArmTests.RealArm"
       },
       "bool_value": {
         "kind": "Boolean",
-        "status": "deferred",
-        "send": "ungated"
+        "status": "implemented",
+        "send": "ungated",
+        "test": "ValueArmTests.BooleanArm"
       },
       "string_value": {
         "kind": "Text",
-        "status": "deferred",
-        "send": "ungated"
+        "status": "implemented",
+        "send": "ungated",
+        "test": "ValueArmTests.TextArm"
       },
       "instance_id": {
         "kind": "InstanceRef",
-        "status": "deferred",
-        "send": "ungated"
+        "status": "implemented",
+        "send": "ungated",
+        "test": "ValueArmTests.InstanceRefArm"
       },
       "sequence": {
         "kind": "Sequence",
-        "status": "deferred",
+        "status": "implemented",
         "send": "ungated",
-        "note": "its elements carry their own gates"
+        "note": "its elements carry their own gates",
+        "test": "ValueArmTests.SequenceArm"
       },
       "null": {
         "kind": "Null",
-        "status": "deferred",
-        "send": "ungated"
+        "status": "implemented",
+        "send": "ungated",
+        "test": "ValueArmTests.NullArm"
       },
       "quantity": {
         "kind": "Quantity",
-        "status": "deferred",
+        "status": "implemented",
         "send": "ungated",
-        "note": "a big-integer or rational magnitude needs big_int_values or rational_values to send and to receive"
+        "note": "a big-integer or rational magnitude needs big_int_values or rational_values to send and to receive",
+        "test": "ValueArmTests.QuantityArm"
       },
       "enum_literal": {
         "kind": "EnumLiteral",
-        "status": "deferred",
+        "status": "implemented",
         "send": "ungated",
-        "receive": "enum_values"
+        "receive": "enum_values",
+        "test": "ValueArmTests.EnumLiteralArm"
       },
       "unset": {
         "kind": "Unset",
-        "status": "deferred",
+        "status": "implemented",
         "send": "response-only",
-        "receive": "unset_value"
+        "receive": "unset_value",
+        "test": "ValueArmTests.UnsetArm"
       },
       "complex": {
         "kind": "Complex",
-        "status": "deferred",
+        "status": "implemented",
         "send": "complex_values",
-        "receive": "complex_values"
+        "receive": "complex_values",
+        "test": "ValueArmTests.ComplexArm"
       },
       "array": {
         "kind": "Array",
-        "status": "deferred",
+        "status": "implemented",
         "send": "structured_values",
         "receive": "structured_values",
-        "note": "its elements carry their own gates"
+        "note": "its elements carry their own gates",
+        "test": "ValueArmTests.ArrayArm"
       },
       "vector": {
         "kind": "Vector",
-        "status": "deferred",
+        "status": "implemented",
         "send": "structured_values",
         "receive": "structured_values",
-        "note": "a big-integer or rational component needs big_int_values or rational_values to send and to receive"
+        "note": "a big-integer or rational component needs big_int_values or rational_values to send and to receive",
+        "test": "ValueArmTests.VectorArm"
       },
       "vector_quantity": {
         "kind": "VectorQuantity",
-        "status": "deferred",
+        "status": "implemented",
         "send": "structured_values",
         "receive": "structured_values",
-        "note": "a big-integer or rational magnitude needs big_int_values or rational_values to send and to receive"
+        "note": "a big-integer or rational magnitude needs big_int_values or rational_values to send and to receive",
+        "test": "ValueArmTests.VectorQuantityArm"
       },
       "measurement_ref": {
         "kind": "MeasurementRef",
-        "status": "deferred",
+        "status": "implemented",
         "send": "measurement_refs",
-        "receive": "measurement_refs"
+        "receive": "measurement_refs",
+        "test": "ValueArmTests.MeasurementRefArm"
       },
       "infinity": {
         "kind": "Infinity",
-        "status": "deferred",
+        "status": "implemented",
         "send": "infinity_value",
-        "receive": "infinity_value"
+        "receive": "infinity_value",
+        "test": "ValueArmTests.InfinityArm"
       },
       "function": {
         "kind": "Function",
-        "status": "deferred",
+        "status": "implemented",
         "send": "function_values",
-        "receive": "function_values"
+        "receive": "function_values",
+        "test": "ValueArmTests.FunctionArm"
       },
       "set": {
         "kind": "Set",
-        "status": "deferred",
+        "status": "implemented",
         "send": "set_values",
         "receive": "set_values",
-        "note": "its elements carry their own gates"
+        "note": "its elements carry their own gates",
+        "test": "ValueArmTests.SetArm"
       },
       "tensor_quantity": {
         "kind": "TensorQuantity",
-        "status": "deferred",
+        "status": "implemented",
         "send": "tensor_values",
         "receive": "tensor_values",
-        "note": "a big-integer or rational magnitude needs big_int_values or rational_values to send and to receive"
+        "note": "a big-integer or rational magnitude needs big_int_values or rational_values to send and to receive",
+        "test": "ValueArmTests.TensorQuantityArm"
       },
       "metaobject": {
         "kind": "Metaobject",
-        "status": "deferred",
+        "status": "implemented",
         "send": "metaobject_values",
-        "receive": "metaobject_values"
+        "receive": "metaobject_values",
+        "test": "ValueArmTests.MetaobjectArm"
       },
       "undetermined": {
         "kind": "Undetermined",
-        "status": "deferred",
+        "status": "implemented",
         "send": "response-only",
-        "receive": "undetermined_value"
+        "receive": "undetermined_value",
+        "test": "ValueArmTests.UndeterminedArm"
       },
       "big_int_value": {
         "kind": "BigInteger",
-        "status": "deferred",
+        "status": "implemented",
         "send": "big_int_values",
-        "receive": "big_int_values"
+        "receive": "big_int_values",
+        "test": "ValueArmTests.BigIntegerArm"
       },
       "rational_value": {
         "kind": "Rational",
-        "status": "deferred",
+        "status": "implemented",
         "send": "rational_values",
-        "receive": "rational_values"
+        "receive": "rational_values",
+        "test": "ValueArmTests.RationalArm"
       }
     }
   },
@@ -1732,8 +1755,14 @@
       "referrers": "deferred"
     },
     "sysml.Array": {
-      "dimensions": "deferred",
-      "elements": "deferred"
+      "dimensions": {
+        "status": "typed",
+        "test": "ValueArmTests.ArrayArm"
+      },
+      "elements": {
+        "status": "typed",
+        "test": "ValueArmTests.ArrayArm"
+      }
     },
     "sysml.AttributeInfo": {
       "name": "deferred",
@@ -1878,8 +1907,14 @@
       "deviation": "deferred"
     },
     "sysml.Complex": {
-      "real": "deferred",
-      "imaginary": "deferred"
+      "real": {
+        "status": "typed",
+        "test": "ValueArmTests.ComplexArm"
+      },
+      "imaginary": {
+        "status": "typed",
+        "test": "ValueArmTests.ComplexArm"
+      }
     },
     "sysml.CompositeConstraint": {
       "operator": "deferred",
@@ -2070,10 +2105,22 @@
       "served": "deferred"
     },
     "sysml.EnumLiteral": {
-      "literal_id": "deferred",
-      "enumeration_id": "deferred",
-      "name": "deferred",
-      "value": "deferred"
+      "literal_id": {
+        "status": "typed",
+        "test": "ValueArmTests.EnumLiteralArm"
+      },
+      "enumeration_id": {
+        "status": "typed",
+        "test": "ValueArmTests.EnumLiteralArm"
+      },
+      "name": {
+        "status": "typed",
+        "test": "ValueArmTests.EnumLiteralArm"
+      },
+      "value": {
+        "status": "typed",
+        "test": "ValueArmTests.EnumLiteralArm"
+      }
     },
     "sysml.EvaluateCalcRequest": {
       "model_hash": "deferred",
@@ -2175,8 +2222,14 @@
       "order_dependent": "deferred"
     },
     "sysml.Function": {
-      "calc_id": "deferred",
-      "self_id": "deferred"
+      "calc_id": {
+        "status": "typed",
+        "test": "ValueArmTests.FunctionArm"
+      },
+      "self_id": {
+        "status": "typed",
+        "test": "ValueArmTests.FunctionArm"
+      }
     },
     "sysml.GetSymbolRequest": {
       "model_hash": "deferred",
@@ -2233,17 +2286,32 @@
       "engines": "deferred"
     },
     "sysml.MeasurementRef": {
-      "unit": "deferred",
-      "unit_term": "deferred",
-      "unit_id": "deferred"
+      "unit": {
+        "status": "typed",
+        "test": "ValueArmTests.MeasurementRefArm"
+      },
+      "unit_term": {
+        "status": "typed",
+        "test": "ValueArmTests.MeasurementRefArm"
+      },
+      "unit_id": {
+        "status": "typed",
+        "test": "ValueArmTests.MeasurementRefArm"
+      }
     },
     "sysml.MetadataFeatureValue": {
       "feature": "deferred",
       "value": "deferred"
     },
     "sysml.Metaobject": {
-      "element_id": "deferred",
-      "metaclass_id": "deferred"
+      "element_id": {
+        "status": "typed",
+        "test": "ValueArmTests.MetaobjectArm"
+      },
+      "metaclass_id": {
+        "status": "typed",
+        "test": "ValueArmTests.MetaobjectArm"
+      }
     },
     "sysml.MigrateRequest": {
       "file_path": "deferred",
@@ -2296,8 +2364,14 @@
       "owner": "deferred"
     },
     "sysml.MultiplicityInfo": {
-      "lower": "deferred",
-      "upper": "deferred"
+      "lower": {
+        "status": "typed",
+        "test": "ValueArmTests.UndeterminedArm"
+      },
+      "upper": {
+        "status": "typed",
+        "test": "ValueArmTests.UndeterminedArm"
+      }
     },
     "sysml.ObservableComparison": {
       "stored": "deferred",
@@ -2364,12 +2438,30 @@
       "max": "deferred"
     },
     "sysml.Quantity": {
-      "int_magnitude": "deferred",
-      "real_magnitude": "deferred",
-      "big_int_magnitude": "deferred",
-      "rational_magnitude": "deferred",
-      "unit": "deferred",
-      "unit_term": "deferred"
+      "int_magnitude": {
+        "status": "typed",
+        "test": "ValueArmTests.QuantityArm"
+      },
+      "real_magnitude": {
+        "status": "typed",
+        "test": "ValueArmTests.QuantityArm"
+      },
+      "big_int_magnitude": {
+        "status": "typed",
+        "test": "ValueArmTests.QuantityArm"
+      },
+      "rational_magnitude": {
+        "status": "typed",
+        "test": "ValueArmTests.QuantityArm"
+      },
+      "unit": {
+        "status": "typed",
+        "test": "ValueArmTests.QuantityArm"
+      },
+      "unit_term": {
+        "status": "typed",
+        "test": "ValueArmTests.QuantityArm"
+      }
     },
     "sysml.Query": {
       "scope": "deferred",
@@ -2390,8 +2482,14 @@
       "properties": "deferred"
     },
     "sysml.Rational": {
-      "numerator": "deferred",
-      "denominator": "deferred"
+      "numerator": {
+        "status": "typed",
+        "test": "ValueArmTests.RationalArm"
+      },
+      "denominator": {
+        "status": "typed",
+        "test": "ValueArmTests.RationalArm"
+      }
     },
     "sysml.RecordRunRequest": {
       "model_hash": "deferred",
@@ -2759,8 +2857,14 @@
       "error": "deferred"
     },
     "sysml.TensorQuantity": {
-      "dimensions": "deferred",
-      "components": "deferred"
+      "dimensions": {
+        "status": "typed",
+        "test": "ValueArmTests.TensorQuantityArm"
+      },
+      "components": {
+        "status": "typed",
+        "test": "ValueArmTests.TensorQuantityArm"
+      }
     },
     "sysml.ToolDryRun": {
       "action": "deferred",
@@ -2806,17 +2910,38 @@
       "unit": "deferred"
     },
     "sysml.Undetermined": {
-      "reason": "deferred",
-      "count": "deferred"
+      "reason": {
+        "status": "typed",
+        "test": "ValueArmTests.UndeterminedArm"
+      },
+      "count": {
+        "status": "typed",
+        "test": "ValueArmTests.UndeterminedArm"
+      }
     },
     "sysml.UnitFactor": {
-      "unit_id": "deferred",
-      "exponent": "deferred"
+      "unit_id": {
+        "status": "typed",
+        "test": "ValueArmTests.QuantityArm"
+      },
+      "exponent": {
+        "status": "typed",
+        "test": "ValueArmTests.QuantityArm"
+      }
     },
     "sysml.UnitTerm": {
-      "scale_num": "deferred",
-      "scale_den": "deferred",
-      "factors": "deferred"
+      "scale_num": {
+        "status": "typed",
+        "test": "ValueArmTests.QuantityArm"
+      },
+      "scale_den": {
+        "status": "typed",
+        "test": "ValueArmTests.QuantityArm"
+      },
+      "factors": {
+        "status": "typed",
+        "test": "ValueArmTests.QuantityArm"
+      }
     },
     "sysml.ValidateInstanceRequest": {
       "model_hash": "deferred",
@@ -2834,41 +2959,122 @@
       "bounded": "deferred"
     },
     "sysml.Value": {
-      "int_value": "deferred",
-      "real_value": "deferred",
-      "bool_value": "deferred",
-      "string_value": "deferred",
-      "instance_id": "deferred",
-      "sequence": "deferred",
-      "null": "deferred",
-      "quantity": "deferred",
-      "enum_literal": "deferred",
-      "unset": "deferred",
-      "complex": "deferred",
-      "array": "deferred",
-      "vector": "deferred",
-      "vector_quantity": "deferred",
-      "measurement_ref": "deferred",
-      "infinity": "deferred",
-      "function": "deferred",
-      "set": "deferred",
-      "tensor_quantity": "deferred",
-      "metaobject": "deferred",
-      "undetermined": "deferred",
-      "big_int_value": "deferred",
-      "rational_value": "deferred"
+      "int_value": {
+        "status": "typed",
+        "test": "ValueArmTests.IntegerArm"
+      },
+      "real_value": {
+        "status": "typed",
+        "test": "ValueArmTests.RealArm"
+      },
+      "bool_value": {
+        "status": "typed",
+        "test": "ValueArmTests.BooleanArm"
+      },
+      "string_value": {
+        "status": "typed",
+        "test": "ValueArmTests.TextArm"
+      },
+      "instance_id": {
+        "status": "typed",
+        "test": "ValueArmTests.InstanceRefArm"
+      },
+      "sequence": {
+        "status": "typed",
+        "test": "ValueArmTests.SequenceArm"
+      },
+      "null": {
+        "status": "typed",
+        "test": "ValueArmTests.NullArm"
+      },
+      "quantity": {
+        "status": "typed",
+        "test": "ValueArmTests.QuantityArm"
+      },
+      "enum_literal": {
+        "status": "typed",
+        "test": "ValueArmTests.EnumLiteralArm"
+      },
+      "unset": {
+        "status": "typed",
+        "test": "ValueArmTests.UnsetArm"
+      },
+      "complex": {
+        "status": "typed",
+        "test": "ValueArmTests.ComplexArm"
+      },
+      "array": {
+        "status": "typed",
+        "test": "ValueArmTests.ArrayArm"
+      },
+      "vector": {
+        "status": "typed",
+        "test": "ValueArmTests.VectorArm"
+      },
+      "vector_quantity": {
+        "status": "typed",
+        "test": "ValueArmTests.VectorQuantityArm"
+      },
+      "measurement_ref": {
+        "status": "typed",
+        "test": "ValueArmTests.MeasurementRefArm"
+      },
+      "infinity": {
+        "status": "typed",
+        "test": "ValueArmTests.InfinityArm"
+      },
+      "function": {
+        "status": "typed",
+        "test": "ValueArmTests.FunctionArm"
+      },
+      "set": {
+        "status": "typed",
+        "test": "ValueArmTests.SetArm"
+      },
+      "tensor_quantity": {
+        "status": "typed",
+        "test": "ValueArmTests.TensorQuantityArm"
+      },
+      "metaobject": {
+        "status": "typed",
+        "test": "ValueArmTests.MetaobjectArm"
+      },
+      "undetermined": {
+        "status": "typed",
+        "test": "ValueArmTests.UndeterminedArm"
+      },
+      "big_int_value": {
+        "status": "typed",
+        "test": "ValueArmTests.BigIntegerArm"
+      },
+      "rational_value": {
+        "status": "typed",
+        "test": "ValueArmTests.RationalArm"
+      }
     },
     "sysml.ValueSequence": {
-      "elements": "deferred"
+      "elements": {
+        "status": "typed",
+        "test": "ValueArmTests.SequenceArm"
+      }
     },
     "sysml.ValueSet": {
-      "elements": "deferred"
+      "elements": {
+        "status": "typed",
+        "test": "ValueArmTests.SetArm"
+      }
     },
     "sysml.Vector": {
-      "components": "deferred"
+      "components": {
+        "status": "typed",
+        "test": "ValueArmTests.VectorArm"
+      }
     },
     "sysml.VectorQuantity": {
-      "components": "deferred"
+      "components": {
+        "status": "typed",
+        "test": "ValueArmTests.VectorQuantityArm"
+      }
     },
     "sysml.Verdict": {
       "kind": "deferred",

@@ -5,8 +5,9 @@ of this repository and consumed by `ProjectReference`. It is not published to Nu
 
 > **Status:** the client connects to a `sysml-grpc` that is already running, over gRPC or the
 > Connect protocol with protobuf or JSON bodies, reports what that service is and can do, and
-> calls any of its methods through a raw, schema-checked escape hatch. It does not yet start a
-> service of its own, load models or offer the typed service operations. The other clients
+> calls any of its methods through a raw, schema-checked escape hatch. It has the immutable
+> values those operations exchange, but does not yet start a service of its own, load models
+> or offer the typed service operations. The other clients
 > ([Python](../python/), [Java](../java/), [Rust](../rust/), [Node](../node/)) are the ones
 > to use for those today.
 
@@ -147,6 +148,7 @@ use after disposal, which are the standard exceptions:
 | The service lacks a required capability | `CapabilityException`, with `Capability` and `Remedy` |
 | The service answered with a status other than OK, `Unavailable` included | `ServiceException`, with `StatusCode`, `ServiceMessage` and `Method` |
 | No well-formed answer was read: the endpoint was unreachable or did not speak the protocol, a Connect refusal was not a Connect error, the answer was malformed or over a size limit, or the deadline passed | `TransportException`, with `StatusCode`, `Method` and the cause as `InnerException` |
+| The service answered a value of a kind this client does not know | `UnsupportedValueException`, with `Method`, `Path` and the value's `ValueBytes` |
 | The caller's token was cancelled | `OperationCanceledException` carrying that token |
 | The connection was disposed before or during the call | `ObjectDisposedException` |
 
@@ -177,6 +179,66 @@ could not be made or was lost before an answer is `Unavailable`.
 `DisposeAsync` refuses new calls, cancels the calls in flight, waits for them and closes the
 channel. It is idempotent, safe to call concurrently, and never throws: a failure to close
 is logged as a warning.
+
+## Values
+
+`Value` is an immutable value the service evaluates, or one sent to it: one nested sealed
+class per arm of the schema's `Value`, `IntegerValue` to `InfinityValue`, which `Kind`, a
+`ValueKind`, names. No type outside the library can derive from it. A switch over the arms
+still needs a default case, since a release adds an arm whenever the service does. The typed
+operations that answer or take values build on these types; no public method returns or
+takes one yet.
+
+```csharp
+var speed = new Value.QuantityValue(new Quantity(
+    new Value.RealValue(5.4), "km/h",
+    new UnitTerm(1000, 3600, [new UnitFactor("SI::m", 1), new UnitFactor("SI::s", -1)])));
+var third = new Value.RationalValue(new Rational(2, 6));      // 1/3
+var members = new Value.SetValue([new Value.IntegerValue(3), new Value.IntegerValue(1)]);
+Console.WriteLine($"{speed} {third} {members}");              // 5.4 [km/h] 1/3 {3, 1}
+```
+
+Numbers keep the schema's kinds apart and never pass through a `double`: `IntegerValue`
+within `long`, `BigIntegerValue` beyond it (`Value.FromInteger` chooses), `RationalValue`
+holding an exact `Rational` in lowest terms over a positive denominator, and `RealValue`,
+which keeps NaN, the infinities and a negative zero exactly. These four are
+`Value.NumberValue`, which a `Quantity`'s magnitude and a `VectorValue`'s components are;
+`ToDouble` gives the nearest `double`, ties to even. A `Quantity` keeps its unit as written
+and the `UnitTerm` it reduces to. `InfinityValue` is the model's unbounded `*`, not a Real.
+
+Equality is by content and never the model's numeric comparison: `IntegerValue(1)` is not
+`RealValue(1.0)`. Reals compare as `double.Equals` does, so NaN equals NaN and `0.0` equals
+`-0.0`, while each is kept and sent as given. A `SetValue` equals one holding the same members
+in any order, and hashes alike; it keeps the order it was given, which for an answer is the
+service's canonical order, for reading and display only. Its membership is the same equality,
+so `1` and `1.0` are two members here, although the service equates them and refuses a set
+holding both. An `EnumLiteralValue` is its `LiteralId` and a `MetaobjectValue` its
+`ElementId`, whatever else describes them; a `FunctionValue` is its `CalcId` and `SelfId`.
+Collections are `ValueList<T>`, compared element by element in order, and
+`ValueDictionary<TValue>`, compared entry by entry whatever order it was built in and
+enumerated in ordinal order of its names; both copy what they are built from, and `default`
+is empty. `ToString` writes a value as a reader would, in any culture: `4.0`, `1/3`,
+`"text"`, `5.4 [km/h]`, `(1, 2)`, `{1, 2}`, `<undetermined>`, `*`.
+
+Reading an answer checks what the schema makes canonical and never repairs it: an Integer
+beyond `long` in canonical decimal digits, a Rational in lowest terms that no `double` holds
+(the service sends one a `double` holds as a Real), dimensions the elements fill, a vector
+of numbers. A malformed value is a `TransportException` with `Internal` naming where in the
+answer it is, as `result.sequence[1].set[0]`, and a value of a kind the client does not know
+is an `UnsupportedValueException`, never a null. Every arm is read whatever the service
+advertises. Over Connect JSON a value of an unknown kind arrives with no kind at all, since
+the parser drops fields it does not know.
+
+Sending refuses what no service accepts as an argument, before anything is sent, with
+`InvalidRequestException`: `UnsetValue` and `UndeterminedValue`, which are answers only; a
+null standing for a value the service could not send; a function closing over an instance,
+which lives only within the response that held it; and a quantity in a named unit without its
+reduction. A kind the service gates needs its capability wherever the service looks for it:
+in a sequence, set or array element or a vector component at any depth, and for an Integer
+beyond `long` or a Rational also in a quantity's magnitude and an enumeration literal's
+scalar. A missing one is a `CapabilityException` naming the first the service would refuse.
+To a service without `rational_values`, a Rational a `double` holds exactly is sent as that
+`double`, which is the same number; any other still needs the capability.
 
 ## Building and testing
 
@@ -242,7 +304,10 @@ and the tests hold it to the schema and the [conformance scenarios](../../confor
   checks them. `valueFields` lists the request fields whose `Value`s are subject to the
   value gates.
 - `values` and `edits`: every arm of `Value` and of `EditOperation`, with the capability a
-  request holding the arm needs and, for a `Value`, the one under which the service sends it.
+  request holding the arm needs and, for a `Value`, the one under which the service sends it,
+  and once implemented the test that proves the arm. Every `Value` arm is implemented, and
+  `sendGateOrder` is the order the service checks the value capabilities in, which a test
+  reads from the service's source.
 - `population`: response fields the service fills only under a capability.
 - `fields`: every field of every message an RPC reaches, `deferred`, or once mapped `typed`,
   `raw-only` or `unsupported` with its reason and the test that proves it.

@@ -23,5 +23,7 @@
     <!-- Runs on Microsoft.Testing.Platform, which root global.json opts dotnet test into. -->
     <PackageVersion Include="xunit.v3" Version="4.0.2" />
     <PackageVersion Include="coverlet.MTP" Version="10.1.0" />
+    <!-- Compiles consumer code against the library, to prove what it refuses to compile. -->
+    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="5.0.0" />
   </ItemGroup>
 </Project>
