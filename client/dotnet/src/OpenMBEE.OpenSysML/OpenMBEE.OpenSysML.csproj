@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>OpenMBEE.OpenSysML</AssemblyName>
+    <RootNamespace>OpenMBEE.OpenSysML</RootNamespace>
+    <Description>C# client for the OpenSysML sysml-grpc service.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Also adds PublicAPI.Shipped.txt and PublicAPI.Unshipped.txt as the baseline it checks against. -->
+    <PackageReference Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Synced from client/release-digests.json by scripts/sync-release-digests.py; never edit it here. -->
+    <EmbeddedResource Include="release-digests.json" LogicalName="OpenMBEE.OpenSysML.release-digests.json" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="OpenMBEE.OpenSysML.Tests" />
+  </ItemGroup>
+</Project>

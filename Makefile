@@ -1,4 +1,4 @@
-.PHONY: all build docker extension-libraries-check extension-libraries-sync build-sysml build-re build-wasm-re build-lsp build-grpc build-mcp build-engine build-core build-syntax build-sysml-wasm build-release-wasm build-wasm build-wasm-wasip1 build-wasm-js wasm-check static-check windows-versioninfo-check man man-check install-tree pgo-profile conformance conformance-pkg conformance-mcp conformance-rust conformance-julia conformance-matlab test test-shard coverage coverage-shard coverage-merge lint clean install help ontology-table ontology-table-check metaclass-graph metaclass-graph-check python-metamodel python-metamodel-check fuml-expected python-test python-coverage scripts-coverage node-coverage python-install jupyter-kernel-install jupyter-kernel-test proto proto-buf python-proto proto-ts proto-rust proto-lint proto-breaking jupyterlab-build jupyterlab-test jupyterlab-install vscode-grammar vscode-build vscode-package docs docs-install docs-serve docs-engine-assets docs-landing-assets docs-counts diagnostics-catalogue diagnostics-check docs-check changelog-check changelog-render self-model mcp-registry-check
+.PHONY: all build docker extension-libraries-check extension-libraries-sync build-sysml build-re build-wasm-re build-lsp build-grpc build-mcp build-engine build-core build-syntax build-sysml-wasm build-release-wasm build-wasm build-wasm-wasip1 build-wasm-js wasm-check static-check windows-versioninfo-check man man-check install-tree pgo-profile conformance conformance-pkg conformance-mcp conformance-rust conformance-julia conformance-matlab test test-shard coverage coverage-shard coverage-merge lint clean install help ontology-table ontology-table-check metaclass-graph metaclass-graph-check python-metamodel python-metamodel-check fuml-expected python-test python-coverage scripts-coverage node-coverage dotnet-preflight dotnet-build dotnet-test dotnet-coverage python-install jupyter-kernel-install jupyter-kernel-test proto proto-buf python-proto proto-ts proto-rust proto-lint proto-breaking jupyterlab-build jupyterlab-test jupyterlab-install vscode-grammar vscode-build vscode-package docs docs-install docs-serve docs-engine-assets docs-landing-assets docs-counts diagnostics-catalogue diagnostics-check docs-check changelog-check changelog-render self-model mcp-registry-check
 
 # Version information
 # Only release tags describe a build; the moving `nightly` tag is not a version.
@@ -62,6 +62,17 @@ PYTHON ?= python3
 export PYTHON
 JULIA ?= julia
 OCTAVE ?= octave
+# The .NET client. Every dotnet command runs from the repository root, whose
+# global.json selects the SDK; DOTNET_MIN_TESTS keeps a filter or discovery fault
+# from passing as a short run, so it rises with every test added.
+DOTNET ?= dotnet
+DOTNET_DIR := client/dotnet
+DOTNET_SLN := $(DOTNET_DIR)/OpenSysML.slnx
+DOTNET_REPORTS := $(BIN_DIR)/dotnet
+DOTNET_MIN_TESTS := 43
+DOTNET_CLIENT_VERSION = $(shell sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' $(DOTNET_DIR)/Directory.Build.props)
+# The committed buf output, excluded from coverage by path and refused by its check.
+DOTNET_GENERATED := src/OpenMBEE.OpenSysML/Wire/Sysml.cs src/OpenMBEE.OpenSysML/Wire/SysmlGrpc.cs
 SITE_DIR := site
 # Where make self-model writes the architecture self-model's rendered views.
 SELF_MODEL_DIR := examples/self-model
@@ -580,6 +591,41 @@ node-coverage: ## Run Node client tests and write coverage-node.lcov
 	cd $(NODE_DIR) && npm run test:coverage
 	sed -e 's|^SF:|SF:$(NODE_DIR)/|' $(NODE_DIR)/coverage/lcov.info > coverage-node.lcov
 	@echo "✓ Wrote coverage-node.lcov"
+
+dotnet-preflight: ## Check that the repository root selects the pinned .NET SDK and a .NET 10 runtime
+	$(PYTHON) $(DOTNET_DIR)/scripts/dotnet-gates.py preflight --dotnet "$(DOTNET)"
+
+dotnet-build: dotnet-preflight ## Restore the .NET client from its lock files and build it with warnings as errors
+	$(DOTNET) restore $(DOTNET_SLN) --locked-mode
+	$(DOTNET) build $(DOTNET_SLN) -c Release --no-restore -warnaserror
+
+# With OPENSYSML_GRPC_BINARY and OPENSYSML_REQUIRE_SERVICE=1 set, as CI sets them,
+# a test that needs the service fails rather than skips without one.
+dotnet-test: dotnet-build ## Check formatting, run the .NET client tests and its sample, and write JUnit under bin/dotnet/test
+	@echo "Running .NET client tests..."
+	$(DOTNET) format $(DOTNET_SLN) --verify-no-changes --no-restore
+	rm -rf $(DOTNET_REPORTS)/test
+	$(DOTNET) test --solution $(DOTNET_SLN) -c Release --no-build \
+		--minimum-expected-tests $(DOTNET_MIN_TESTS) \
+		--results-directory $(CURDIR)/$(DOTNET_REPORTS)/test --report-xunit-junit
+	@expected="OpenMBEE.OpenSysML $(DOTNET_CLIENT_VERSION) (.NETCoreApp,Version=v10.0)"; \
+	actual=$$($(DOTNET) run --project $(DOTNET_DIR)/samples/Vehicle -c Release --no-build) || exit 1; \
+	echo "$$actual"; \
+	if [ "$$actual" != "$$expected" ]; then echo "error: the Vehicle sample printed '$$actual', not '$$expected'"; exit 1; fi
+	$(PYTHON) $(DOTNET_DIR)/scripts/dotnet-gates-test.py
+	$(PYTHON) scripts/sync-release-digests.py --check
+	@echo "✓ .NET client tests passed"
+
+dotnet-coverage: dotnet-build ## Run the .NET client tests under coverlet; write Cobertura and JUnit under bin/dotnet/coverage
+	@echo "Running .NET client tests with coverage..."
+	rm -rf $(DOTNET_REPORTS)/coverage
+	$(DOTNET) test --solution $(DOTNET_SLN) -c Release --no-build \
+		--minimum-expected-tests $(DOTNET_MIN_TESTS) \
+		--results-directory $(CURDIR)/$(DOTNET_REPORTS)/coverage --report-xunit-junit \
+		--coverlet --coverlet-output-format cobertura \
+		$(foreach f,$(DOTNET_GENERATED),--coverlet-exclude-by-file '**/$(f)')
+	$(PYTHON) $(DOTNET_DIR)/scripts/dotnet-gates.py coverage $(DOTNET_REPORTS)/coverage --generated $(DOTNET_GENERATED)
+	@echo "✓ Wrote $(DOTNET_REPORTS)/coverage"
 
 vscode-grammar: ## Regenerate the VS Code TextMate grammars and the JupyterLab CodeMirror syntax table from the keyword lists
 	@echo "Generating TextMate grammars and the CodeMirror syntax table..."

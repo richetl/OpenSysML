@@ -35,6 +35,12 @@ executors:
       - image: cimg/rust:1.83
     resource_class: medium
 
+  # The .NET SDK root global.json pins, by digest: mcr.microsoft.com/dotnet/sdk:10.0.402-noble.
+  dotnet-executor:
+    docker:
+      - image: mcr.microsoft.com/dotnet/sdk@sha256:0d99ebf1ccad15037b5c98c9fe8979d6b8dbac23812feae2277a0b277b5c5ffa
+    resource_class: medium
+
   # JDK 17, the client's compile target, with Maven 3.9 preinstalled. Testing on
   # the baseline is the point: a 21-only construct must fail here.
   java-executor:
@@ -1310,6 +1316,59 @@ jobs:
       - store_artifacts:
           path: bin/conformance-report-rust.json
           destination: conformance-report-rust.json
+
+  # The .NET client: locked restore, format, build and tests against a service
+  # built here (the orb installs Go, as for the Rust job), then coverage.
+  dotnet-test:
+    executor: dotnet-executor
+    environment:
+      DOTNET_NOLOGO: "1"
+      DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+    steps:
+      # The SDK image runs as root and carries neither make nor an SSH client for checkout.
+      - run:
+          name: Install build prerequisites
+          command: |
+            apt-get update
+            apt-get install -y --no-install-recommends ca-certificates curl git make openssh-client python3
+
+      - checkout
+
+      - run:
+          name: Check the SDK and runtime
+          command: |
+            dotnet --version
+            dotnet --list-runtimes
+            make dotnet-preflight
+
+      - go/install:
+          version: "1.25.0"
+
+      - run:
+          name: Build sysml-grpc
+          command: make build-grpc
+
+      # A test that needs the service fails rather than skips without one.
+      - run:
+          name: Run .NET client tests
+          command: |
+            OPENSYSML_GRPC_BINARY="$PWD/bin/sysml-grpc" \
+            OPENSYSML_REQUIRE_SERVICE=1 \
+              make dotnet-test
+
+      - run:
+          name: Measure .NET client coverage
+          command: |
+            OPENSYSML_GRPC_BINARY="$PWD/bin/sysml-grpc" \
+            OPENSYSML_REQUIRE_SERVICE=1 \
+              make dotnet-coverage
+
+      - store_test_results:
+          path: bin/dotnet/test
+
+      - store_artifacts:
+          path: bin/dotnet
+          destination: dotnet-reports
 
   # The Julia client: Pkg.test plus the conformance suite, against a service
   # binary built here (this executor has no Go toolchain, so the orb installs
@@ -3920,6 +3979,10 @@ workflows:
           filters: *integration-branches
       - rust-test:
           name: Rust client tests
+          requires: *scan-inputs
+          filters: *integration-branches
+      - dotnet-test:
+          name: .NET client tests
           requires: *scan-inputs
           filters: *integration-branches
       - julia-client:

@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/OpenMBEE.OpenSysML/OpenMBEE.OpenSysML.csproj" />
+  </Folder>
+  <Folder Name="/test/">
+    <Project Path="test/OpenMBEE.OpenSysML.Tests/OpenMBEE.OpenSysML.Tests.csproj" />
+  </Folder>
+  <Folder Name="/samples/">
+    <Project Path="samples/Vehicle/Vehicle.csproj" />
+  </Folder>
+</Solution>
