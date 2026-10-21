@@ -11,11 +11,16 @@
       "input": "ConnectionOptions",
       "result": "Connection, with its cached ServerInfo and Capabilities",
       "area": "connection",
-      "status": "deferred",
+      "status": "implemented",
       "gates": [],
       "valueFields": [],
       "scenarios": [
         "server_info/reports_the_capabilities_clients_negotiate_on"
+      ],
+      "tests": [
+        "ServiceConnectionTests.OpensAnExternalServiceAndReportsWhatItIs",
+        "ConnectionOpenTests.OpeningAsksTheServiceOnceAndKeepsItsAnswer",
+        "ConnectionOpenTests.AServiceThatDoesNotImplementGetServerInfoClaimsNothingAndIsLogged"
       ]
     },
     {
@@ -2683,8 +2688,14 @@
     },
     "sysml.ServerInfoRequest": {},
     "sysml.ServerInfoResponse": {
-      "version": "deferred",
-      "capabilities": "deferred"
+      "version": {
+        "status": "typed",
+        "test": "ConnectionOpenTests.OpeningAsksTheServiceOnceAndKeepsItsAnswer"
+      },
+      "capabilities": {
+        "status": "typed",
+        "test": "ConnectionOpenTests.OpeningAsksTheServiceOnceAndKeepsItsAnswer"
+      }
     },
     "sysml.SetValueEdit": {
       "target": "deferred",

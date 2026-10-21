@@ -1,1 +1,180 @@
 #nullable enable
+const OpenMBEE.OpenSysML.Capabilities.ActionBodyStatementAuthoring = "action_body_statement_authoring" -> string!
+const OpenMBEE.OpenSysML.Capabilities.ApplyEdits = "apply_edits" -> string!
+const OpenMBEE.OpenSysML.Capabilities.Authoring = "authoring" -> string!
+const OpenMBEE.OpenSysML.Capabilities.BigIntValues = "big_int_values" -> string!
+const OpenMBEE.OpenSysML.Capabilities.CaseEvaluations = "case_evaluations" -> string!
+const OpenMBEE.OpenSysML.Capabilities.Check = "check" -> string!
+const OpenMBEE.OpenSysML.Capabilities.CommentAuthoring = "comment_authoring" -> string!
+const OpenMBEE.OpenSysML.Capabilities.CompareResults = "compare_results" -> string!
+const OpenMBEE.OpenSysML.Capabilities.ComplexValues = "complex_values" -> string!
+const OpenMBEE.OpenSysML.Capabilities.ConnectionAuthoring = "connection_authoring" -> string!
+const OpenMBEE.OpenSysML.Capabilities.ConstraintBodyAuthoring = "constraint_body_authoring" -> string!
+const OpenMBEE.OpenSysML.Capabilities.Convert = "convert" -> string!
+const OpenMBEE.OpenSysML.Capabilities.ConvertCheckDiagnostics = "convert_check_diagnostics" -> string!
+const OpenMBEE.OpenSysML.Capabilities.ConvertCompact = "convert_compact" -> string!
+const OpenMBEE.OpenSysML.Capabilities.ConvertDocuments = "convert_documents" -> string!
+const OpenMBEE.OpenSysML.Capabilities.DiagnosticCodes = "diagnostic_codes" -> string!
+const OpenMBEE.OpenSysML.Capabilities.DocumentationAuthoring = "documentation_authoring" -> string!
+const OpenMBEE.OpenSysML.Capabilities.DocumentQuery = "document_query" -> string!
+const OpenMBEE.OpenSysML.Capabilities.EditDocuments = "edit_documents" -> string!
+const OpenMBEE.OpenSysML.Capabilities.Engines = "engines" -> string!
+const OpenMBEE.OpenSysML.Capabilities.EnginesExternal = "engines_external" -> string!
+const OpenMBEE.OpenSysML.Capabilities.EnumValues = "enum_values" -> string!
+const OpenMBEE.OpenSysML.Capabilities.EvaluateSubject = "evaluate_subject" -> string!
+const OpenMBEE.OpenSysML.Capabilities.ExportGraphs = "export_graphs" -> string!
+const OpenMBEE.OpenSysML.Capabilities.FeatureValues = "feature_values" -> string!
+const OpenMBEE.OpenSysML.Capabilities.FinalTime = "final_time" -> string!
+const OpenMBEE.OpenSysML.Capabilities.FunctionValues = "function_values" -> string!
+const OpenMBEE.OpenSysML.Capabilities.ImplicitParameters = "implicit_parameters" -> string!
+const OpenMBEE.OpenSysML.Capabilities.ImportAuthoring = "import_authoring" -> string!
+const OpenMBEE.OpenSysML.Capabilities.ImportData = "import_data" -> string!
+const OpenMBEE.OpenSysML.Capabilities.InfinityValue = "infinity_value" -> string!
+const OpenMBEE.OpenSysML.Capabilities.InlineLanguage = "inline_language" -> string!
+const OpenMBEE.OpenSysML.Capabilities.MeasurementRefs = "measurement_refs" -> string!
+const OpenMBEE.OpenSysML.Capabilities.MemberModifiers = "member_modifiers" -> string!
+const OpenMBEE.OpenSysML.Capabilities.MetadataAuthoring = "metadata_authoring" -> string!
+const OpenMBEE.OpenSysML.Capabilities.MetadataPrefixAuthoring = "metadata_prefix_authoring" -> string!
+const OpenMBEE.OpenSysML.Capabilities.MetaobjectValues = "metaobject_values" -> string!
+const OpenMBEE.OpenSysML.Capabilities.Migrate = "migrate" -> string!
+const OpenMBEE.OpenSysML.Capabilities.OrderDependence = "order_dependence" -> string!
+const OpenMBEE.OpenSysML.Capabilities.OslcQuery = "oslc_query" -> string!
+const OpenMBEE.OpenSysML.Capabilities.ParseSources = "parse_sources" -> string!
+const OpenMBEE.OpenSysML.Capabilities.ParseSourcesAffected = "parse_sources_affected" -> string!
+const OpenMBEE.OpenSysML.Capabilities.Performer = "performer" -> string!
+const OpenMBEE.OpenSysML.Capabilities.Query = "query" -> string!
+const OpenMBEE.OpenSysML.Capabilities.RationalValues = "rational_values" -> string!
+const OpenMBEE.OpenSysML.Capabilities.RecordRun = "record_run" -> string!
+const OpenMBEE.OpenSysML.Capabilities.RenderDocument = "render_document" -> string!
+const OpenMBEE.OpenSysML.Capabilities.RenderDocumentFileName = "render_document_file_name" -> string!
+const OpenMBEE.OpenSysML.Capabilities.RenderDocumentHtml = "render_document_html" -> string!
+const OpenMBEE.OpenSysML.Capabilities.RenderView = "render_view" -> string!
+const OpenMBEE.OpenSysML.Capabilities.RequirementConstraintAuthoring = "requirement_constraint_authoring" -> string!
+const OpenMBEE.OpenSysML.Capabilities.Runs = "runs" -> string!
+const OpenMBEE.OpenSysML.Capabilities.SatisfyAuthoring = "satisfy_authoring" -> string!
+const OpenMBEE.OpenSysML.Capabilities.Schedule = "schedule" -> string!
+const OpenMBEE.OpenSysML.Capabilities.ScheduleExplore = "schedule_explore" -> string!
+const OpenMBEE.OpenSysML.Capabilities.SelfCheck = "self_check" -> string!
+const OpenMBEE.OpenSysML.Capabilities.SequenceAuthoring = "sequence_authoring" -> string!
+const OpenMBEE.OpenSysML.Capabilities.SetValues = "set_values" -> string!
+const OpenMBEE.OpenSysML.Capabilities.StateActionAuthoring = "state_action_authoring" -> string!
+const OpenMBEE.OpenSysML.Capabilities.StateTrace = "state_trace" -> string!
+const OpenMBEE.OpenSysML.Capabilities.StrictConformance = "strict_conformance" -> string!
+const OpenMBEE.OpenSysML.Capabilities.StructuredValues = "structured_values" -> string!
+const OpenMBEE.OpenSysML.Capabilities.SymbolAttributes = "symbol_attributes" -> string!
+const OpenMBEE.OpenSysML.Capabilities.TensorValues = "tensor_values" -> string!
+const OpenMBEE.OpenSysML.Capabilities.TransitionAuthoring = "transition_authoring" -> string!
+const OpenMBEE.OpenSysML.Capabilities.TypeFacts = "type_facts" -> string!
+const OpenMBEE.OpenSysML.Capabilities.UndeterminedValue = "undetermined_value" -> string!
+const OpenMBEE.OpenSysML.Capabilities.UnsetValue = "unset_value" -> string!
+const OpenMBEE.OpenSysML.Capabilities.Verification = "verification" -> string!
+const OpenMBEE.OpenSysML.Capabilities.VerificationArguments = "verification_arguments" -> string!
+const OpenMBEE.OpenSysML.Capabilities.VerificationObjectiveAuthoring = "verification_objective_authoring" -> string!
+const OpenMBEE.OpenSysML.Capabilities.VerificationQuestions = "verification_questions" -> string!
+const OpenMBEE.OpenSysML.Capabilities.VerificationVerdicts = "verification_verdicts" -> string!
+const OpenMBEE.OpenSysML.ConnectionOptions.DefaultMaxMessageSize = 536870912 -> int
+const OpenMBEE.OpenSysML.ConnectionOptions.ServiceVariable = "OPENSYSML_SERVICE" -> string!
+OpenMBEE.OpenSysML.Capabilities
+OpenMBEE.OpenSysML.Capabilities.Capabilities(System.Collections.Generic.IEnumerable<string!>! names) -> void
+OpenMBEE.OpenSysML.Capabilities.Equals(OpenMBEE.OpenSysML.Capabilities? other) -> bool
+OpenMBEE.OpenSysML.Capabilities.Has(string! capability) -> bool
+OpenMBEE.OpenSysML.Capabilities.Names.get -> System.Collections.Generic.IReadOnlySet<string!>!
+OpenMBEE.OpenSysML.Capabilities.Require(string! capability) -> void
+OpenMBEE.OpenSysML.CapabilityException
+OpenMBEE.OpenSysML.CapabilityException.Capability.get -> string!
+OpenMBEE.OpenSysML.CapabilityException.CapabilityException(string! capability, string! message, string! remedy) -> void
+OpenMBEE.OpenSysML.CapabilityException.Remedy.get -> string!
+OpenMBEE.OpenSysML.Connection
+OpenMBEE.OpenSysML.Connection.Address.get -> System.Uri!
+OpenMBEE.OpenSysML.Connection.CallAsync<TRequest, TResponse>(string! method, TRequest! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<TResponse!>!
+OpenMBEE.OpenSysML.Connection.Capabilities.get -> OpenMBEE.OpenSysML.Capabilities!
+OpenMBEE.OpenSysML.Connection.DisposeAsync() -> System.Threading.Tasks.ValueTask
+OpenMBEE.OpenSysML.Connection.Protocol.get -> OpenMBEE.OpenSysML.Protocol
+OpenMBEE.OpenSysML.Connection.ServerInfo.get -> OpenMBEE.OpenSysML.ServerInfo!
+OpenMBEE.OpenSysML.ConnectionOptions
+OpenMBEE.OpenSysML.ConnectionOptions.Address.get -> string?
+OpenMBEE.OpenSysML.ConnectionOptions.Address.init -> void
+OpenMBEE.OpenSysML.ConnectionOptions.AutoStart.get -> bool
+OpenMBEE.OpenSysML.ConnectionOptions.AutoStart.init -> void
+OpenMBEE.OpenSysML.ConnectionOptions.ConnectionOptions() -> void
+OpenMBEE.OpenSysML.ConnectionOptions.Headers.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string!>!
+OpenMBEE.OpenSysML.ConnectionOptions.Headers.init -> void
+OpenMBEE.OpenSysML.ConnectionOptions.HttpMessageHandler.get -> System.Net.Http.HttpMessageHandler?
+OpenMBEE.OpenSysML.ConnectionOptions.HttpMessageHandler.init -> void
+OpenMBEE.OpenSysML.ConnectionOptions.Logger.get -> Microsoft.Extensions.Logging.ILogger!
+OpenMBEE.OpenSysML.ConnectionOptions.Logger.init -> void
+OpenMBEE.OpenSysML.ConnectionOptions.MaxRequestSize.get -> int
+OpenMBEE.OpenSysML.ConnectionOptions.MaxRequestSize.init -> void
+OpenMBEE.OpenSysML.ConnectionOptions.MaxResponseSize.get -> int
+OpenMBEE.OpenSysML.ConnectionOptions.MaxResponseSize.init -> void
+OpenMBEE.OpenSysML.ConnectionOptions.Protocol.get -> OpenMBEE.OpenSysML.Protocol
+OpenMBEE.OpenSysML.ConnectionOptions.Protocol.init -> void
+OpenMBEE.OpenSysML.ConnectionOptions.RequestTimeout.get -> System.TimeSpan
+OpenMBEE.OpenSysML.ConnectionOptions.RequestTimeout.init -> void
+OpenMBEE.OpenSysML.ConnectionOptions.RequireCapabilities.get -> System.Collections.Generic.IReadOnlyList<string!>!
+OpenMBEE.OpenSysML.ConnectionOptions.RequireCapabilities.init -> void
+OpenMBEE.OpenSysML.ConnectionOptions.Version.get -> string?
+OpenMBEE.OpenSysML.ConnectionOptions.Version.init -> void
+OpenMBEE.OpenSysML.InvalidRequestException
+OpenMBEE.OpenSysML.InvalidRequestException.InvalidRequestException(string! message) -> void
+OpenMBEE.OpenSysML.InvalidRequestException.InvalidRequestException(string! message, System.Exception? innerException) -> void
+OpenMBEE.OpenSysML.OpenSysMLException
+OpenMBEE.OpenSysML.OpenSysMLException.OpenSysMLException() -> void
+OpenMBEE.OpenSysML.OpenSysMLException.OpenSysMLException(string! message) -> void
+OpenMBEE.OpenSysML.OpenSysMLException.OpenSysMLException(string! message, System.Exception? innerException) -> void
+OpenMBEE.OpenSysML.Protocol
+OpenMBEE.OpenSysML.Protocol.Grpc = 0 -> OpenMBEE.OpenSysML.Protocol
+OpenMBEE.OpenSysML.ServerInfo
+OpenMBEE.OpenSysML.ServerInfo.Answered.get -> bool
+OpenMBEE.OpenSysML.ServerInfo.Capabilities.get -> OpenMBEE.OpenSysML.Capabilities!
+OpenMBEE.OpenSysML.ServerInfo.Equals(OpenMBEE.OpenSysML.ServerInfo? other) -> bool
+OpenMBEE.OpenSysML.ServerInfo.ServerInfo(string! version, OpenMBEE.OpenSysML.Capabilities! capabilities, bool answered) -> void
+OpenMBEE.OpenSysML.ServerInfo.Version.get -> string!
+OpenMBEE.OpenSysML.ServiceException
+OpenMBEE.OpenSysML.ServiceException.Method.get -> string!
+OpenMBEE.OpenSysML.ServiceException.ServiceException(OpenMBEE.OpenSysML.StatusCode statusCode, string! serviceMessage, string! method, System.Exception? innerException = null) -> void
+OpenMBEE.OpenSysML.ServiceException.ServiceMessage.get -> string!
+OpenMBEE.OpenSysML.ServiceException.StatusCode.get -> OpenMBEE.OpenSysML.StatusCode
+OpenMBEE.OpenSysML.ServiceStartException
+OpenMBEE.OpenSysML.ServiceStartException.ServiceStartException(string! message) -> void
+OpenMBEE.OpenSysML.ServiceStartException.ServiceStartException(string! message, System.Exception? innerException) -> void
+OpenMBEE.OpenSysML.StaleServiceException
+OpenMBEE.OpenSysML.StaleServiceException.Address.get -> string!
+OpenMBEE.OpenSysML.StaleServiceException.Reason.get -> string!
+OpenMBEE.OpenSysML.StaleServiceException.Remedy.get -> string!
+OpenMBEE.OpenSysML.StaleServiceException.ServiceVersion.get -> string!
+OpenMBEE.OpenSysML.StaleServiceException.StaleServiceException(string! address, string! reason, string! remedy, string! serviceVersion) -> void
+OpenMBEE.OpenSysML.StatusCode
+OpenMBEE.OpenSysML.StatusCode.Aborted = 10 -> OpenMBEE.OpenSysML.StatusCode
+OpenMBEE.OpenSysML.StatusCode.AlreadyExists = 6 -> OpenMBEE.OpenSysML.StatusCode
+OpenMBEE.OpenSysML.StatusCode.Cancelled = 1 -> OpenMBEE.OpenSysML.StatusCode
+OpenMBEE.OpenSysML.StatusCode.DataLoss = 15 -> OpenMBEE.OpenSysML.StatusCode
+OpenMBEE.OpenSysML.StatusCode.DeadlineExceeded = 4 -> OpenMBEE.OpenSysML.StatusCode
+OpenMBEE.OpenSysML.StatusCode.FailedPrecondition = 9 -> OpenMBEE.OpenSysML.StatusCode
+OpenMBEE.OpenSysML.StatusCode.Internal = 13 -> OpenMBEE.OpenSysML.StatusCode
+OpenMBEE.OpenSysML.StatusCode.InvalidArgument = 3 -> OpenMBEE.OpenSysML.StatusCode
+OpenMBEE.OpenSysML.StatusCode.NotFound = 5 -> OpenMBEE.OpenSysML.StatusCode
+OpenMBEE.OpenSysML.StatusCode.Ok = 0 -> OpenMBEE.OpenSysML.StatusCode
+OpenMBEE.OpenSysML.StatusCode.OutOfRange = 11 -> OpenMBEE.OpenSysML.StatusCode
+OpenMBEE.OpenSysML.StatusCode.PermissionDenied = 7 -> OpenMBEE.OpenSysML.StatusCode
+OpenMBEE.OpenSysML.StatusCode.ResourceExhausted = 8 -> OpenMBEE.OpenSysML.StatusCode
+OpenMBEE.OpenSysML.StatusCode.Unauthenticated = 16 -> OpenMBEE.OpenSysML.StatusCode
+OpenMBEE.OpenSysML.StatusCode.Unavailable = 14 -> OpenMBEE.OpenSysML.StatusCode
+OpenMBEE.OpenSysML.StatusCode.Unimplemented = 12 -> OpenMBEE.OpenSysML.StatusCode
+OpenMBEE.OpenSysML.StatusCode.Unknown = 2 -> OpenMBEE.OpenSysML.StatusCode
+OpenMBEE.OpenSysML.TransportException
+OpenMBEE.OpenSysML.TransportException.Method.get -> string!
+OpenMBEE.OpenSysML.TransportException.StatusCode.get -> OpenMBEE.OpenSysML.StatusCode
+OpenMBEE.OpenSysML.TransportException.TransportException(OpenMBEE.OpenSysML.StatusCode statusCode, string! message, string! method, System.Exception? innerException = null) -> void
+override OpenMBEE.OpenSysML.Capabilities.Equals(object? obj) -> bool
+override OpenMBEE.OpenSysML.Capabilities.GetHashCode() -> int
+override OpenMBEE.OpenSysML.Capabilities.ToString() -> string!
+override OpenMBEE.OpenSysML.ServerInfo.Equals(object? obj) -> bool
+override OpenMBEE.OpenSysML.ServerInfo.GetHashCode() -> int
+override OpenMBEE.OpenSysML.ServerInfo.ToString() -> string!
+static OpenMBEE.OpenSysML.Capabilities.None.get -> OpenMBEE.OpenSysML.Capabilities!
+static OpenMBEE.OpenSysML.Capabilities.UpgradeRemedy(string! capability) -> string!
+static OpenMBEE.OpenSysML.Connection.OpenAsync(OpenMBEE.OpenSysML.ConnectionOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<OpenMBEE.OpenSysML.Connection!>!
+static OpenMBEE.OpenSysML.ConnectionOptions.Default.get -> OpenMBEE.OpenSysML.ConnectionOptions!
+static OpenMBEE.OpenSysML.ConnectionOptions.DefaultRequestTimeout.get -> System.TimeSpan
+static OpenMBEE.OpenSysML.ConnectionOptions.MaxRequestTimeout.get -> System.TimeSpan

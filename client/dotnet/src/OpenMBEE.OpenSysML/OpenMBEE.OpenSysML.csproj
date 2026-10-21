@@ -9,6 +9,8 @@
     <PackageReference Include="Google.Protobuf" />
     <!-- Brings Grpc.Core.Api, which the generated client stub and the method registry use. -->
     <PackageReference Include="Grpc.Net.Client" />
+    <!-- ConnectionOptions.Logger; the default is NullLogger. -->
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
   </ItemGroup>
 
   <ItemGroup>

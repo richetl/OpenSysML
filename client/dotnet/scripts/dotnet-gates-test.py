@@ -22,6 +22,7 @@ RUNTIMES_10 = (
     "Microsoft.NETCore.App 10.0.13 [/x/shared/Microsoft.NETCore.App]\n"
 )
 RUNTIMES_9 = "Microsoft.NETCore.App 9.0.10 [/x/shared/Microsoft.NETCore.App]\n"
+IDENTITY = "OpenMBEE.OpenSysML 0.10.1 (.NETCoreApp,Version=v10.0)"
 
 
 def report(classes, valid=10, covered=5, sources=()):
@@ -163,6 +164,91 @@ class GatesTest(unittest.TestCase):
         self.write("run/b/coverage.cobertura.2.xml", report([], valid=0))
         with self.assertRaisesRegex(gates.GateError, "b.coverage.cobertura.2.xml measures no code"):
             gates.coverage(os.path.join(self.tmp.name, "run"))
+
+    def executable(self, name, body):
+        path = self.write(name, f"#!{sys.executable}\n" + textwrap.dedent(body))
+        os.chmod(path, os.stat(path).st_mode | stat.S_IEXEC)
+        return path
+
+    def sample_host(self, service_line="sysml-grpc v1.0.0, 3 capabilities", identity=IDENTITY):
+        """A stand-in dotnet whose sample prints its identity and, with a service named, a service line."""
+        seen = os.path.join(self.tmp.name, "seen-service")
+        return self.executable("sample-dotnet", f"""\
+            import os
+            print({identity!r})
+            service = os.environ.get("OPENSYSML_SERVICE")
+            if service:
+                open({seen!r}, "w").write(service)
+                if {service_line!r}:
+                    print({service_line!r})
+            """), seen
+
+    def service_binary(self, address="127.0.0.1:4321", version="v1.0.0"):
+        """A stand-in sysml-grpc that reports an address and exits at end of file on stdin."""
+        stopped = os.path.join(self.tmp.name, "service-stopped")
+        return self.executable("sysml-grpc", f"""\
+            import sys
+            if sys.argv[1:] == ["-version"]:
+                print("sysml-grpc version {version}"); sys.exit(0)
+            print({address!r}, flush=True)
+            sys.stdin.read()
+            open({stopped!r}, "w").write(" ".join(sys.argv[1:]))
+            """), stopped
+
+    def test_sample_without_a_service_prints_its_identity_alone(self):
+        dotnet, seen = self.sample_host()
+        self.assertIsNone(gates.sample(IDENTITY, dotnet, environ={"OPENSYSML_SERVICE": "elsewhere:1"}))
+        self.assertFalse(os.path.exists(seen))
+
+    def test_sample_without_a_binary_fails_when_a_service_is_required(self):
+        dotnet, _ = self.sample_host()
+        with self.assertRaisesRegex(gates.GateError, "OPENSYSML_REQUIRE_SERVICE is set"):
+            gates.sample(IDENTITY, dotnet, environ={"OPENSYSML_REQUIRE_SERVICE": "1"})
+
+    def test_sample_rejects_another_identity(self):
+        dotnet, _ = self.sample_host(identity="OpenMBEE.OpenSysML 0.0.0 (.NETCoreApp,Version=v8.0)")
+        with self.assertRaisesRegex(gates.GateError, "with no service named"):
+            gates.sample(IDENTITY, dotnet, environ={})
+
+    def test_sample_connects_to_the_service_it_starts_and_stops_it(self):
+        dotnet, seen = self.sample_host()
+        binary, stopped = self.service_binary()
+        self.assertEqual(gates.sample(IDENTITY, dotnet, binary, environ={}), "sysml-grpc v1.0.0, 3 capabilities")
+        with open(seen, encoding="utf-8") as f:
+            self.assertEqual(f.read(), "127.0.0.1:4321")
+        with open(stopped, encoding="utf-8") as f:
+            self.assertEqual(f.read(), "-port 0 -health-port 0 -report-address -exit-with-parent")
+
+    def test_sample_takes_the_binary_from_the_environment(self):
+        dotnet, _ = self.sample_host()
+        binary, _ = self.service_binary()
+        self.assertIsNotNone(gates.sample(IDENTITY, dotnet, environ={"OPENSYSML_GRPC_BINARY": binary}))
+
+    def test_sample_rejects_a_service_line_of_another_version(self):
+        dotnet, _ = self.sample_host(service_line="sysml-grpc v2.0.0, 3 capabilities")
+        binary, stopped = self.service_binary()
+        with self.assertRaisesRegex(gates.GateError, "connected to sysml-grpc v1.0.0"):
+            gates.sample(IDENTITY, dotnet, binary, environ={})
+        self.assertTrue(os.path.exists(stopped))
+
+    def test_sample_rejects_no_capabilities_or_no_service_line(self):
+        for line in ("sysml-grpc v1.0.0, 0 capabilities", ""):
+            dotnet, _ = self.sample_host(service_line=line)
+            binary, _ = self.service_binary()
+            with self.assertRaisesRegex(gates.GateError, "the sample printed"):
+                gates.sample(IDENTITY, dotnet, binary, environ={})
+
+    def test_sample_rejects_a_service_that_reports_no_address(self):
+        dotnet, _ = self.sample_host()
+        binary, stopped = self.service_binary(address="")
+        with self.assertRaisesRegex(gates.GateError, "reported no address"):
+            gates.sample(IDENTITY, dotnet, binary, environ={})
+        self.assertTrue(os.path.exists(stopped))
+
+    def test_sample_rejects_a_binary_that_is_not_a_file(self):
+        dotnet, _ = self.sample_host()
+        with self.assertRaisesRegex(gates.GateError, "is not a file"):
+            gates.sample(IDENTITY, dotnet, os.path.join(self.tmp.name, "absent"), environ={})
 
     def test_main_reports_a_failed_gate(self):
         os.makedirs(os.path.join(self.tmp.name, "run"))

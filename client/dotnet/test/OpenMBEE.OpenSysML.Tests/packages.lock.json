@@ -239,7 +239,8 @@
         "type": "Project",
         "dependencies": {
           "Google.Protobuf": "[3.36.2, )",
-          "Grpc.Net.Client": "[2.84.0, )"
+          "Grpc.Net.Client": "[2.84.0, )",
+          "Microsoft.Extensions.Logging.Abstractions": "[10.0.13, )"
         }
       },
       "Google.Protobuf": {

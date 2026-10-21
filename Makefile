@@ -69,7 +69,7 @@ DOTNET ?= dotnet
 DOTNET_DIR := client/dotnet
 DOTNET_SLN := $(DOTNET_DIR)/OpenSysML.slnx
 DOTNET_REPORTS := $(BIN_DIR)/dotnet
-DOTNET_MIN_TESTS := 93
+DOTNET_MIN_TESTS := 263
 DOTNET_CLIENT_VERSION = $(shell sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' $(DOTNET_DIR)/Directory.Build.props)
 # The committed buf output, excluded from coverage by path and refused by its check.
 DOTNET_GENERATED := src/OpenMBEE.OpenSysML/Wire/Sysml.cs src/OpenMBEE.OpenSysML/Wire/SysmlGrpc.cs
@@ -605,7 +605,8 @@ dotnet-build: dotnet-preflight ## Restore the .NET client from its lock files an
 	$(DOTNET) build $(DOTNET_SLN) -c Release --no-restore -warnaserror
 
 # With OPENSYSML_GRPC_BINARY and OPENSYSML_REQUIRE_SERVICE=1 set, as CI sets them,
-# a test that needs the service fails rather than skips without one.
+# a test that needs the service fails rather than skips without one, and so does the
+# Vehicle sample's run against a service the sample gate starts.
 dotnet-test: dotnet-build ## Check formatting, run the .NET client tests and its sample, and write JUnit under bin/dotnet/test
 	@echo "Running .NET client tests..."
 	$(DOTNET) format $(DOTNET_SLN) --verify-no-changes --no-restore
@@ -613,10 +614,8 @@ dotnet-test: dotnet-build ## Check formatting, run the .NET client tests and its
 	$(DOTNET) test --solution $(DOTNET_SLN) -c Release --no-build \
 		--minimum-expected-tests $(DOTNET_MIN_TESTS) \
 		--results-directory $(CURDIR)/$(DOTNET_REPORTS)/test --report-xunit-junit
-	@expected="OpenMBEE.OpenSysML $(DOTNET_CLIENT_VERSION) (.NETCoreApp,Version=v10.0)"; \
-	actual=$$($(DOTNET) run --project $(DOTNET_DIR)/samples/Vehicle -c Release --no-build) || exit 1; \
-	echo "$$actual"; \
-	if [ "$$actual" != "$$expected" ]; then echo "error: the Vehicle sample printed '$$actual', not '$$expected'"; exit 1; fi
+	$(PYTHON) $(DOTNET_DIR)/scripts/dotnet-gates.py sample --dotnet "$(DOTNET)" \
+		--expect "OpenMBEE.OpenSysML $(DOTNET_CLIENT_VERSION) (.NETCoreApp,Version=v10.0)"
 	$(PYTHON) $(DOTNET_DIR)/scripts/dotnet-gates-test.py
 	$(PYTHON) scripts/sync-release-digests.py --check
 	@echo "✓ .NET client tests passed"

@@ -3,6 +3,7 @@
 
     python3 client/dotnet/scripts/dotnet-gates.py preflight [--dotnet DOTNET]
     python3 client/dotnet/scripts/dotnet-gates.py coverage RESULTS_DIR [--generated PATH ...]
+    python3 client/dotnet/scripts/dotnet-gates.py sample --expect LINE [--dotnet DOTNET] [--binary PATH]
 
 `preflight` fails unless `dotnet`, invoked from the repository root, is exactly the
 SDK root global.json pins and a .NET 10 runtime is installed beside it: global.json's
@@ -13,6 +14,12 @@ on net10, not merely compile for it.
 each measuring some handwritten library code under client/dotnet/src and none of
 the generated files named by --generated, which the run must exclude by path.
 There is no percentage threshold.
+
+`sample` runs the built Vehicle sample twice: with no service named, when it must print
+exactly the --expect line, and with $OPENSYSML_SERVICE naming a sysml-grpc the gate starts
+on a port the kernel chooses, when it must also print the version that binary reports and
+its capability count. The binary is --binary or $OPENSYSML_GRPC_BINARY; without one the
+second run is skipped, unless $OPENSYSML_REQUIRE_SERVICE is set, which makes it a failure.
 """
 
 import argparse
@@ -22,6 +29,7 @@ import os
 import re
 import subprocess
 import sys
+import threading
 import xml.etree.ElementTree as ET
 
 REPO_ROOT = os.path.dirname(
@@ -30,6 +38,13 @@ REPO_ROOT = os.path.dirname(
 GLOBAL_JSON = os.path.join(REPO_ROOT, "global.json")
 RUNTIME_MAJOR = 10
 HANDWRITTEN_ROOT = "client/dotnet/src/"
+SAMPLE_PROJECT = "client/dotnet/samples/Vehicle"
+SERVICE_VARIABLE = "OPENSYSML_SERVICE"
+BINARY_VARIABLE = "OPENSYSML_GRPC_BINARY"
+REQUIRE_VARIABLE = "OPENSYSML_REQUIRE_SERVICE"
+STARTUP_TIMEOUT = 30
+RUN_TIMEOUT = 120
+SHUTDOWN_GRACE = 10
 
 
 class GateError(Exception):
@@ -169,6 +184,107 @@ def coverage(results_dir, generated=()):
     return [(report, *check_report(report, generated)) for report in reports]
 
 
+def _required(environ):
+    value = (environ.get(REQUIRE_VARIABLE) or "").strip().lower()
+    return value not in ("", "0", "false", "no")
+
+
+def _run_sample(dotnet, project, environ):
+    try:
+        result = subprocess.run(
+            [dotnet, "run", "--project", project, "-c", "Release", "--no-build"],
+            cwd=REPO_ROOT, env=environ, capture_output=True, text=True, timeout=RUN_TIMEOUT, check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired) as e:
+        raise GateError(f"cannot run the sample {project}: {e}") from e
+    if result.returncode != 0:
+        raise GateError(
+            f"the sample {project} exited {result.returncode}:\n{(result.stdout + result.stderr).strip()}"
+        )
+    return result.stdout.splitlines()
+
+
+def _binary_version(binary):
+    try:
+        result = subprocess.run([binary, "-version"], capture_output=True, text=True, timeout=RUN_TIMEOUT, check=False)
+    except (OSError, subprocess.TimeoutExpired) as e:
+        raise GateError(f"cannot run {binary} -version: {e}") from e
+    first = result.stdout.splitlines()[0] if result.stdout else ""
+    match = re.fullmatch(r"sysml-grpc version (\S+)", first.strip())
+    if result.returncode != 0 or not match:
+        raise GateError(f"{binary} -version exited {result.returncode} and printed {first!r}")
+    return match.group(1)
+
+
+def _read_line(stream, timeout):
+    line = []
+    reader = threading.Thread(target=lambda: line.append(stream.readline()), daemon=True)
+    reader.start()
+    reader.join(timeout)
+    return line[0] if line else None
+
+
+def sample(expect, dotnet="dotnet", binary=None, project=SAMPLE_PROJECT, environ=None):
+    """Run the sample without a service and against one the gate starts.
+
+    Args:
+        expect (str): The line the sample prints first, its client identity
+        dotnet (str): The dotnet host to run
+        binary (str): The sysml-grpc binary; $OPENSYSML_GRPC_BINARY when None
+        project (str): The sample project, relative to the repository root
+        environ (dict): The environment to run in; this process's when None
+
+    Returns:
+        str | None: The service line the sample printed, or None when no binary was configured
+
+    Raises:
+        GateError: If the sample's output is not what it must be, or a required service is absent
+    """
+    environ = dict(os.environ if environ is None else environ)
+    environ.pop(SERVICE_VARIABLE, None)
+    lines = _run_sample(dotnet, project, environ)
+    if lines != [expect]:
+        raise GateError(f"with no service named, the sample printed {lines!r}, not {[expect]!r}")
+
+    binary = binary or environ.get(BINARY_VARIABLE)
+    if not binary:
+        if _required(environ):
+            raise GateError(f"${REQUIRE_VARIABLE} is set, but ${BINARY_VARIABLE} names no sysml-grpc for the sample")
+        return None
+    if not os.path.isfile(binary):
+        raise GateError(f"{binary}, the sysml-grpc the sample is to connect to, is not a file")
+    version = _binary_version(binary)
+
+    try:
+        service = subprocess.Popen(
+            [binary, "-port", "0", "-health-port", "0", "-report-address", "-exit-with-parent"],
+            stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True,
+        )
+    except OSError as e:
+        raise GateError(f"cannot start {binary}: {e}") from e
+    try:
+        address = _read_line(service.stdout, STARTUP_TIMEOUT)
+        if not address or not address.strip():
+            raise GateError(f"{binary} reported no address within {STARTUP_TIMEOUT}s")
+        environ[SERVICE_VARIABLE] = address.strip()
+        lines = _run_sample(dotnet, project, environ)
+    finally:
+        service.stdin.close()
+        try:
+            service.wait(SHUTDOWN_GRACE)
+        except subprocess.TimeoutExpired:
+            service.kill()
+            service.wait()
+        service.stdout.close()
+
+    pattern = rf"sysml-grpc {re.escape(version)}, [1-9][0-9]* capabilities"
+    if len(lines) != 2 or lines[0] != expect or not re.fullmatch(pattern, lines[1]):
+        raise GateError(
+            f"connected to sysml-grpc {version}, the sample printed {lines!r}, not {expect!r} and a line matching {pattern!r}"
+        )
+    return lines[1]
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     commands = parser.add_subparsers(dest="command", required=True)
@@ -177,12 +293,20 @@ def main(argv=None):
     cov = commands.add_parser("coverage", help="check a coverage run's Cobertura reports")
     cov.add_argument("results_dir")
     cov.add_argument("--generated", nargs="*", default=[], help="generated file path suffixes the run excludes")
+    smp = commands.add_parser("sample", help="run the Vehicle sample without a service and against one")
+    smp.add_argument("--expect", required=True, help="the identity line the sample prints first")
+    smp.add_argument("--dotnet", default="dotnet", help="the dotnet host (default: dotnet on PATH)")
+    smp.add_argument("--binary", help=f"the sysml-grpc binary (default: ${BINARY_VARIABLE})")
     args = parser.parse_args(argv)
 
     try:
         if args.command == "preflight":
             sdk, runtimes = preflight(args.dotnet)
             print(f"✓ .NET SDK {sdk}, runtime {', '.join(runtimes)}")
+        elif args.command == "sample":
+            served = sample(args.expect, args.dotnet, args.binary)
+            print(f"✓ {args.expect}")
+            print(f"✓ {served}" if served else f"- no sysml-grpc configured (${BINARY_VARIABLE}); skipped the service run")
         else:
             for report, covered, valid in coverage(args.results_dir, args.generated):
                 print(f"✓ {report}: {covered} of {valid} lines covered")
