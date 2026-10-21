@@ -1,4 +1,4 @@
-.PHONY: all build docker extension-libraries-check extension-libraries-sync build-sysml build-re build-wasm-re build-lsp build-grpc build-mcp build-engine build-core build-syntax build-sysml-wasm build-release-wasm build-wasm build-wasm-wasip1 build-wasm-js wasm-check static-check windows-versioninfo-check man man-check install-tree pgo-profile conformance conformance-pkg conformance-mcp conformance-rust conformance-julia conformance-matlab test test-shard coverage coverage-shard coverage-merge lint clean install help ontology-table ontology-table-check metaclass-graph metaclass-graph-check python-metamodel python-metamodel-check fuml-expected python-test python-coverage scripts-coverage node-coverage dotnet-preflight dotnet-build dotnet-test dotnet-coverage python-install jupyter-kernel-install jupyter-kernel-test proto proto-buf python-proto proto-ts proto-rust proto-lint proto-breaking jupyterlab-build jupyterlab-test jupyterlab-install vscode-grammar vscode-build vscode-package docs docs-install docs-serve docs-engine-assets docs-landing-assets docs-counts diagnostics-catalogue diagnostics-check docs-check changelog-check changelog-render self-model mcp-registry-check
+.PHONY: all build docker extension-libraries-check extension-libraries-sync build-sysml build-re build-wasm-re build-lsp build-grpc build-mcp build-engine build-core build-syntax build-sysml-wasm build-release-wasm build-wasm build-wasm-wasip1 build-wasm-js wasm-check static-check windows-versioninfo-check man man-check install-tree pgo-profile conformance conformance-pkg conformance-mcp conformance-rust conformance-julia conformance-matlab test test-shard coverage coverage-shard coverage-merge lint clean install help ontology-table ontology-table-check metaclass-graph metaclass-graph-check python-metamodel python-metamodel-check fuml-expected python-test python-coverage scripts-coverage node-coverage dotnet-preflight dotnet-build dotnet-test dotnet-coverage python-install jupyter-kernel-install jupyter-kernel-test proto proto-buf python-proto proto-ts proto-rust proto-csharp proto-lint proto-breaking jupyterlab-build jupyterlab-test jupyterlab-install vscode-grammar vscode-build vscode-package docs docs-install docs-serve docs-engine-assets docs-landing-assets docs-counts diagnostics-catalogue diagnostics-check docs-check changelog-check changelog-render self-model mcp-registry-check
 
 # Version information
 # Only release tags describe a build; the moving `nightly` tag is not a version.
@@ -69,7 +69,7 @@ DOTNET ?= dotnet
 DOTNET_DIR := client/dotnet
 DOTNET_SLN := $(DOTNET_DIR)/OpenSysML.slnx
 DOTNET_REPORTS := $(BIN_DIR)/dotnet
-DOTNET_MIN_TESTS := 43
+DOTNET_MIN_TESTS := 93
 DOTNET_CLIENT_VERSION = $(shell sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' $(DOTNET_DIR)/Directory.Build.props)
 # The committed buf output, excluded from coverage by path and refused by its check.
 DOTNET_GENERATED := src/OpenMBEE.OpenSysML/Wire/Sysml.cs src/OpenMBEE.OpenSysML/Wire/SysmlGrpc.cs
@@ -494,7 +494,7 @@ version: ## Show version information
 	@echo "Build time: $(BUILD_TIME)"
 	@echo "Go version: $(GO_VERSION)"
 
-proto: proto-buf python-proto proto-ts proto-rust ## Regenerate all protobuf stubs
+proto: proto-buf python-proto proto-ts proto-rust proto-csharp ## Regenerate all protobuf stubs
 
 # The Java client's message classes are not committed: its Maven build generates them from
 # api/proto/sysml.proto (client/java/opensysml-client/pom.xml).
@@ -520,6 +520,11 @@ $(PROTOC_GEN_ES): $(NODE_DIR)/package-lock.json
 proto-rust: ## Generate Rust stubs and the descriptor for the Rust clients
 	$(BUF) generate api/proto --template api/proto/buf.gen.rust.yaml
 	$(BUF) build api/proto -o client/rust/conformance/sysml.descriptor.binpb
+
+proto-csharp: ## Regenerate the C# message classes and gRPC client stub the .NET client in client/dotnet commits
+	@echo "Regenerating C# protobuf stubs..."
+	$(BUF) generate api/proto --template api/proto/buf.gen.csharp.yaml
+	@echo "✓ Regenerated C# stubs"
 
 proto-lint: ## Lint the protobuf schema
 	$(BUF) lint api/proto

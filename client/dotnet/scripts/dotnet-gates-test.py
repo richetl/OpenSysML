@@ -24,11 +24,12 @@ RUNTIMES_10 = (
 RUNTIMES_9 = "Microsoft.NETCore.App 9.0.10 [/x/shared/Microsoft.NETCore.App]\n"
 
 
-def report(classes, valid=10, covered=5):
+def report(classes, valid=10, covered=5, sources=()):
     rows = "".join(f'<class name="C{i}" filename="{f}" />' for i, f in enumerate(classes))
+    listed = "".join(f"<source>{s}</source>" for s in sources)
     return (
-        f'<coverage lines-covered="{covered}" lines-valid="{valid}"><packages><package name="P">'
-        f"<classes>{rows}</classes></package></packages></coverage>"
+        f'<coverage lines-covered="{covered}" lines-valid="{valid}"><sources>{listed}</sources>'
+        f'<packages><package name="P"><classes>{rows}</classes></package></packages></coverage>'
     )
 
 
@@ -99,6 +100,26 @@ class GatesTest(unittest.TestCase):
     def test_coverage_accepts_windows_paths(self):
         self.write("run/coverage.cobertura.1.xml", report([r"C:\r\client\dotnet\src\Lib\A.cs"]))
         gates.coverage(os.path.join(self.tmp.name, "run"))
+
+    def test_coverage_resolves_filenames_against_the_sources(self):
+        self.write("run/coverage.cobertura.1.xml", report(
+            ["A.cs", "Inner/B.cs"], sources=["/_/client/dotnet/src/Lib/Internal/"]))
+        gates.coverage(os.path.join(self.tmp.name, "run"))
+
+    def test_coverage_resolves_windows_sources(self):
+        self.write("run/coverage.cobertura.1.xml", report(["A.cs"], sources=["C:\\r\\client\\dotnet\\src\\Lib\\"]))
+        gates.coverage(os.path.join(self.tmp.name, "run"))
+
+    def test_coverage_rejects_a_relative_filename_outside_the_library_sources(self):
+        self.write("run/coverage.cobertura.1.xml", report(["ATests.cs"], sources=["/r/client/dotnet/test/T/"]))
+        with self.assertRaisesRegex(gates.GateError, "measures ATests.cs, outside client/dotnet/src/"):
+            gates.coverage(os.path.join(self.tmp.name, "run"))
+
+    def test_coverage_rejects_relative_generated_code(self):
+        self.write("run/coverage.cobertura.1.xml", report(
+            ["Internal/A.cs", "Wire/Sysml.cs"], sources=["/r/client/dotnet/src/Lib/"]))
+        with self.assertRaisesRegex(gates.GateError, "measures generated Wire/Sysml.cs"):
+            gates.coverage(os.path.join(self.tmp.name, "run"), ["Lib/Wire/Sysml.cs"])
 
     def test_coverage_rejects_a_run_without_a_report(self):
         os.makedirs(os.path.join(self.tmp.name, "run"))

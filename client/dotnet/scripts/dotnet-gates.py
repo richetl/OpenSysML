@@ -131,13 +131,23 @@ def check_report(path, generated=()):
     valid = int(root.get("lines-valid", "0"))
     if not classes or valid <= 0:
         raise GateError(f"{path} measures no code")
+    sources = [_normalized(source.text or "") for source in root.findall("./sources/source")]
     for cls in classes:
         filename = _normalized(cls.get("filename", ""))
-        if any(filename.endswith("/" + _normalized(g).lstrip("/")) for g in generated):
+        candidates = _resolved(filename, sources)
+        if any(c.endswith("/" + _normalized(g).lstrip("/")) for c in candidates for g in generated):
             raise GateError(f"{path} measures generated {filename}; exclude it by path")
-        if f"/{HANDWRITTEN_ROOT}" not in f"/{filename}":
+        if not any(f"/{HANDWRITTEN_ROOT}" in f"/{c}" for c in candidates):
             raise GateError(f"{path} measures {filename}, outside {HANDWRITTEN_ROOT}")
     return int(root.get("lines-covered", "0")), valid
+
+
+def _resolved(filename, sources):
+    """The paths a class's filename may name: itself when absolute or when the report lists
+    no sources, otherwise relative to each source, as Cobertura reads it."""
+    if not sources or filename.startswith("/") or re.match(r"^[A-Za-z]:/", filename):
+        return [filename]
+    return [source.rstrip("/") + "/" + filename for source in sources if source]
 
 
 def coverage(results_dir, generated=()):

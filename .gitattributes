@@ -9,6 +9,7 @@ client/node/src/generated/**                     linguist-generated=true
 client/python/opensysml/proto/**                 linguist-generated=true
 client/python/opensysml/metamodel/_generated.py  linguist-generated=true
 client/rust/opensysml/src/proto/**               linguist-generated=true
+client/dotnet/src/OpenMBEE.OpenSysML/Wire/**     linguist-generated=true
 client/rust/conformance/*.binpb                  linguist-generated=true -diff
 
 # Golden files and expected outputs

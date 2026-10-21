@@ -53,3 +53,10 @@ dotnet_naming_symbols.private_fields.applicable_kinds = field
 dotnet_naming_symbols.private_fields.applicable_accessibilities = private
 dotnet_naming_style.pascal_case.capitalization = pascal_case
 dotnet_naming_style.camel_case.capitalization = camel_case
+
+# The committed buf output (make proto-csharp), by exact path: generated code, and public
+# protocol API outside the handwritten PublicAPI baseline. Nothing else is exempted.
+[src/OpenMBEE.OpenSysML/Wire/{Sysml,SysmlGrpc}.cs]
+generated_code = true
+dotnet_diagnostic.RS0016.severity = none
+dotnet_diagnostic.RS0041.severity = none

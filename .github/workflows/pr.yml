@@ -1453,6 +1453,23 @@ jobs:
           dotnet --list-runtimes
           make dotnet-preflight
 
+      # Pinned by digest, as in the other client jobs, so a substituted asset is not run.
+      - name: Install buf
+        run: |
+          curl -fsSL --proto '=https' --proto-redir '=https' -o /tmp/buf \
+            https://github.com/bufbuild/buf/releases/download/v1.57.2/buf-Linux-x86_64
+          echo "644e6fa4a62afc2b0d425d3ac9538d2f512947c0f2e82fc95c41a5eab6729414  /tmp/buf" | sha256sum --check --strict
+          sudo install -m 0755 /tmp/buf /usr/local/bin/buf
+          buf --version
+
+      # Committed stubs must be what buf generates, or the checked-in client and
+      # the schema can drift apart silently.
+      - name: Verify the committed C# stubs are current
+        run: |
+          make proto-csharp BUF=buf
+          git add -N client/dotnet/src/OpenMBEE.OpenSysML/Wire
+          git diff --exit-code client/dotnet/src/OpenMBEE.OpenSysML/Wire
+
       - uses: actions/download-artifact@v4
         with:
           name: binaries

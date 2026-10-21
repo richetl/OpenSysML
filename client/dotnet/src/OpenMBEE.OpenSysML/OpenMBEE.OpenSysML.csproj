@@ -6,6 +6,12 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Google.Protobuf" />
+    <!-- Brings Grpc.Core.Api, which the generated client stub and the method registry use. -->
+    <PackageReference Include="Grpc.Net.Client" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- Also adds PublicAPI.Shipped.txt and PublicAPI.Unshipped.txt as the baseline it checks against. -->
     <PackageReference Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" PrivateAssets="all" />
   </ItemGroup>
