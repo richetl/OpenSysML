@@ -18,7 +18,7 @@ There is no percentage threshold.
 `sample` runs the built Vehicle sample twice: with no service named, when it must print
 exactly the --expect line, and with $OPENSYSML_SERVICE naming a sysml-grpc the gate starts
 on a port the kernel chooses, when it must also print the version that binary reports and
-its capability count. The binary is --binary or $OPENSYSML_GRPC_BINARY; without one the
+its capability count, then the vehicle it parsed, looked up and evaluated. The binary is --binary or $OPENSYSML_GRPC_BINARY; without one the
 second run is skipped, unless $OPENSYSML_REQUIRE_SERVICE is set, which makes it a failure.
 """
 
@@ -40,6 +40,7 @@ RUNTIME_MAJOR = 10
 HANDWRITTEN_ROOT = "client/dotnet/src/"
 SAMPLE_PROJECT = "client/dotnet/samples/Vehicle"
 SERVICE_VARIABLE = "OPENSYSML_SERVICE"
+SAMPLE_MODEL_LINE = "Demo::Vehicle (partDef): mass = 1500.0"
 BINARY_VARIABLE = "OPENSYSML_GRPC_BINARY"
 REQUIRE_VARIABLE = "OPENSYSML_REQUIRE_SERVICE"
 STARTUP_TIMEOUT = 30
@@ -278,9 +279,10 @@ def sample(expect, dotnet="dotnet", binary=None, project=SAMPLE_PROJECT, environ
         service.stdout.close()
 
     pattern = rf"sysml-grpc {re.escape(version)}, [1-9][0-9]* capabilities"
-    if len(lines) != 2 or lines[0] != expect or not re.fullmatch(pattern, lines[1]):
+    if len(lines) != 3 or lines[0] != expect or not re.fullmatch(pattern, lines[1]) or lines[2] != SAMPLE_MODEL_LINE:
         raise GateError(
-            f"connected to sysml-grpc {version}, the sample printed {lines!r}, not {expect!r} and a line matching {pattern!r}"
+            f"connected to sysml-grpc {version}, the sample printed {lines!r}, not {expect!r}, "
+            f"a line matching {pattern!r} and {SAMPLE_MODEL_LINE!r}"
         )
     return lines[1]
 

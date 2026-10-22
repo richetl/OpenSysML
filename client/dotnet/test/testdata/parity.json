@@ -34,7 +34,7 @@
       "input": "path or content, ParseOptions",
       "result": "Model",
       "area": "model",
-      "status": "deferred",
+      "status": "implemented",
       "gates": [
         {
           "capability": "strict_conformance",
@@ -54,6 +54,15 @@
         "parse/an_absent_file_is_not_found",
         "parse/naming_no_source_is_invalid",
         "parse/strict_conformance_is_asked_for_by_field"
+      ],
+      "tests": [
+        "ModelParseTests.LoadSendsThePathAloneAndReadsTheParse",
+        "ModelParseTests.LoadContentSendsTheContentAndItsLanguage",
+        "ModelParseTests.AParseOptionGateWithheldSendsNothing",
+        "ModelParseTests.AnUnreadableFileIsModelFileNotFound",
+        "ServiceModelTests.ParsesInlineNotationAndAFileTheServiceReads",
+        "ServiceModelTests.ASyntaxErrorIsADiagnosticAndAnUnreadableFileIsNotFound",
+        "ServiceModelTests.AWithheldCapabilityIsRefusedBeforeAnythingIsSent"
       ]
     },
     {
@@ -66,7 +75,7 @@
       "input": "SourceDocument list, SourcesOptions",
       "result": "Model",
       "area": "model",
-      "status": "deferred",
+      "status": "implemented",
       "gates": [
         {
           "capability": "parse_sources",
@@ -94,6 +103,12 @@
         "parse_sources/naming_no_document_is_invalid",
         "parse_sources/two_documents_of_one_name_are_invalid",
         "parse_sources/an_absent_file_is_not_found"
+      ],
+      "tests": [
+        "ModelParseTests.ParseSourcesSendsEveryDocumentAndReadsEveryRoot",
+        "ModelParseTests.ParseSourcesChecksItsGatesInTheServicesOrderAndSendsNothing",
+        "ModelParseTests.ParseSourcesRefusesWhatItCannotSendAndLeavesTheRestToTheService",
+        "ServiceModelTests.SeveralDocumentsParseAsOneModel"
       ]
     },
     {
@@ -103,12 +118,13 @@
       "methods": [
         "Model.SymbolAsync",
         "Model.FindSymbolAsync",
+        "Model.FindAsync",
         "Model.LookupAsync"
       ],
       "input": "symbol ID",
       "result": "Symbol",
       "area": "model",
-      "status": "deferred",
+      "status": "implemented",
       "gates": [],
       "valueFields": [],
       "scenarios": [
@@ -116,6 +132,14 @@
         "symbol/an_attribute_reports_the_kind_that_filters_it",
         "symbol/an_unknown_symbol_is_not_found",
         "symbol/an_unknown_model_is_not_found"
+      ],
+      "tests": [
+        "ModelSymbolTests.SymbolAsyncReadsEveryFieldOfTheSymbol",
+        "ModelSymbolTests.ASymbolTheModelLacksIsNotFoundInBandAndAnAnswerOfNeitherIsMalformed",
+        "ModelSymbolTests.FindAsyncAcceptsARootAnIdOrAShortNameAndPrefersTheOutermost",
+        "ModelSymbolTests.WithoutQueryTheModelIsWalkedFromItsRoots",
+        "ModelSymbolTests.LookupAsyncNamesTheClosestDeclaredNames",
+        "ServiceModelTests.SymbolsAreReadAndFoundByName"
       ]
     },
     {
@@ -128,7 +152,7 @@
       "input": "DiagnosticsOptions",
       "result": "Diagnostic list",
       "area": "model",
-      "status": "deferred",
+      "status": "implemented",
       "gates": [],
       "valueFields": [],
       "scenarios": [
@@ -138,6 +162,10 @@
         "diagnostics/enable_lint_keeps_an_opt_in_lint_in",
         "diagnostics/disable_lint_leaves_a_lint_out",
         "diagnostics/an_unknown_lint_code_is_refused"
+      ],
+      "tests": [
+        "ModelEvaluateTests.GetDiagnosticsSendsTheLintSelectionAndReadsTheAnswer",
+        "ServiceModelTests.DiagnosticsFollowTheLintSelection"
       ]
     },
     {
@@ -151,7 +179,7 @@
       "input": "expression, EvalOptions",
       "result": "Value or Evaluation",
       "area": "model",
-      "status": "deferred",
+      "status": "implemented",
       "gates": [
         {
           "capability": "evaluate_subject",
@@ -186,6 +214,12 @@
         "evaluate/metadata_access_ends_with_the_reflective_metaobject",
         "evaluate/a_meta_cast_to_a_metaclass_the_element_is_not_an_instance_of_is_empty",
         "evaluate/an_unknown_model_is_not_found"
+      ],
+      "tests": [
+        "ModelEvaluateTests.EvalSendsTheExpressionAndItsScopeAndReadsTheValue",
+        "ModelEvaluateTests.ASubjectNeedsEvaluateSubjectAndAnEmptySymbolIsRefusedBeforeSending",
+        "ModelEvaluateTests.AnEvaluationFailureIsInBandAndAnAnswerOfNeitherOrOfAnUnknownKindIsRefused",
+        "ServiceModelTests.ExpressionsEvaluateInTheirScopeAndAgainstASubject"
       ]
     },
     {
@@ -198,7 +232,7 @@
       "input": "symbol ID",
       "result": "Instantiation",
       "area": "model",
-      "status": "deferred",
+      "status": "implemented",
       "gates": [],
       "valueFields": [],
       "scenarios": [
@@ -209,6 +243,11 @@
         "instantiate/a_complex_typed_feature_holds_one_complex_number",
         "instantiate/an_enumeration_typed_feature_holds_the_literal",
         "instantiate/an_unknown_symbol_is_reported_in_band"
+      ],
+      "tests": [
+        "ModelEvaluateTests.InstantiateReadsTheObjectGraphAndResolvesItsReferences",
+        "ModelEvaluateTests.AnInstantiationFailureIsInBandAndAMalformedAnswerNamesWhereItIs",
+        "ServiceModelTests.InstantiationBuildsTheObjectGraphAndResolvesItsReferences"
       ]
     },
     {
@@ -1765,10 +1804,22 @@
       }
     },
     "sysml.AttributeInfo": {
-      "name": "deferred",
-      "type": "deferred",
-      "value": "deferred",
-      "unit": "deferred"
+      "name": {
+        "status": "typed",
+        "test": "ModelSymbolTests.SymbolAsyncReadsEveryFieldOfTheSymbol"
+      },
+      "type": {
+        "status": "typed",
+        "test": "ModelSymbolTests.SymbolAsyncReadsEveryFieldOfTheSymbol"
+      },
+      "value": {
+        "status": "typed",
+        "test": "ModelSymbolTests.SymbolAsyncReadsEveryFieldOfTheSymbol"
+      },
+      "unit": {
+        "status": "typed",
+        "test": "ModelSymbolTests.SymbolAsyncReadsEveryFieldOfTheSymbol"
+      }
     },
     "sysml.Bound": {
       "name": "deferred",
@@ -1980,21 +2031,54 @@
       "cascade": "deferred"
     },
     "sysml.Diagnostic": {
-      "severity": "deferred",
-      "message": "deferred",
-      "span": "deferred",
-      "code": "deferred",
-      "order_dependent": "deferred",
-      "independent": "deferred"
+      "severity": {
+        "status": "typed",
+        "test": "ModelParseTests.EveryFieldOfADiagnosticIsRead"
+      },
+      "message": {
+        "status": "typed",
+        "test": "ModelParseTests.EveryFieldOfADiagnosticIsRead"
+      },
+      "span": {
+        "status": "typed",
+        "test": "ModelParseTests.EveryFieldOfADiagnosticIsRead"
+      },
+      "code": {
+        "status": "typed",
+        "test": "ModelParseTests.EveryFieldOfADiagnosticIsRead"
+      },
+      "order_dependent": {
+        "status": "typed",
+        "test": "ModelParseTests.EveryFieldOfADiagnosticIsRead"
+      },
+      "independent": {
+        "status": "typed",
+        "test": "ModelParseTests.EveryFieldOfADiagnosticIsRead"
+      }
     },
     "sysml.DiagnosticsRequest": {
-      "model_hash": "deferred",
-      "disable_lint": "deferred",
-      "enable_lint": "deferred"
+      "model_hash": {
+        "status": "typed",
+        "test": "ModelEvaluateTests.GetDiagnosticsSendsTheLintSelectionAndReadsTheAnswer"
+      },
+      "disable_lint": {
+        "status": "typed",
+        "test": "ModelEvaluateTests.GetDiagnosticsSendsTheLintSelectionAndReadsTheAnswer"
+      },
+      "enable_lint": {
+        "status": "typed",
+        "test": "ModelEvaluateTests.GetDiagnosticsSendsTheLintSelectionAndReadsTheAnswer"
+      }
     },
     "sysml.DiagnosticsResponse": {
-      "diagnostics": "deferred",
-      "error": "deferred"
+      "diagnostics": {
+        "status": "typed",
+        "test": "ModelEvaluateTests.GetDiagnosticsSendsTheLintSelectionAndReadsTheAnswer"
+      },
+      "error": {
+        "status": "typed",
+        "test": "ModelEvaluateTests.GetDiagnosticsSendsTheLintSelectionAndReadsTheAnswer"
+      }
     },
     "sysml.DocumentEvent": {
       "kind": "deferred",
@@ -2139,15 +2223,36 @@
       "bounds": "deferred"
     },
     "sysml.EvaluateRequest": {
-      "model_hash": "deferred",
-      "expression": "deferred",
-      "context_symbol_id": "deferred",
-      "subject_symbol_id": "deferred"
+      "model_hash": {
+        "status": "typed",
+        "test": "ModelEvaluateTests.EvalSendsTheExpressionAndItsScopeAndReadsTheValue"
+      },
+      "expression": {
+        "status": "typed",
+        "test": "ModelEvaluateTests.EvalSendsTheExpressionAndItsScopeAndReadsTheValue"
+      },
+      "context_symbol_id": {
+        "status": "typed",
+        "test": "ModelEvaluateTests.EvalSendsTheExpressionAndItsScopeAndReadsTheValue"
+      },
+      "subject_symbol_id": {
+        "status": "typed",
+        "test": "ModelEvaluateTests.EvalSendsTheExpressionAndItsScopeAndReadsTheValue"
+      }
     },
     "sysml.EvaluateResponse": {
-      "result": "deferred",
-      "error": "deferred",
-      "diagnostics": "deferred"
+      "result": {
+        "status": "typed",
+        "test": "ModelEvaluateTests.EvalSendsTheExpressionAndItsScopeAndReadsTheValue"
+      },
+      "error": {
+        "status": "typed",
+        "test": "ModelEvaluateTests.AnEvaluationFailureIsInBandAndAnAnswerOfNeitherOrOfAnUnknownKindIsRefused"
+      },
+      "diagnostics": {
+        "status": "typed",
+        "test": "ModelEvaluateTests.EvalSendsTheExpressionAndItsScopeAndReadsTheValue"
+      }
     },
     "sysml.ExecuteActionRequest": {
       "model_hash": "deferred",
@@ -2214,12 +2319,30 @@
       "subject": "deferred"
     },
     "sysml.FeatureValue": {
-      "feature_name": "deferred",
-      "value": "deferred",
-      "values": "deferred",
-      "materialized": "deferred",
-      "error": "deferred",
-      "order_dependent": "deferred"
+      "feature_name": {
+        "status": "typed",
+        "test": "ModelEvaluateTests.InstantiateReadsTheObjectGraphAndResolvesItsReferences"
+      },
+      "value": {
+        "status": "typed",
+        "test": "ModelEvaluateTests.InstantiateReadsTheObjectGraphAndResolvesItsReferences"
+      },
+      "values": {
+        "status": "typed",
+        "test": "ModelEvaluateTests.InstantiateReadsTheObjectGraphAndResolvesItsReferences"
+      },
+      "materialized": {
+        "status": "typed",
+        "test": "ModelEvaluateTests.InstantiateReadsTheObjectGraphAndResolvesItsReferences"
+      },
+      "error": {
+        "status": "typed",
+        "test": "ModelEvaluateTests.InstantiateReadsTheObjectGraphAndResolvesItsReferences"
+      },
+      "order_dependent": {
+        "status": "typed",
+        "test": "ModelEvaluateTests.InstantiateReadsTheObjectGraphAndResolvesItsReferences"
+      }
     },
     "sysml.Function": {
       "calc_id": {
@@ -2232,8 +2355,14 @@
       }
     },
     "sysml.GetSymbolRequest": {
-      "model_hash": "deferred",
-      "symbol_id": "deferred"
+      "model_hash": {
+        "status": "typed",
+        "test": "ModelSymbolTests.SymbolAsyncReadsEveryFieldOfTheSymbol"
+      },
+      "symbol_id": {
+        "status": "typed",
+        "test": "ModelSymbolTests.SymbolAsyncReadsEveryFieldOfTheSymbol"
+      }
     },
     "sysml.ImportDataRequest": {
       "model_hash": "deferred",
@@ -2265,19 +2394,46 @@
       "description": "deferred"
     },
     "sysml.Instance": {
-      "id": "deferred",
-      "type_symbol_id": "deferred",
-      "feature_values": "deferred"
+      "id": {
+        "status": "typed",
+        "test": "ModelEvaluateTests.InstantiateReadsTheObjectGraphAndResolvesItsReferences"
+      },
+      "type_symbol_id": {
+        "status": "typed",
+        "test": "ModelEvaluateTests.InstantiateReadsTheObjectGraphAndResolvesItsReferences"
+      },
+      "feature_values": {
+        "status": "typed",
+        "test": "ModelEvaluateTests.InstantiateReadsTheObjectGraphAndResolvesItsReferences"
+      }
     },
     "sysml.InstantiateRequest": {
-      "model_hash": "deferred",
-      "symbol_id": "deferred"
+      "model_hash": {
+        "status": "typed",
+        "test": "ModelEvaluateTests.InstantiateReadsTheObjectGraphAndResolvesItsReferences"
+      },
+      "symbol_id": {
+        "status": "typed",
+        "test": "ModelEvaluateTests.InstantiateReadsTheObjectGraphAndResolvesItsReferences"
+      }
     },
     "sysml.InstantiateResponse": {
-      "instance": "deferred",
-      "error": "deferred",
-      "diagnostics": "deferred",
-      "instances": "deferred"
+      "instance": {
+        "status": "typed",
+        "test": "ModelEvaluateTests.InstantiateReadsTheObjectGraphAndResolvesItsReferences"
+      },
+      "error": {
+        "status": "typed",
+        "test": "ModelEvaluateTests.AnInstantiationFailureIsInBandAndAMalformedAnswerNamesWhereItIs"
+      },
+      "diagnostics": {
+        "status": "typed",
+        "test": "ModelEvaluateTests.InstantiateReadsTheObjectGraphAndResolvesItsReferences"
+      },
+      "instances": {
+        "status": "typed",
+        "test": "ModelEvaluateTests.InstantiateReadsTheObjectGraphAndResolvesItsReferences"
+      }
     },
     "sysml.ListEnginesRequest": {
       "probe": "deferred"
@@ -2403,29 +2559,81 @@
       "probability_range": "deferred"
     },
     "sysml.ParseFileRequest": {
-      "file_path": "deferred",
-      "content": "deferred",
-      "content_hash": "deferred",
-      "language": "deferred",
-      "strict_conformance": "deferred"
+      "file_path": {
+        "status": "typed",
+        "test": "ModelParseTests.LoadSendsThePathAloneAndReadsTheParse"
+      },
+      "content": {
+        "status": "typed",
+        "test": "ModelParseTests.LoadContentSendsTheContentAndItsLanguage"
+      },
+      "content_hash": {
+        "status": "unsupported",
+        "reason": "Deprecated, and ignored by the service, which keys its cache by the source it read; the client never sends it.",
+        "test": "ModelParseTests.LoadSendsThePathAloneAndReadsTheParse"
+      },
+      "language": {
+        "status": "typed",
+        "test": "ModelParseTests.LoadContentSendsTheContentAndItsLanguage"
+      },
+      "strict_conformance": {
+        "status": "typed",
+        "test": "ModelParseTests.LoadContentSendsTheContentAndItsLanguage"
+      }
     },
     "sysml.ParseFileResponse": {
-      "model_hash": "deferred",
-      "root": "deferred",
-      "diagnostics": "deferred",
-      "error": "deferred"
+      "model_hash": {
+        "status": "typed",
+        "test": "ModelParseTests.LoadSendsThePathAloneAndReadsTheParse"
+      },
+      "root": {
+        "status": "typed",
+        "test": "ModelParseTests.LoadSendsThePathAloneAndReadsTheParse"
+      },
+      "diagnostics": {
+        "status": "typed",
+        "test": "ModelParseTests.LoadSendsThePathAloneAndReadsTheParse"
+      },
+      "error": {
+        "status": "typed",
+        "test": "ModelParseTests.AnInBandParseFailureIsAModelExceptionAndAnAnswerWithoutAHashIsMalformed"
+      }
     },
     "sysml.ParseSourcesRequest": {
-      "documents": "deferred",
-      "strict_conformance": "deferred",
-      "base_model_hash": "deferred"
+      "documents": {
+        "status": "typed",
+        "test": "ModelParseTests.ParseSourcesSendsEveryDocumentAndReadsEveryRoot"
+      },
+      "strict_conformance": {
+        "status": "typed",
+        "test": "ModelParseTests.ParseSourcesSendsEveryDocumentAndReadsEveryRoot"
+      },
+      "base_model_hash": {
+        "status": "typed",
+        "test": "ModelParseTests.ParseSourcesSendsEveryDocumentAndReadsEveryRoot"
+      }
     },
     "sysml.ParseSourcesResponse": {
-      "model_hash": "deferred",
-      "roots": "deferred",
-      "diagnostics": "deferred",
-      "error": "deferred",
-      "affected": "deferred"
+      "model_hash": {
+        "status": "typed",
+        "test": "ModelParseTests.ParseSourcesSendsEveryDocumentAndReadsEveryRoot"
+      },
+      "roots": {
+        "status": "typed",
+        "test": "ModelParseTests.ParseSourcesSendsEveryDocumentAndReadsEveryRoot"
+      },
+      "diagnostics": {
+        "status": "typed",
+        "test": "ModelParseTests.ParseSourcesSendsEveryDocumentAndReadsEveryRoot"
+      },
+      "error": {
+        "status": "typed",
+        "test": "ModelParseTests.AnInBandParseFailureIsAModelExceptionAndAnAnswerWithoutAHashIsMalformed"
+      },
+      "affected": {
+        "status": "typed",
+        "test": "ModelParseTests.ParseSourcesSendsEveryDocumentAndReadsEveryRoot"
+      }
     },
     "sysml.PrimitiveConstraint": {
       "inverse": "deferred",
@@ -2800,23 +3008,62 @@
       "value": "deferred"
     },
     "sysml.SourceDocument": {
-      "file_path": "deferred",
-      "content": "deferred",
-      "language": "deferred",
-      "name": "deferred"
+      "file_path": {
+        "status": "typed",
+        "test": "ModelParseTests.ParseSourcesSendsEveryDocumentAndReadsEveryRoot"
+      },
+      "content": {
+        "status": "typed",
+        "test": "ModelParseTests.ParseSourcesSendsEveryDocumentAndReadsEveryRoot"
+      },
+      "language": {
+        "status": "typed",
+        "test": "ModelParseTests.ParseSourcesSendsEveryDocumentAndReadsEveryRoot"
+      },
+      "name": {
+        "status": "typed",
+        "test": "ModelParseTests.ParseSourcesSendsEveryDocumentAndReadsEveryRoot"
+      }
     },
     "sysml.Span": {
-      "file": "deferred",
-      "start_line": "deferred",
-      "start_col": "deferred",
-      "end_line": "deferred",
-      "end_col": "deferred"
+      "file": {
+        "status": "typed",
+        "test": "ModelParseTests.EveryFieldOfADiagnosticIsRead"
+      },
+      "start_line": {
+        "status": "typed",
+        "test": "ModelParseTests.EveryFieldOfADiagnosticIsRead"
+      },
+      "start_col": {
+        "status": "typed",
+        "test": "ModelParseTests.EveryFieldOfADiagnosticIsRead"
+      },
+      "end_line": {
+        "status": "typed",
+        "test": "ModelParseTests.EveryFieldOfADiagnosticIsRead"
+      },
+      "end_col": {
+        "status": "typed",
+        "test": "ModelParseTests.EveryFieldOfADiagnosticIsRead"
+      }
     },
     "sysml.Specialization": {
-      "kind": "deferred",
-      "declared": "deferred",
-      "target_id": "deferred",
-      "target_kind": "deferred"
+      "kind": {
+        "status": "typed",
+        "test": "ModelSymbolTests.SymbolAsyncReadsEveryFieldOfTheSymbol"
+      },
+      "declared": {
+        "status": "typed",
+        "test": "ModelSymbolTests.SymbolAsyncReadsEveryFieldOfTheSymbol"
+      },
+      "target_id": {
+        "status": "typed",
+        "test": "ModelSymbolTests.SymbolAsyncReadsEveryFieldOfTheSymbol"
+      },
+      "target_kind": {
+        "status": "typed",
+        "test": "ModelSymbolTests.SymbolAsyncReadsEveryFieldOfTheSymbol"
+      }
     },
     "sysml.StatisticDifference": {
       "min": "deferred",
@@ -2841,20 +3088,56 @@
       "evaluations": "deferred"
     },
     "sysml.SymbolInfo": {
-      "id": "deferred",
-      "name": "deferred",
-      "kind": "deferred",
-      "metadata": "deferred",
-      "child_ids": "deferred",
-      "attributes": "deferred",
-      "type_info": "deferred",
-      "multiplicity": "deferred",
-      "specializations": "deferred",
-      "withheld_library_attributes": "deferred"
+      "id": {
+        "status": "typed",
+        "test": "ModelSymbolTests.SymbolAsyncReadsEveryFieldOfTheSymbol"
+      },
+      "name": {
+        "status": "typed",
+        "test": "ModelSymbolTests.SymbolAsyncReadsEveryFieldOfTheSymbol"
+      },
+      "kind": {
+        "status": "typed",
+        "test": "ModelSymbolTests.SymbolAsyncReadsEveryFieldOfTheSymbol"
+      },
+      "metadata": {
+        "status": "typed",
+        "test": "ModelSymbolTests.SymbolAsyncReadsEveryFieldOfTheSymbol"
+      },
+      "child_ids": {
+        "status": "typed",
+        "test": "ModelSymbolTests.SymbolAsyncReadsEveryFieldOfTheSymbol"
+      },
+      "attributes": {
+        "status": "typed",
+        "test": "ModelSymbolTests.SymbolAsyncReadsEveryFieldOfTheSymbol"
+      },
+      "type_info": {
+        "status": "typed",
+        "test": "ModelSymbolTests.SymbolAsyncReadsEveryFieldOfTheSymbol"
+      },
+      "multiplicity": {
+        "status": "typed",
+        "test": "ModelSymbolTests.SymbolAsyncReadsEveryFieldOfTheSymbol"
+      },
+      "specializations": {
+        "status": "typed",
+        "test": "ModelSymbolTests.SymbolAsyncReadsEveryFieldOfTheSymbol"
+      },
+      "withheld_library_attributes": {
+        "status": "typed",
+        "test": "ModelSymbolTests.SymbolAsyncReadsEveryFieldOfTheSymbol"
+      }
     },
     "sysml.SymbolResponse": {
-      "symbol": "deferred",
-      "error": "deferred"
+      "symbol": {
+        "status": "typed",
+        "test": "ModelSymbolTests.SymbolAsyncReadsEveryFieldOfTheSymbol"
+      },
+      "error": {
+        "status": "typed",
+        "test": "ModelSymbolTests.ASymbolTheModelLacksIsNotFoundInBandAndAnAnswerOfNeitherIsMalformed"
+      }
     },
     "sysml.TensorQuantity": {
       "dimensions": {
@@ -2901,13 +3184,34 @@
       "parameter": "deferred"
     },
     "sysml.TypeInfo": {
-      "declared": "deferred",
-      "resolved_id": "deferred",
-      "resolved_kind": "deferred",
-      "primitive": "deferred",
-      "primitive_source": "deferred",
-      "quantity": "deferred",
-      "unit": "deferred"
+      "declared": {
+        "status": "typed",
+        "test": "ModelSymbolTests.SymbolAsyncReadsEveryFieldOfTheSymbol"
+      },
+      "resolved_id": {
+        "status": "typed",
+        "test": "ModelSymbolTests.SymbolAsyncReadsEveryFieldOfTheSymbol"
+      },
+      "resolved_kind": {
+        "status": "typed",
+        "test": "ModelSymbolTests.SymbolAsyncReadsEveryFieldOfTheSymbol"
+      },
+      "primitive": {
+        "status": "typed",
+        "test": "ModelSymbolTests.SymbolAsyncReadsEveryFieldOfTheSymbol"
+      },
+      "primitive_source": {
+        "status": "typed",
+        "test": "ModelSymbolTests.SymbolAsyncReadsEveryFieldOfTheSymbol"
+      },
+      "quantity": {
+        "status": "typed",
+        "test": "ModelSymbolTests.SymbolAsyncReadsEveryFieldOfTheSymbol"
+      },
+      "unit": {
+        "status": "typed",
+        "test": "ModelSymbolTests.SymbolAsyncReadsEveryFieldOfTheSymbol"
+      }
     },
     "sysml.Undetermined": {
       "reason": {

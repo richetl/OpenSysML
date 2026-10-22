@@ -198,7 +198,7 @@ public sealed partial class ValueInventoryTests
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary).WithMetadataImportOptions(imported));
 
         return compilation.GetDiagnostics()
-            .Where(diagnostic => diagnostic.Severity == DiagnosticSeverity.Error)
+            .Where(diagnostic => diagnostic.Severity == Microsoft.CodeAnalysis.DiagnosticSeverity.Error)
             .Select(diagnostic => diagnostic.Id)
             .Distinct()
             .ToList();

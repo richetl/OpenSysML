@@ -275,12 +275,14 @@ public sealed class ServiceFixture : IAsyncDisposable
     internal string Version => version.Value;
 
     /// <summary>The service serving a transport; skips or fails the test without a binary.</summary>
-    internal Task<ServiceProcess> ServiceAsync(string transport)
+    /// <param name="transport">connect or grpc.</param>
+    /// <param name="withheld">Capabilities it withholds, comma-separated; null for none.</param>
+    internal Task<ServiceProcess> ServiceAsync(string transport, string? withheld = null)
     {
         var binary = ServiceGate.FromProcess.RequireBinary();
         return services.GetOrAdd(
-            transport,
-            name => new Lazy<Task<ServiceProcess>>(() => ServiceProcess.StartAsync(binary, name, CancellationToken.None))).Value;
+            withheld is null ? transport : $"{transport} without {withheld}",
+            _ => new Lazy<Task<ServiceProcess>>(() => ServiceProcess.StartAsync(binary, transport, CancellationToken.None, withheld))).Value;
     }
 
     public async ValueTask DisposeAsync()

@@ -235,7 +235,7 @@ public sealed class ParityInventoryTests
     [Fact]
     public void AnImplementedRowNamesTestsTheSuiteHas()
     {
-        var unproven = WithRow(Committed, "Evaluate", row => row with { Status = "implemented" });
+        var unproven = WithRow(Committed, "Evaluate", row => row with { Status = "implemented", Tests = [] });
         Assert.Contains("Row Evaluate is implemented but names no test.", Check(unproven));
 
         var phantom = WithRow(Committed, "Evaluate", row => row with { Status = "implemented", Tests = ["ModelTests.EvaluatesAnExpression"] });

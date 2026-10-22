@@ -170,8 +170,8 @@ class GatesTest(unittest.TestCase):
         os.chmod(path, os.stat(path).st_mode | stat.S_IEXEC)
         return path
 
-    def sample_host(self, service_line="sysml-grpc v1.0.0, 3 capabilities", identity=IDENTITY):
-        """A stand-in dotnet whose sample prints its identity and, with a service named, a service line."""
+    def sample_host(self, service_line="sysml-grpc v1.0.0, 3 capabilities", identity=IDENTITY, model_line=gates.SAMPLE_MODEL_LINE):
+        """A stand-in dotnet whose sample prints its identity and, with a service named, a service line and a model line."""
         seen = os.path.join(self.tmp.name, "seen-service")
         return self.executable("sample-dotnet", f"""\
             import os
@@ -181,6 +181,8 @@ class GatesTest(unittest.TestCase):
                 open({seen!r}, "w").write(service)
                 if {service_line!r}:
                     print({service_line!r})
+                if {model_line!r}:
+                    print({model_line!r})
             """), seen
 
     def service_binary(self, address="127.0.0.1:4321", version="v1.0.0"):
@@ -236,6 +238,13 @@ class GatesTest(unittest.TestCase):
             dotnet, _ = self.sample_host(service_line=line)
             binary, _ = self.service_binary()
             with self.assertRaisesRegex(gates.GateError, "the sample printed"):
+                gates.sample(IDENTITY, dotnet, binary, environ={})
+
+    def test_sample_rejects_another_model_line_or_none(self):
+        for line in ("Demo::Vehicle (partDef): mass = 1200.0", ""):
+            dotnet, _ = self.sample_host(model_line=line)
+            binary, _ = self.service_binary()
+            with self.assertRaisesRegex(gates.GateError, "Demo::Vehicle \\(partDef\\): mass = 1500.0"):
                 gates.sample(IDENTITY, dotnet, binary, environ={})
 
     def test_sample_rejects_a_service_that_reports_no_address(self):

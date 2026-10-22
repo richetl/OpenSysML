@@ -77,6 +77,14 @@ const OpenMBEE.OpenSysML.Capabilities.VerificationQuestions = "verification_ques
 const OpenMBEE.OpenSysML.Capabilities.VerificationVerdicts = "verification_verdicts" -> string!
 const OpenMBEE.OpenSysML.ConnectionOptions.DefaultMaxMessageSize = 536870912 -> int
 const OpenMBEE.OpenSysML.ConnectionOptions.ServiceVariable = "OPENSYSML_SERVICE" -> string!
+OpenMBEE.OpenSysML.AttributeInfo
+OpenMBEE.OpenSysML.AttributeInfo.<Clone>$() -> OpenMBEE.OpenSysML.AttributeInfo!
+OpenMBEE.OpenSysML.AttributeInfo.AttributeInfo(string! name, string! type, OpenMBEE.OpenSysML.Value? value, string! unit) -> void
+OpenMBEE.OpenSysML.AttributeInfo.Equals(OpenMBEE.OpenSysML.AttributeInfo? other) -> bool
+OpenMBEE.OpenSysML.AttributeInfo.Name.get -> string!
+OpenMBEE.OpenSysML.AttributeInfo.Type.get -> string!
+OpenMBEE.OpenSysML.AttributeInfo.Unit.get -> string!
+OpenMBEE.OpenSysML.AttributeInfo.Value.get -> OpenMBEE.OpenSysML.Value?
 OpenMBEE.OpenSysML.Capabilities
 OpenMBEE.OpenSysML.Capabilities.Capabilities(System.Collections.Generic.IEnumerable<string!>! names) -> void
 OpenMBEE.OpenSysML.Capabilities.Equals(OpenMBEE.OpenSysML.Capabilities? other) -> bool
@@ -93,6 +101,10 @@ OpenMBEE.OpenSysML.Connection.CallAsync<TRequest, TResponse>(string! method, TRe
 OpenMBEE.OpenSysML.Connection.Capabilities.get -> OpenMBEE.OpenSysML.Capabilities!
 OpenMBEE.OpenSysML.Connection.DisposeAsync() -> System.Threading.Tasks.ValueTask
 OpenMBEE.OpenSysML.Connection.Encoding.get -> OpenMBEE.OpenSysML.MessageEncoding
+OpenMBEE.OpenSysML.Connection.LoadAsync(string! path, OpenMBEE.OpenSysML.ParseOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<OpenMBEE.OpenSysML.Model!>!
+OpenMBEE.OpenSysML.Connection.LoadContentAsync(string! content, OpenMBEE.OpenSysML.ParseOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<OpenMBEE.OpenSysML.Model!>!
+OpenMBEE.OpenSysML.Connection.ModelByHash(string! modelHash) -> OpenMBEE.OpenSysML.Model!
+OpenMBEE.OpenSysML.Connection.ParseSourcesAsync(System.Collections.Generic.IEnumerable<OpenMBEE.OpenSysML.SourceDocument!>! documents, OpenMBEE.OpenSysML.SourcesOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<OpenMBEE.OpenSysML.Model!>!
 OpenMBEE.OpenSysML.Connection.Protocol.get -> OpenMBEE.OpenSysML.Protocol
 OpenMBEE.OpenSysML.Connection.ServerInfo.get -> OpenMBEE.OpenSysML.ServerInfo!
 OpenMBEE.OpenSysML.ConnectionOptions
@@ -121,16 +133,121 @@ OpenMBEE.OpenSysML.ConnectionOptions.RequireCapabilities.get -> System.Collectio
 OpenMBEE.OpenSysML.ConnectionOptions.RequireCapabilities.init -> void
 OpenMBEE.OpenSysML.ConnectionOptions.Version.get -> string?
 OpenMBEE.OpenSysML.ConnectionOptions.Version.init -> void
+OpenMBEE.OpenSysML.Diagnostic
+OpenMBEE.OpenSysML.Diagnostic.<Clone>$() -> OpenMBEE.OpenSysML.Diagnostic!
+OpenMBEE.OpenSysML.Diagnostic.Code.get -> string!
+OpenMBEE.OpenSysML.Diagnostic.Diagnostic(string! severityName, string! message, string! code, OpenMBEE.OpenSysML.SourceSpan? span, System.Collections.Generic.IEnumerable<string!>! orderDependent, bool independent) -> void
+OpenMBEE.OpenSysML.Diagnostic.Equals(OpenMBEE.OpenSysML.Diagnostic? other) -> bool
+OpenMBEE.OpenSysML.Diagnostic.Independent.get -> bool
+OpenMBEE.OpenSysML.Diagnostic.Message.get -> string!
+OpenMBEE.OpenSysML.Diagnostic.OrderDependent.get -> OpenMBEE.OpenSysML.ValueList<string!>
+OpenMBEE.OpenSysML.Diagnostic.Severity.get -> OpenMBEE.OpenSysML.DiagnosticSeverity
+OpenMBEE.OpenSysML.Diagnostic.SeverityName.get -> string!
+OpenMBEE.OpenSysML.Diagnostic.Span.get -> OpenMBEE.OpenSysML.SourceSpan?
+OpenMBEE.OpenSysML.DiagnosticSeverity
+OpenMBEE.OpenSysML.DiagnosticSeverity.Error = 1 -> OpenMBEE.OpenSysML.DiagnosticSeverity
+OpenMBEE.OpenSysML.DiagnosticSeverity.Info = 3 -> OpenMBEE.OpenSysML.DiagnosticSeverity
+OpenMBEE.OpenSysML.DiagnosticSeverity.Unknown = 0 -> OpenMBEE.OpenSysML.DiagnosticSeverity
+OpenMBEE.OpenSysML.DiagnosticSeverity.Warning = 2 -> OpenMBEE.OpenSysML.DiagnosticSeverity
+OpenMBEE.OpenSysML.DiagnosticsOptions
+OpenMBEE.OpenSysML.DiagnosticsOptions.DiagnosticsOptions() -> void
+OpenMBEE.OpenSysML.DiagnosticsOptions.DisableLint.get -> System.Collections.Generic.IReadOnlyList<string!>!
+OpenMBEE.OpenSysML.DiagnosticsOptions.DisableLint.init -> void
+OpenMBEE.OpenSysML.DiagnosticsOptions.EnableLint.get -> System.Collections.Generic.IReadOnlyList<string!>!
+OpenMBEE.OpenSysML.DiagnosticsOptions.EnableLint.init -> void
+OpenMBEE.OpenSysML.EvalOptions
+OpenMBEE.OpenSysML.EvalOptions.ContextSymbolId.get -> string?
+OpenMBEE.OpenSysML.EvalOptions.ContextSymbolId.init -> void
+OpenMBEE.OpenSysML.EvalOptions.EvalOptions() -> void
+OpenMBEE.OpenSysML.EvalOptions.SubjectSymbolId.get -> string?
+OpenMBEE.OpenSysML.EvalOptions.SubjectSymbolId.init -> void
+OpenMBEE.OpenSysML.Evaluation
+OpenMBEE.OpenSysML.Evaluation.<Clone>$() -> OpenMBEE.OpenSysML.Evaluation!
+OpenMBEE.OpenSysML.Evaluation.Diagnostics.get -> OpenMBEE.OpenSysML.ValueList<OpenMBEE.OpenSysML.Diagnostic!>
+OpenMBEE.OpenSysML.Evaluation.Equals(OpenMBEE.OpenSysML.Evaluation? other) -> bool
+OpenMBEE.OpenSysML.Evaluation.Evaluation(OpenMBEE.OpenSysML.Value! result, System.Collections.Generic.IEnumerable<OpenMBEE.OpenSysML.Diagnostic!>! diagnostics) -> void
+OpenMBEE.OpenSysML.Evaluation.Result.get -> OpenMBEE.OpenSysML.Value!
+OpenMBEE.OpenSysML.FeatureValue
+OpenMBEE.OpenSysML.FeatureValue.<Clone>$() -> OpenMBEE.OpenSysML.FeatureValue!
+OpenMBEE.OpenSysML.FeatureValue.Equals(OpenMBEE.OpenSysML.FeatureValue? other) -> bool
+OpenMBEE.OpenSysML.FeatureValue.Error.get -> string!
+OpenMBEE.OpenSysML.FeatureValue.FeatureName.get -> string!
+OpenMBEE.OpenSysML.FeatureValue.FeatureValue(string! featureName, OpenMBEE.OpenSysML.Value? value, System.Collections.Generic.IEnumerable<OpenMBEE.OpenSysML.Value!>! values, bool isMaterialized, string! error, int orderDependent) -> void
+OpenMBEE.OpenSysML.FeatureValue.IsMaterialized.get -> bool
+OpenMBEE.OpenSysML.FeatureValue.OrderDependent.get -> int
+OpenMBEE.OpenSysML.FeatureValue.Value.get -> OpenMBEE.OpenSysML.Value?
+OpenMBEE.OpenSysML.FeatureValue.Values.get -> OpenMBEE.OpenSysML.ValueList<OpenMBEE.OpenSysML.Value!>
+OpenMBEE.OpenSysML.Instance
+OpenMBEE.OpenSysML.Instance.<Clone>$() -> OpenMBEE.OpenSysML.Instance!
+OpenMBEE.OpenSysML.Instance.Equals(OpenMBEE.OpenSysML.Instance? other) -> bool
+OpenMBEE.OpenSysML.Instance.FeatureValues.get -> OpenMBEE.OpenSysML.ValueDictionary<OpenMBEE.OpenSysML.FeatureValue!>
+OpenMBEE.OpenSysML.Instance.Id.get -> long
+OpenMBEE.OpenSysML.Instance.Instance(long id, string! typeSymbolId, System.Collections.Generic.IEnumerable<System.Collections.Generic.KeyValuePair<string!, OpenMBEE.OpenSysML.FeatureValue!>>! featureValues) -> void
+OpenMBEE.OpenSysML.Instance.TypeSymbolId.get -> string!
+OpenMBEE.OpenSysML.Instantiation
+OpenMBEE.OpenSysML.Instantiation.<Clone>$() -> OpenMBEE.OpenSysML.Instantiation!
+OpenMBEE.OpenSysML.Instantiation.Diagnostics.get -> OpenMBEE.OpenSysML.ValueList<OpenMBEE.OpenSysML.Diagnostic!>
+OpenMBEE.OpenSysML.Instantiation.Equals(OpenMBEE.OpenSysML.Instantiation? other) -> bool
+OpenMBEE.OpenSysML.Instantiation.FindInstance(long instanceId) -> OpenMBEE.OpenSysML.Instance?
+OpenMBEE.OpenSysML.Instantiation.Instantiation(OpenMBEE.OpenSysML.Instance! root, System.Collections.Generic.IEnumerable<OpenMBEE.OpenSysML.Instance!>! reachable, System.Collections.Generic.IEnumerable<OpenMBEE.OpenSysML.Diagnostic!>! diagnostics) -> void
+OpenMBEE.OpenSysML.Instantiation.Reachable.get -> OpenMBEE.OpenSysML.ValueList<OpenMBEE.OpenSysML.Instance!>
+OpenMBEE.OpenSysML.Instantiation.Resolve(OpenMBEE.OpenSysML.Value.InstanceRefValue! reference) -> OpenMBEE.OpenSysML.Instance?
+OpenMBEE.OpenSysML.Instantiation.Root.get -> OpenMBEE.OpenSysML.Instance!
 OpenMBEE.OpenSysML.InvalidRequestException
 OpenMBEE.OpenSysML.InvalidRequestException.InvalidRequestException(string! message) -> void
 OpenMBEE.OpenSysML.InvalidRequestException.InvalidRequestException(string! message, System.Exception? innerException) -> void
 OpenMBEE.OpenSysML.MessageEncoding
 OpenMBEE.OpenSysML.MessageEncoding.Json = 1 -> OpenMBEE.OpenSysML.MessageEncoding
 OpenMBEE.OpenSysML.MessageEncoding.Protobuf = 0 -> OpenMBEE.OpenSysML.MessageEncoding
+OpenMBEE.OpenSysML.Model
+OpenMBEE.OpenSysML.Model.Affected.get -> OpenMBEE.OpenSysML.ValueList<string!>
+OpenMBEE.OpenSysML.Model.BaseModelHash.get -> string?
+OpenMBEE.OpenSysML.Model.Connection.get -> OpenMBEE.OpenSysML.Connection!
+OpenMBEE.OpenSysML.Model.DisposeAsync() -> System.Threading.Tasks.ValueTask
+OpenMBEE.OpenSysML.Model.Documents.get -> OpenMBEE.OpenSysML.ValueList<string!>
+OpenMBEE.OpenSysML.Model.Errors.get -> OpenMBEE.OpenSysML.ValueList<OpenMBEE.OpenSysML.Diagnostic!>
+OpenMBEE.OpenSysML.Model.EvalAsync(string! expression, OpenMBEE.OpenSysML.EvalOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<OpenMBEE.OpenSysML.Value!>!
+OpenMBEE.OpenSysML.Model.EvaluateAsync(string! expression, OpenMBEE.OpenSysML.EvalOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<OpenMBEE.OpenSysML.Evaluation!>!
+OpenMBEE.OpenSysML.Model.FindAsync(string! name, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<OpenMBEE.OpenSysML.Symbol?>!
+OpenMBEE.OpenSysML.Model.FindSymbolAsync(string! symbolId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<OpenMBEE.OpenSysML.Symbol?>!
+OpenMBEE.OpenSysML.Model.GetDiagnosticsAsync(OpenMBEE.OpenSysML.DiagnosticsOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<OpenMBEE.OpenSysML.ValueList<OpenMBEE.OpenSysML.Diagnostic!>>!
+OpenMBEE.OpenSysML.Model.HasErrors.get -> bool
+OpenMBEE.OpenSysML.Model.Hash.get -> string!
+OpenMBEE.OpenSysML.Model.InstantiateAsync(string! symbolId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<OpenMBEE.OpenSysML.Instantiation!>!
+OpenMBEE.OpenSysML.Model.LookupAsync(string! name, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<OpenMBEE.OpenSysML.Symbol!>!
+OpenMBEE.OpenSysML.Model.OwnsConnection.get -> bool
+OpenMBEE.OpenSysML.Model.ParseDiagnostics.get -> OpenMBEE.OpenSysML.ValueList<OpenMBEE.OpenSysML.Diagnostic!>
+OpenMBEE.OpenSysML.Model.RequireNoErrors() -> OpenMBEE.OpenSysML.Model!
+OpenMBEE.OpenSysML.Model.Root.get -> OpenMBEE.OpenSysML.Symbol?
+OpenMBEE.OpenSysML.Model.Roots.get -> OpenMBEE.OpenSysML.ValueList<OpenMBEE.OpenSysML.Symbol!>
+OpenMBEE.OpenSysML.Model.SymbolAsync(string! symbolId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<OpenMBEE.OpenSysML.Symbol!>!
+OpenMBEE.OpenSysML.ModelErrorsException
+OpenMBEE.OpenSysML.ModelErrorsException.ModelErrorsException(string! message, string! method, System.Collections.Generic.IEnumerable<OpenMBEE.OpenSysML.Diagnostic!>! errors) -> void
+OpenMBEE.OpenSysML.ModelException
+OpenMBEE.OpenSysML.ModelException.Diagnostics.get -> OpenMBEE.OpenSysML.ValueList<OpenMBEE.OpenSysML.Diagnostic!>
+OpenMBEE.OpenSysML.ModelException.Method.get -> string!
+OpenMBEE.OpenSysML.ModelException.ModelException(string! message, string! method, System.Collections.Generic.IEnumerable<OpenMBEE.OpenSysML.Diagnostic!>! diagnostics) -> void
+OpenMBEE.OpenSysML.ModelFileNotFoundException
+OpenMBEE.OpenSysML.ModelFileNotFoundException.ModelFileNotFoundException(string! serviceMessage, string! method, System.Exception? innerException = null) -> void
+OpenMBEE.OpenSysML.ModelNotFoundException
+OpenMBEE.OpenSysML.ModelNotFoundException.ModelNotFoundException(string! serviceMessage, string! method, System.Exception? innerException = null) -> void
+OpenMBEE.OpenSysML.Multiplicity
+OpenMBEE.OpenSysML.Multiplicity.<Clone>$() -> OpenMBEE.OpenSysML.Multiplicity!
+OpenMBEE.OpenSysML.Multiplicity.Equals(OpenMBEE.OpenSysML.Multiplicity? other) -> bool
+OpenMBEE.OpenSysML.Multiplicity.Lower.get -> string!
+OpenMBEE.OpenSysML.Multiplicity.Multiplicity(string! lower, string! upper) -> void
+OpenMBEE.OpenSysML.Multiplicity.Upper.get -> string!
+OpenMBEE.OpenSysML.OpenSysMLClient
 OpenMBEE.OpenSysML.OpenSysMLException
 OpenMBEE.OpenSysML.OpenSysMLException.OpenSysMLException() -> void
 OpenMBEE.OpenSysML.OpenSysMLException.OpenSysMLException(string! message) -> void
 OpenMBEE.OpenSysML.OpenSysMLException.OpenSysMLException(string! message, System.Exception? innerException) -> void
+OpenMBEE.OpenSysML.ParseOptions
+OpenMBEE.OpenSysML.ParseOptions.Language.get -> OpenMBEE.OpenSysML.SourceLanguage?
+OpenMBEE.OpenSysML.ParseOptions.Language.init -> void
+OpenMBEE.OpenSysML.ParseOptions.ParseOptions() -> void
+OpenMBEE.OpenSysML.ParseOptions.StrictConformance.get -> bool
+OpenMBEE.OpenSysML.ParseOptions.StrictConformance.init -> void
 OpenMBEE.OpenSysML.Protocol
 OpenMBEE.OpenSysML.Protocol.Connect = 1 -> OpenMBEE.OpenSysML.Protocol
 OpenMBEE.OpenSysML.Protocol.Grpc = 0 -> OpenMBEE.OpenSysML.Protocol
@@ -166,6 +283,39 @@ OpenMBEE.OpenSysML.ServiceException.StatusCode.get -> OpenMBEE.OpenSysML.StatusC
 OpenMBEE.OpenSysML.ServiceStartException
 OpenMBEE.OpenSysML.ServiceStartException.ServiceStartException(string! message) -> void
 OpenMBEE.OpenSysML.ServiceStartException.ServiceStartException(string! message, System.Exception? innerException) -> void
+OpenMBEE.OpenSysML.SourceDocument
+OpenMBEE.OpenSysML.SourceDocument.<Clone>$() -> OpenMBEE.OpenSysML.SourceDocument!
+OpenMBEE.OpenSysML.SourceDocument.Content.get -> string?
+OpenMBEE.OpenSysML.SourceDocument.Equals(OpenMBEE.OpenSysML.SourceDocument? other) -> bool
+OpenMBEE.OpenSysML.SourceDocument.FilePath.get -> string?
+OpenMBEE.OpenSysML.SourceDocument.Language.get -> OpenMBEE.OpenSysML.SourceLanguage?
+OpenMBEE.OpenSysML.SourceDocument.Name.get -> string?
+OpenMBEE.OpenSysML.SourceLanguage
+OpenMBEE.OpenSysML.SourceLanguage.KerML = 1 -> OpenMBEE.OpenSysML.SourceLanguage
+OpenMBEE.OpenSysML.SourceLanguage.SysML = 0 -> OpenMBEE.OpenSysML.SourceLanguage
+OpenMBEE.OpenSysML.SourcesOptions
+OpenMBEE.OpenSysML.SourcesOptions.BaseModelHash.get -> string?
+OpenMBEE.OpenSysML.SourcesOptions.BaseModelHash.init -> void
+OpenMBEE.OpenSysML.SourcesOptions.SourcesOptions() -> void
+OpenMBEE.OpenSysML.SourcesOptions.StrictConformance.get -> bool
+OpenMBEE.OpenSysML.SourcesOptions.StrictConformance.init -> void
+OpenMBEE.OpenSysML.SourceSpan
+OpenMBEE.OpenSysML.SourceSpan.<Clone>$() -> OpenMBEE.OpenSysML.SourceSpan!
+OpenMBEE.OpenSysML.SourceSpan.EndColumn.get -> int
+OpenMBEE.OpenSysML.SourceSpan.EndLine.get -> int
+OpenMBEE.OpenSysML.SourceSpan.Equals(OpenMBEE.OpenSysML.SourceSpan? other) -> bool
+OpenMBEE.OpenSysML.SourceSpan.File.get -> string!
+OpenMBEE.OpenSysML.SourceSpan.SourceSpan(string! file, int startLine, int startColumn, int endLine, int endColumn) -> void
+OpenMBEE.OpenSysML.SourceSpan.StartColumn.get -> int
+OpenMBEE.OpenSysML.SourceSpan.StartLine.get -> int
+OpenMBEE.OpenSysML.Specialization
+OpenMBEE.OpenSysML.Specialization.<Clone>$() -> OpenMBEE.OpenSysML.Specialization!
+OpenMBEE.OpenSysML.Specialization.Declared.get -> string!
+OpenMBEE.OpenSysML.Specialization.Equals(OpenMBEE.OpenSysML.Specialization? other) -> bool
+OpenMBEE.OpenSysML.Specialization.Kind.get -> string!
+OpenMBEE.OpenSysML.Specialization.Specialization(string! kind, string! declared, string! targetId, string! targetKind) -> void
+OpenMBEE.OpenSysML.Specialization.TargetId.get -> string!
+OpenMBEE.OpenSysML.Specialization.TargetKind.get -> string!
 OpenMBEE.OpenSysML.StaleServiceException
 OpenMBEE.OpenSysML.StaleServiceException.Address.get -> string!
 OpenMBEE.OpenSysML.StaleServiceException.Reason.get -> string!
@@ -190,10 +340,39 @@ OpenMBEE.OpenSysML.StatusCode.Unauthenticated = 16 -> OpenMBEE.OpenSysML.StatusC
 OpenMBEE.OpenSysML.StatusCode.Unavailable = 14 -> OpenMBEE.OpenSysML.StatusCode
 OpenMBEE.OpenSysML.StatusCode.Unimplemented = 12 -> OpenMBEE.OpenSysML.StatusCode
 OpenMBEE.OpenSysML.StatusCode.Unknown = 2 -> OpenMBEE.OpenSysML.StatusCode
+OpenMBEE.OpenSysML.Symbol
+OpenMBEE.OpenSysML.Symbol.<Clone>$() -> OpenMBEE.OpenSysML.Symbol!
+OpenMBEE.OpenSysML.Symbol.Attributes.get -> OpenMBEE.OpenSysML.ValueList<OpenMBEE.OpenSysML.AttributeInfo!>
+OpenMBEE.OpenSysML.Symbol.ChildIds.get -> OpenMBEE.OpenSysML.ValueList<string!>
+OpenMBEE.OpenSysML.Symbol.Equals(OpenMBEE.OpenSysML.Symbol? other) -> bool
+OpenMBEE.OpenSysML.Symbol.Id.get -> string!
+OpenMBEE.OpenSysML.Symbol.Kind.get -> string!
+OpenMBEE.OpenSysML.Symbol.Metadata.get -> OpenMBEE.OpenSysML.ValueDictionary<string!>
+OpenMBEE.OpenSysML.Symbol.Multiplicity.get -> OpenMBEE.OpenSysML.Multiplicity?
+OpenMBEE.OpenSysML.Symbol.Name.get -> string!
+OpenMBEE.OpenSysML.Symbol.Specializations.get -> OpenMBEE.OpenSysML.ValueList<OpenMBEE.OpenSysML.Specialization!>
+OpenMBEE.OpenSysML.Symbol.Symbol(string! id, string! name, string! kind, System.Collections.Generic.IEnumerable<System.Collections.Generic.KeyValuePair<string!, string!>>! metadata, System.Collections.Generic.IEnumerable<string!>! childIds, System.Collections.Generic.IEnumerable<OpenMBEE.OpenSysML.AttributeInfo!>! attributes, OpenMBEE.OpenSysML.TypeFacts? typeFacts, OpenMBEE.OpenSysML.Multiplicity? multiplicity, System.Collections.Generic.IEnumerable<OpenMBEE.OpenSysML.Specialization!>! specializations, int withheldLibraryAttributes) -> void
+OpenMBEE.OpenSysML.Symbol.TypeFacts.get -> OpenMBEE.OpenSysML.TypeFacts?
+OpenMBEE.OpenSysML.Symbol.WithheldLibraryAttributes.get -> int
+OpenMBEE.OpenSysML.SymbolNotFoundException
+OpenMBEE.OpenSysML.SymbolNotFoundException.Name.get -> string!
+OpenMBEE.OpenSysML.SymbolNotFoundException.Suggestions.get -> OpenMBEE.OpenSysML.ValueList<string!>
+OpenMBEE.OpenSysML.SymbolNotFoundException.SymbolNotFoundException(string! name, System.Collections.Generic.IEnumerable<string!>! suggestions, string! method) -> void
 OpenMBEE.OpenSysML.TransportException
 OpenMBEE.OpenSysML.TransportException.Method.get -> string!
 OpenMBEE.OpenSysML.TransportException.StatusCode.get -> OpenMBEE.OpenSysML.StatusCode
 OpenMBEE.OpenSysML.TransportException.TransportException(OpenMBEE.OpenSysML.StatusCode statusCode, string! message, string! method, System.Exception? innerException = null) -> void
+OpenMBEE.OpenSysML.TypeFacts
+OpenMBEE.OpenSysML.TypeFacts.<Clone>$() -> OpenMBEE.OpenSysML.TypeFacts!
+OpenMBEE.OpenSysML.TypeFacts.Declared.get -> string!
+OpenMBEE.OpenSysML.TypeFacts.Equals(OpenMBEE.OpenSysML.TypeFacts? other) -> bool
+OpenMBEE.OpenSysML.TypeFacts.IsQuantity.get -> bool
+OpenMBEE.OpenSysML.TypeFacts.Primitive.get -> string!
+OpenMBEE.OpenSysML.TypeFacts.PrimitiveSource.get -> string!
+OpenMBEE.OpenSysML.TypeFacts.ResolvedId.get -> string!
+OpenMBEE.OpenSysML.TypeFacts.ResolvedKind.get -> string!
+OpenMBEE.OpenSysML.TypeFacts.TypeFacts(string! declared, string! resolvedId, string! resolvedKind, string! primitive, string! primitiveSource, bool isQuantity, string! unit) -> void
+OpenMBEE.OpenSysML.TypeFacts.Unit.get -> string!
 OpenMBEE.OpenSysML.UnitFactor
 OpenMBEE.OpenSysML.UnitFactor.<Clone>$() -> OpenMBEE.OpenSysML.UnitFactor!
 OpenMBEE.OpenSysML.UnitFactor.Equals(OpenMBEE.OpenSysML.UnitFactor? other) -> bool
@@ -351,9 +530,31 @@ OpenMBEE.OpenSysML.ValueList<T>.ValueList() -> void
 OpenMBEE.OpenSysML.ValueList<T>.ValueList(System.Collections.Generic.IEnumerable<T>! items) -> void
 override abstract OpenMBEE.OpenSysML.Value.GetHashCode() -> int
 override abstract OpenMBEE.OpenSysML.Value.ToString() -> string!
+override OpenMBEE.OpenSysML.AttributeInfo.Equals(object? obj) -> bool
+override OpenMBEE.OpenSysML.AttributeInfo.GetHashCode() -> int
+override OpenMBEE.OpenSysML.AttributeInfo.ToString() -> string!
 override OpenMBEE.OpenSysML.Capabilities.Equals(object? obj) -> bool
 override OpenMBEE.OpenSysML.Capabilities.GetHashCode() -> int
 override OpenMBEE.OpenSysML.Capabilities.ToString() -> string!
+override OpenMBEE.OpenSysML.Diagnostic.Equals(object? obj) -> bool
+override OpenMBEE.OpenSysML.Diagnostic.GetHashCode() -> int
+override OpenMBEE.OpenSysML.Diagnostic.ToString() -> string!
+override OpenMBEE.OpenSysML.Evaluation.Equals(object? obj) -> bool
+override OpenMBEE.OpenSysML.Evaluation.GetHashCode() -> int
+override OpenMBEE.OpenSysML.Evaluation.ToString() -> string!
+override OpenMBEE.OpenSysML.FeatureValue.Equals(object? obj) -> bool
+override OpenMBEE.OpenSysML.FeatureValue.GetHashCode() -> int
+override OpenMBEE.OpenSysML.FeatureValue.ToString() -> string!
+override OpenMBEE.OpenSysML.Instance.Equals(object? obj) -> bool
+override OpenMBEE.OpenSysML.Instance.GetHashCode() -> int
+override OpenMBEE.OpenSysML.Instance.ToString() -> string!
+override OpenMBEE.OpenSysML.Instantiation.Equals(object? obj) -> bool
+override OpenMBEE.OpenSysML.Instantiation.GetHashCode() -> int
+override OpenMBEE.OpenSysML.Instantiation.ToString() -> string!
+override OpenMBEE.OpenSysML.Model.ToString() -> string!
+override OpenMBEE.OpenSysML.Multiplicity.Equals(object? obj) -> bool
+override OpenMBEE.OpenSysML.Multiplicity.GetHashCode() -> int
+override OpenMBEE.OpenSysML.Multiplicity.ToString() -> string!
 override OpenMBEE.OpenSysML.Quantity.Equals(object? obj) -> bool
 override OpenMBEE.OpenSysML.Quantity.GetHashCode() -> int
 override OpenMBEE.OpenSysML.Quantity.ToString() -> string!
@@ -363,6 +564,21 @@ override OpenMBEE.OpenSysML.Rational.ToString() -> string!
 override OpenMBEE.OpenSysML.ServerInfo.Equals(object? obj) -> bool
 override OpenMBEE.OpenSysML.ServerInfo.GetHashCode() -> int
 override OpenMBEE.OpenSysML.ServerInfo.ToString() -> string!
+override OpenMBEE.OpenSysML.SourceDocument.Equals(object? obj) -> bool
+override OpenMBEE.OpenSysML.SourceDocument.GetHashCode() -> int
+override OpenMBEE.OpenSysML.SourceDocument.ToString() -> string!
+override OpenMBEE.OpenSysML.SourceSpan.Equals(object? obj) -> bool
+override OpenMBEE.OpenSysML.SourceSpan.GetHashCode() -> int
+override OpenMBEE.OpenSysML.SourceSpan.ToString() -> string!
+override OpenMBEE.OpenSysML.Specialization.Equals(object? obj) -> bool
+override OpenMBEE.OpenSysML.Specialization.GetHashCode() -> int
+override OpenMBEE.OpenSysML.Specialization.ToString() -> string!
+override OpenMBEE.OpenSysML.Symbol.Equals(object? obj) -> bool
+override OpenMBEE.OpenSysML.Symbol.GetHashCode() -> int
+override OpenMBEE.OpenSysML.Symbol.ToString() -> string!
+override OpenMBEE.OpenSysML.TypeFacts.Equals(object? obj) -> bool
+override OpenMBEE.OpenSysML.TypeFacts.GetHashCode() -> int
+override OpenMBEE.OpenSysML.TypeFacts.ToString() -> string!
 override OpenMBEE.OpenSysML.UnitFactor.Equals(object? obj) -> bool
 override OpenMBEE.OpenSysML.UnitFactor.GetHashCode() -> int
 override OpenMBEE.OpenSysML.UnitFactor.ToString() -> string!
@@ -472,12 +688,31 @@ override OpenMBEE.OpenSysML.ValueList<T>.Equals(object? obj) -> bool
 override OpenMBEE.OpenSysML.ValueList<T>.GetHashCode() -> int
 override OpenMBEE.OpenSysML.ValueList<T>.ToString() -> string!
 override sealed OpenMBEE.OpenSysML.Value.Equals(object? obj) -> bool
+static OpenMBEE.OpenSysML.AttributeInfo.operator !=(OpenMBEE.OpenSysML.AttributeInfo? left, OpenMBEE.OpenSysML.AttributeInfo? right) -> bool
+static OpenMBEE.OpenSysML.AttributeInfo.operator ==(OpenMBEE.OpenSysML.AttributeInfo? left, OpenMBEE.OpenSysML.AttributeInfo? right) -> bool
 static OpenMBEE.OpenSysML.Capabilities.None.get -> OpenMBEE.OpenSysML.Capabilities!
 static OpenMBEE.OpenSysML.Capabilities.UpgradeRemedy(string! capability) -> string!
 static OpenMBEE.OpenSysML.Connection.OpenAsync(OpenMBEE.OpenSysML.ConnectionOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<OpenMBEE.OpenSysML.Connection!>!
 static OpenMBEE.OpenSysML.ConnectionOptions.Default.get -> OpenMBEE.OpenSysML.ConnectionOptions!
 static OpenMBEE.OpenSysML.ConnectionOptions.DefaultRequestTimeout.get -> System.TimeSpan
 static OpenMBEE.OpenSysML.ConnectionOptions.MaxRequestTimeout.get -> System.TimeSpan
+static OpenMBEE.OpenSysML.Diagnostic.operator !=(OpenMBEE.OpenSysML.Diagnostic? left, OpenMBEE.OpenSysML.Diagnostic? right) -> bool
+static OpenMBEE.OpenSysML.Diagnostic.operator ==(OpenMBEE.OpenSysML.Diagnostic? left, OpenMBEE.OpenSysML.Diagnostic? right) -> bool
+static OpenMBEE.OpenSysML.DiagnosticsOptions.Default.get -> OpenMBEE.OpenSysML.DiagnosticsOptions!
+static OpenMBEE.OpenSysML.EvalOptions.Default.get -> OpenMBEE.OpenSysML.EvalOptions!
+static OpenMBEE.OpenSysML.Evaluation.operator !=(OpenMBEE.OpenSysML.Evaluation? left, OpenMBEE.OpenSysML.Evaluation? right) -> bool
+static OpenMBEE.OpenSysML.Evaluation.operator ==(OpenMBEE.OpenSysML.Evaluation? left, OpenMBEE.OpenSysML.Evaluation? right) -> bool
+static OpenMBEE.OpenSysML.FeatureValue.operator !=(OpenMBEE.OpenSysML.FeatureValue? left, OpenMBEE.OpenSysML.FeatureValue? right) -> bool
+static OpenMBEE.OpenSysML.FeatureValue.operator ==(OpenMBEE.OpenSysML.FeatureValue? left, OpenMBEE.OpenSysML.FeatureValue? right) -> bool
+static OpenMBEE.OpenSysML.Instance.operator !=(OpenMBEE.OpenSysML.Instance? left, OpenMBEE.OpenSysML.Instance? right) -> bool
+static OpenMBEE.OpenSysML.Instance.operator ==(OpenMBEE.OpenSysML.Instance? left, OpenMBEE.OpenSysML.Instance? right) -> bool
+static OpenMBEE.OpenSysML.Instantiation.operator !=(OpenMBEE.OpenSysML.Instantiation? left, OpenMBEE.OpenSysML.Instantiation? right) -> bool
+static OpenMBEE.OpenSysML.Instantiation.operator ==(OpenMBEE.OpenSysML.Instantiation? left, OpenMBEE.OpenSysML.Instantiation? right) -> bool
+static OpenMBEE.OpenSysML.Multiplicity.operator !=(OpenMBEE.OpenSysML.Multiplicity? left, OpenMBEE.OpenSysML.Multiplicity? right) -> bool
+static OpenMBEE.OpenSysML.Multiplicity.operator ==(OpenMBEE.OpenSysML.Multiplicity? left, OpenMBEE.OpenSysML.Multiplicity? right) -> bool
+static OpenMBEE.OpenSysML.OpenSysMLClient.LoadAsync(string! path, OpenMBEE.OpenSysML.ConnectionOptions? connection = null, OpenMBEE.OpenSysML.ParseOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<OpenMBEE.OpenSysML.Model!>!
+static OpenMBEE.OpenSysML.OpenSysMLClient.LoadContentAsync(string! content, OpenMBEE.OpenSysML.ConnectionOptions? connection = null, OpenMBEE.OpenSysML.ParseOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<OpenMBEE.OpenSysML.Model!>!
+static OpenMBEE.OpenSysML.ParseOptions.Default.get -> OpenMBEE.OpenSysML.ParseOptions!
 static OpenMBEE.OpenSysML.Quantity.operator !=(OpenMBEE.OpenSysML.Quantity? left, OpenMBEE.OpenSysML.Quantity? right) -> bool
 static OpenMBEE.OpenSysML.Quantity.operator ==(OpenMBEE.OpenSysML.Quantity? left, OpenMBEE.OpenSysML.Quantity? right) -> bool
 static OpenMBEE.OpenSysML.Rational.operator !=(OpenMBEE.OpenSysML.Rational? left, OpenMBEE.OpenSysML.Rational? right) -> bool
@@ -486,6 +721,19 @@ static OpenMBEE.OpenSysML.Rational.operator <=(OpenMBEE.OpenSysML.Rational? left
 static OpenMBEE.OpenSysML.Rational.operator ==(OpenMBEE.OpenSysML.Rational? left, OpenMBEE.OpenSysML.Rational? right) -> bool
 static OpenMBEE.OpenSysML.Rational.operator >(OpenMBEE.OpenSysML.Rational? left, OpenMBEE.OpenSysML.Rational? right) -> bool
 static OpenMBEE.OpenSysML.Rational.operator >=(OpenMBEE.OpenSysML.Rational? left, OpenMBEE.OpenSysML.Rational? right) -> bool
+static OpenMBEE.OpenSysML.SourceDocument.FromFile(string! path) -> OpenMBEE.OpenSysML.SourceDocument!
+static OpenMBEE.OpenSysML.SourceDocument.Inline(string! content, string? name = null, OpenMBEE.OpenSysML.SourceLanguage? language = null) -> OpenMBEE.OpenSysML.SourceDocument!
+static OpenMBEE.OpenSysML.SourceDocument.operator !=(OpenMBEE.OpenSysML.SourceDocument? left, OpenMBEE.OpenSysML.SourceDocument? right) -> bool
+static OpenMBEE.OpenSysML.SourceDocument.operator ==(OpenMBEE.OpenSysML.SourceDocument? left, OpenMBEE.OpenSysML.SourceDocument? right) -> bool
+static OpenMBEE.OpenSysML.SourcesOptions.Default.get -> OpenMBEE.OpenSysML.SourcesOptions!
+static OpenMBEE.OpenSysML.SourceSpan.operator !=(OpenMBEE.OpenSysML.SourceSpan? left, OpenMBEE.OpenSysML.SourceSpan? right) -> bool
+static OpenMBEE.OpenSysML.SourceSpan.operator ==(OpenMBEE.OpenSysML.SourceSpan? left, OpenMBEE.OpenSysML.SourceSpan? right) -> bool
+static OpenMBEE.OpenSysML.Specialization.operator !=(OpenMBEE.OpenSysML.Specialization? left, OpenMBEE.OpenSysML.Specialization? right) -> bool
+static OpenMBEE.OpenSysML.Specialization.operator ==(OpenMBEE.OpenSysML.Specialization? left, OpenMBEE.OpenSysML.Specialization? right) -> bool
+static OpenMBEE.OpenSysML.Symbol.operator !=(OpenMBEE.OpenSysML.Symbol? left, OpenMBEE.OpenSysML.Symbol? right) -> bool
+static OpenMBEE.OpenSysML.Symbol.operator ==(OpenMBEE.OpenSysML.Symbol? left, OpenMBEE.OpenSysML.Symbol? right) -> bool
+static OpenMBEE.OpenSysML.TypeFacts.operator !=(OpenMBEE.OpenSysML.TypeFacts? left, OpenMBEE.OpenSysML.TypeFacts? right) -> bool
+static OpenMBEE.OpenSysML.TypeFacts.operator ==(OpenMBEE.OpenSysML.TypeFacts? left, OpenMBEE.OpenSysML.TypeFacts? right) -> bool
 static OpenMBEE.OpenSysML.UnitFactor.operator !=(OpenMBEE.OpenSysML.UnitFactor? left, OpenMBEE.OpenSysML.UnitFactor? right) -> bool
 static OpenMBEE.OpenSysML.UnitFactor.operator ==(OpenMBEE.OpenSysML.UnitFactor? left, OpenMBEE.OpenSysML.UnitFactor? right) -> bool
 static OpenMBEE.OpenSysML.UnitTerm.One.get -> OpenMBEE.OpenSysML.UnitTerm!

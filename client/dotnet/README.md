@@ -5,11 +5,13 @@ of this repository and consumed by `ProjectReference`. It is not published to Nu
 
 > **Status:** the client connects to a `sysml-grpc` that is already running, over gRPC or the
 > Connect protocol with protobuf or JSON bodies, reports what that service is and can do, and
-> calls any of its methods through a raw, schema-checked escape hatch. It has the immutable
-> values those operations exchange, but does not yet start a service of its own, load models
-> or offer the typed service operations. The other clients
-> ([Python](../python/), [Java](../java/), [Rust](../rust/), [Node](../node/)) are the ones
-> to use for those today.
+> calls any of its methods through a raw, schema-checked escape hatch. It loads models from a
+> file, from inline notation or from several documents, and reads them: symbols and name
+> lookup, diagnostics, expression evaluation and instantiation, with the immutable values
+> those operations exchange. It does not yet start a service of its own, and offers none of
+> the other typed operations (execution, verification, conversion, queries, documents,
+> editing). The other clients ([Python](../python/), [Java](../java/), [Rust](../rust/),
+> [Node](../node/)) are the ones to use for those today.
 
 ## Requirements
 
@@ -34,13 +36,15 @@ Reference the project from your own:
 
 [`samples/Vehicle`](samples/Vehicle/) is such a consumer. It prints the referenced
 assembly's version and target framework and, when `OPENSYSML_SERVICE` names a running
-service, what that service reports:
+service, what that service reports, then parses a vehicle model, looks the vehicle up and
+evaluates its mass:
 
 ```bash
 bin/sysml-grpc -port 50051 &
 OPENSYSML_SERVICE=localhost:50051 dotnet run --project client/dotnet/samples/Vehicle -c Release
 # OpenMBEE.OpenSysML 0.10.1 (.NETCoreApp,Version=v10.0)
 # sysml-grpc v0.10.1, 72 capabilities
+# Demo::Vehicle (partDef): mass = 1500.0
 ```
 
 ## Connecting to a service
@@ -147,6 +151,9 @@ use after disposal, which are the standard exceptions:
 | The service is not the `Version` asked for | `StaleServiceException` |
 | The service lacks a required capability | `CapabilityException`, with `Capability` and `Remedy` |
 | The service answered with a status other than OK, `Unavailable` included | `ServiceException`, with `StatusCode`, `ServiceMessage` and `Method` |
+| The service no longer holds the model a call named | `ModelNotFoundException`, a `ServiceException` with `NotFound` |
+| The service could not read a file a parse named | `ModelFileNotFoundException`, a `ServiceException` with `NotFound` |
+| The service answered, reporting a failure about the model: an expression that did not evaluate, a symbol that is not there, an object that could not be built | `ModelException`, with `Method` and the answer's `Diagnostics`; `SymbolNotFoundException`, with `Name` and `Suggestions`, for a symbol; `ModelErrorsException` from `RequireNoErrors` |
 | No well-formed answer was read: the endpoint was unreachable or did not speak the protocol, a Connect refusal was not a Connect error, the answer was malformed or over a size limit, or the deadline passed | `TransportException`, with `StatusCode`, `Method` and the cause as `InnerException` |
 | The service answered a value of a kind this client does not know | `UnsupportedValueException`, with `Method`, `Path` and the value's `ValueBytes` |
 | The caller's token was cancelled | `OperationCanceledException` carrying that token |
@@ -180,14 +187,72 @@ could not be made or was lost before an answer is `Unavailable`.
 channel. It is idempotent, safe to call concurrently, and never throws: a failure to close
 is logged as a warning.
 
+## Models
+
+```csharp
+await using var connection = await Connection.OpenAsync(new ConnectionOptions { Address = "localhost:50051" });
+var model = (await connection.LoadAsync("vehicle.sysml")).RequireNoErrors();
+var vehicle = await model.LookupAsync("Vehicle");                       // Demo::Vehicle (partDef)
+var mass = await model.EvalAsync("mass", new EvalOptions { ContextSymbolId = vehicle.Id });
+var car = await model.InstantiateAsync("Demo::Vehicle");
+var engine = car.Resolve((Value.InstanceRefValue)car.Root.FeatureValues["engine"].Value!);
+```
+
+`Connection.LoadAsync` parses a file the service reads, in its own file system and with the
+path as given; `LoadContentAsync` parses notation given inline, in `ParseOptions.Language`
+(SysML by default); `ParseSourcesAsync` parses several `SourceDocument`s, files or named
+inline notation, as one model, so a name one declares resolves in another. Each returns a
+`Model`, which the service caches under its `Hash`. `Connection.ModelByHash` names one parsed
+earlier without sending anything. A model is immutable and safe to share between threads: it
+keeps its `Roots`, one per document, the `ParseDiagnostics` and their `Errors`, and the
+`Documents` they name, and nothing a later call changes. A source with errors still parses
+into a model; `HasErrors` says so, and `RequireNoErrors` turns it into a
+`ModelErrorsException`.
+
+| Method | Answers |
+| --- | --- |
+| `SymbolAsync` / `FindSymbolAsync` | The `Symbol` of a qualified name as the service resolves it, through imports and aliases; not found raises `SymbolNotFoundException` or answers null |
+| `FindAsync` / `LookupAsync` | The symbol of a short name or of its own id, the outermost first; not found answers null or raises `SymbolNotFoundException` naming at most three near names |
+| `GetDiagnosticsAsync` | The diagnostics again, under a `DiagnosticsOptions` lint selection |
+| `EvalAsync` / `EvaluateAsync` | The `Value` of an expression, in `EvalOptions.ContextSymbolId`'s scope or against an object of `SubjectSymbolId`; `EvaluateAsync` keeps the diagnostics with it |
+| `InstantiateAsync` | An `Instantiation`: the object built, every object reachable from it, and `Resolve` for the references among their `FeatureValues` |
+
+A `Symbol` carries everything the service reports of an element: its kind, metadata, child
+ids, attributes with their values, `TypeFacts`, `Multiplicity` and every `Specialization`.
+Each fact is read whatever the service advertises, and one the service did not report is
+empty or null, never invented. `FindAsync` and `LookupAsync` ask the service which elements
+carry a name when it advertises `query`, in one or two calls whatever the model's size, and
+otherwise walk the model from its roots, one call per symbol; a model named by hash alone has
+no roots to walk and needs `query`. Their near names are those Python's `difflib` would
+suggest, each named once, comparing Unicode code points and applying its automatic
+popular-character heuristic to names of at least 200 code points.
+
+Options a service would silently ignore without its capability are refused first, with
+`CapabilityException` and before anything is sent, in the order the service checks them:
+`strict_conformance` for `StrictConformance`, `inline_language` for a language named for
+inline notation, `parse_sources`, `parse_sources_affected` for `SourcesOptions.BaseModelHash`,
+and `evaluate_subject` for a subject. A file's notation comes from its extension, so loading
+one with `ParseOptions.Language` set is refused with `InvalidRequestException`.
+
+A model loaded through a connection borrows it: disposing the model does nothing, and the
+connection's owner closes it. `OpenSysMLClient.LoadAsync` and `LoadContentAsync` open a
+connection of their own, which the model they return owns (`OwnsConnection`) and closes,
+once, when it is disposed. Every concurrent disposal waits for that same close; a parse that
+fails closes it before the failure is reported.
+
+```csharp
+await using var model = await OpenSysMLClient.LoadContentAsync(
+    "package P { part def A; }", new ConnectionOptions { Address = "localhost:50051" });
+```
+
 ## Values
 
 `Value` is an immutable value the service evaluates, or one sent to it: one nested sealed
 class per arm of the schema's `Value`, `IntegerValue` to `InfinityValue`, which `Kind`, a
 `ValueKind`, names. No type outside the library can derive from it. A switch over the arms
-still needs a default case, since a release adds an arm whenever the service does. The typed
-operations that answer or take values build on these types; no public method returns or
-takes one yet.
+still needs a default case, since a release adds an arm whenever the service does. A
+model's evaluations, attributes and feature values are these values; no public method takes
+one as an argument yet.
 
 ```csharp
 var speed = new Value.QuantityValue(new Quantity(

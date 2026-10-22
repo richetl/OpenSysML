@@ -15,6 +15,9 @@ namespace OpenMBEE.OpenSysML.Tests;
 /// </summary>
 internal sealed class ServiceProcess : IAsyncDisposable
 {
+    /// <summary>The service's test-only switch withholding capabilities it would otherwise advertise and honor.</summary>
+    internal const string WithholdVariable = "OPENSYSML_TEST_WITHHOLD_CAPABILITIES";
+
     private static readonly TimeSpan StartupTimeout = TimeSpan.FromSeconds(30);
     private static readonly TimeSpan ShutdownGrace = TimeSpan.FromSeconds(10);
 
@@ -43,7 +46,8 @@ internal sealed class ServiceProcess : IAsyncDisposable
     /// <param name="binary">The sysml-grpc binary.</param>
     /// <param name="transport">connect or grpc.</param>
     /// <param name="cancellationToken">Cancels the start.</param>
-    internal static async Task<ServiceProcess> StartAsync(string binary, string transport, CancellationToken cancellationToken)
+    /// <param name="withheld">Capabilities the service is to withhold, comma-separated, through its test-only switch; null for none.</param>
+    internal static async Task<ServiceProcess> StartAsync(string binary, string transport, CancellationToken cancellationToken, string? withheld = null)
     {
         var start = new ProcessStartInfo(binary)
         {
@@ -52,6 +56,7 @@ internal sealed class ServiceProcess : IAsyncDisposable
             RedirectStandardError = true,
             UseShellExecute = false,
         };
+        start.Environment[WithholdVariable] = withheld ?? string.Empty;
         foreach (var argument in new[] { "-port", "0", "-health-port", "0", "-report-address", "-exit-with-parent", "-transport", transport, "-log-level", "warn" })
         {
             start.ArgumentList.Add(argument);
