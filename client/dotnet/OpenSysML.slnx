@@ -4,6 +4,8 @@
   </Folder>
   <Folder Name="/test/">
     <Project Path="test/FakeService/FakeService.csproj" />
+    <Project Path="test/OpenMBEE.OpenSysML.LoadContextProbe/OpenMBEE.OpenSysML.LoadContextProbe.csproj" />
+    <Project Path="test/OpenMBEE.OpenSysML.OrphanProbe/OpenMBEE.OpenSysML.OrphanProbe.csproj" />
     <Project Path="test/OpenMBEE.OpenSysML.Tests/OpenMBEE.OpenSysML.Tests.csproj" />
   </Folder>
   <Folder Name="/samples/">

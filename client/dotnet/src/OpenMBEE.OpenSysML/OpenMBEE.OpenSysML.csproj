@@ -25,5 +25,8 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="OpenMBEE.OpenSysML.Tests" />
+    <!-- The lifecycle probes read the registry's process ids, and the orphan probe's leak control the child's input. -->
+    <InternalsVisibleTo Include="OpenMBEE.OpenSysML.OrphanProbe" />
+    <InternalsVisibleTo Include="OpenMBEE.OpenSysML.LoadContextProbe" />
   </ItemGroup>
 </Project>

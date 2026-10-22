@@ -146,7 +146,7 @@ internal sealed class FakeChild : IDisposable
 
     // The launcher finds the runtime through DOTNET_ROOT where it is not installed in the default place;
     // dotnet test sets it for its own host, and children inherit it. Set it if this process was not given it.
-    private static void EnsureRuntimeIsFound()
+    internal static void EnsureRuntimeIsFound()
     {
         if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DOTNET_ROOT")))
         {

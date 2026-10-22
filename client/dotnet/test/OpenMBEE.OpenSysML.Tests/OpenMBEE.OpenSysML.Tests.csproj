@@ -19,5 +19,8 @@
     <ProjectReference Include="../../src/OpenMBEE.OpenSysML/OpenMBEE.OpenSysML.csproj" />
     <!-- Built first, but not copied here: FakeChild runs it from its own output, as a separate process. -->
     <ProjectReference Include="../FakeService/FakeService.csproj" ReferenceOutputAssembly="false" Private="false" />
+    <!-- Likewise the lifecycle probes, which the orphan and load-context tests run as processes of their own. -->
+    <ProjectReference Include="../OpenMBEE.OpenSysML.OrphanProbe/OpenMBEE.OpenSysML.OrphanProbe.csproj" ReferenceOutputAssembly="false" Private="false" />
+    <ProjectReference Include="../OpenMBEE.OpenSysML.LoadContextProbe/OpenMBEE.OpenSysML.LoadContextProbe.csproj" ReferenceOutputAssembly="false" Private="false" />
   </ItemGroup>
 </Project>

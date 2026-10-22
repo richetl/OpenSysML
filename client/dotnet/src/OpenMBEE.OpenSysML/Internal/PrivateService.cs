@@ -67,6 +67,9 @@ internal sealed partial class PrivateService : IServiceProcess
     /// <inheritdoc/>
     public Task<string> Exited { get; }
 
+    /// <summary>The write end of the child's input, which nothing in the client writes to; the orphan probe's leak control duplicates it.</summary>
+    internal Stream Input => process.StandardInput.BaseStream;
+
     /// <summary>The last lines the child wrote, at most <see cref="TailLines"/>, each at most <see cref="MaxLineLength"/> characters and a mark.</summary>
     internal IReadOnlyList<string> Tail
     {

@@ -132,7 +132,12 @@ its hold up, and the last connection to close stops the service: its input is cl
 `ShutdownTimeout` (5 seconds by default) to exit, and is then killed with every process it
 started. `IsolatedService` gives a connection a service of its own, stopped when it closes.
 A copy of the client is its assembly load context: plugins sharing one loaded copy share its
-services, and a copy loaded into another context starts its own.
+services, and a copy loaded into another context starts its own. Unloading a collectible
+context closes the input of every service its copy started, a start still in progress
+included, and each exits; the copy registers no process-exit handler, starts no foreground
+thread and leaves nothing in the default context referring to it, so once its services are
+gone it can be collected. That cleanup is best effort; that a child ends when its input does
+is the guarantee.
 
 A private service that exits on its own is not restarted: the connections to it fail from
 then on, calls in flight included, with `TransportException` and `Unavailable`, saying how it
@@ -153,6 +158,11 @@ how it ended and what it last wrote. `BinaryPath`, `ExpectedBinarySha256` and
 `IsolatedService` only describe a private service, so they are refused alongside `Address` or
 with `AutoStart` false; when `OPENSYSML_SERVICE` names a service instead, they are unused and a
 warning says so.
+
+These guarantees hold where the tests that prove them run: Linux, macOS and Windows, the
+platforms CI runs the whole suite on (see [Building and testing](#building-and-testing)). On
+any other platform the client starts a private service the same way, but nothing proves that
+it ends with the process or that an unloaded copy is collected.
 
 ### Protocols
 
@@ -412,6 +422,32 @@ Unit tests drive every way a private service starts and stops against
 under the binary's name, into a directory of their own with a script beside it: it reports,
 misreports or withholds an address, exits, lingers or floods its output as the script says.
 It serves nothing; the in-process fake HTTP handler answers the connection.
+
+Two probes, which the solution also builds, prove what only a process of its own can show,
+and the tests run them against the real binary. [`test/OpenMBEE.OpenSysML.OrphanProbe`](test/OpenMBEE.OpenSysML.OrphanProbe/)
+opens a private service, starts unrelated processes beside it, eight of them at the very
+moment the service starts in the repeated race rounds, and is killed alone: the service must
+end and the other processes run on. Its leak control hands a duplicate of the service's input
+to one of them, and the test must then see the service survive, and end once that process
+goes, so the check is known to catch an orphan. [`test/OpenMBEE.OpenSysML.LoadContextProbe`](test/OpenMBEE.OpenSysML.LoadContextProbe/)
+loads three copies of the client, with their package dependencies, into collectible load
+contexts and drives each by reflection, never naming a client type in the default context:
+each copy must start a service of its own, which closing or unloading that copy alone stops,
+including one still starting; every copy must be collected; and the probe must then exit by
+returning from `Main`. Every process id a probe reports is killed when its test ends, whatever
+the outcome. Race tests release opens, closes, stops of every service, cancelled waits and a
+service's death from one barrier, round after round, and require every service to be stopped
+exactly once and nothing to remain registered.
+Each race round has a thirty-second deadline and passes its cancellation token to the
+operations. Terminal assertions wait for background service-death cleanup. Connection attempts
+and resolved child process ids belong to a disposable test scope: partial acquisition or a
+failed assertion still releases successful connections, and a ten-second cleanup deadline
+falls back to killing and awaiting only the scope's owned processes while reporting the
+timeout as a failure.
+
+CI runs the whole suite on Linux against the service its build job makes, and, in the full
+tier, natively on macOS and Windows against a `sysml-grpc` built on that runner, with the
+same minimum test count.
 
 ## Protocol code
 
