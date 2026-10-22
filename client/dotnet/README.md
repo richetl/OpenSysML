@@ -252,6 +252,8 @@ service saw it pass. When both the caller's token and the deadline fired, the ca
 cancellation is reported, and an answer already received is returned whatever happens to the
 token afterwards. An endpoint that speaks only HTTP/1.1 fails a gRPC connection with
 `Internal`, and the message says so and names `Protocol.Connect`.
+This diagnosis covers both HTTP/2 protocol errors and failed version negotiation,
+which runtimes can report differently.
 
 `StatusCode` numbers its values as gRPC does and the Connect protocol names them. Where the
 gRPC library's status disagrees with gRPC's own definitions, the client reports gRPC's: an
@@ -448,6 +450,8 @@ timeout as a failure.
 CI runs the whole suite on Linux against the service its build job makes, and, in the full
 tier, natively on macOS and Windows against a `sysml-grpc` built on that runner, with the
 same minimum test count.
+The Python gates use ASCII success markers so preflight, sample and coverage reports
+also work with legacy Windows console encodings.
 
 ## Protocol code
 

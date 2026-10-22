@@ -145,14 +145,18 @@ internal sealed class GrpcTransport : ITransport
             return new ServiceException(status, error.Status.Detail, method, error);
         }
 
-        // gRPC's status-code table makes a response the client cannot parse INTERNAL; the library says Unavailable.
-        if (Causes.Find<InvalidProtocolBufferException>(cause) is not null)
+        var requestFailure = Causes.Find<HttpRequestException>(cause);
+        var protocolFailure = Causes.Find<HttpProtocolException>(cause);
+        var negotiationFailed = requestFailure?.HttpRequestError == HttpRequestError.VersionNegotiationError;
+
+        // Malformed responses and failed HTTP/2 negotiation are INTERNAL, regardless of the library's status.
+        if (Causes.Find<InvalidProtocolBufferException>(cause) is not null || negotiationFailed)
         {
             status = StatusCode.Internal;
         }
 
         // gRPC makes a connection that could not be established UNAVAILABLE; the library says Internal for some, as a failed TLS handshake.
-        if (Causes.Find<HttpRequestException>(cause) is
+        if (requestFailure is
             {
                 HttpRequestError: HttpRequestError.NameResolutionError or HttpRequestError.ConnectionError
                     or HttpRequestError.SecureConnectionError or HttpRequestError.ProxyTunnelError,
@@ -168,13 +172,16 @@ internal sealed class GrpcTransport : ITransport
                 ? $"{method}: the service at {address} reports that the call outlived its deadline."
                 : $"{method} did not complete before its deadline; the service at {address} may still be running it.";
         }
-        else if (status == StatusCode.Internal && Causes.Find<HttpProtocolException>(cause) is { } protocol)
+        else if (status == StatusCode.Internal && (protocolFailure is not null || negotiationFailed))
         {
-            message = $"{method}: {address} did not answer as an HTTP/2 gRPC endpoint (HTTP/2 protocol error "
-                + $"{protocol.ErrorCode.ToString(CultureInfo.InvariantCulture)}). A server or proxy that speaks only HTTP/1.1 answers gRPC this way; "
+            var detail = protocolFailure is null
+                ? "HTTP/2 negotiation failed"
+                : $"HTTP/2 protocol error {protocolFailure.ErrorCode.ToString(CultureInfo.InvariantCulture)}";
+            message = $"{method}: {address} did not answer as an HTTP/2 gRPC endpoint ({detail}). "
+                + "A server or proxy that speaks only HTTP/1.1 answers gRPC this way; "
                 + "if it serves the Connect protocol, connect with ConnectionOptions.Protocol set to Protocol.Connect.";
         }
-        else if (Causes.Find<HttpRequestException>(cause) is not null || Causes.Find<SocketException>(cause) is not null)
+        else if (requestFailure is not null || Causes.Find<SocketException>(cause) is not null)
         {
             message = $"{method} failed with {status} talking to {address}: {Causes.Innermost(cause!).Message} "
                 + "Whether the service received the call is unknown.";

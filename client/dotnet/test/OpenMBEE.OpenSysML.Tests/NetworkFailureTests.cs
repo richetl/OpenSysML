@@ -85,7 +85,8 @@ public sealed class NetworkFailureTests
         var error = await Assert.ThrowsAsync<TransportException>(() => OpenAsync(ClientWire.Grpc, $"127.0.0.1:{server.Port}"));
 
         Assert.Equal(StatusCode.Internal, error.StatusCode);
-        Assert.Contains(Chain(error), cause => cause is HttpProtocolException);
+        Assert.Contains(Chain(error), cause => cause is HttpProtocolException
+            or HttpRequestException { HttpRequestError: HttpRequestError.VersionNegotiationError });
         Assert.Contains("did not answer as an HTTP/2 gRPC endpoint", error.Message, StringComparison.Ordinal);
         Assert.Contains("Protocol.Connect", error.Message, StringComparison.Ordinal);
     }

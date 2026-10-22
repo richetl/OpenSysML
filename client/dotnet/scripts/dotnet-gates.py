@@ -317,14 +317,14 @@ def main(argv=None):
     try:
         if args.command == "preflight":
             sdk, runtimes = preflight(args.dotnet)
-            print(f"✓ .NET SDK {sdk}, runtime {', '.join(runtimes)}")
+            print(f"OK .NET SDK {sdk}, runtime {', '.join(runtimes)}")
         elif args.command == "sample":
             served = sample(args.expect, args.dotnet, args.binary)
-            print(f"✓ {args.expect}")
-            print(f"✓ {served}" if served else f"- no sysml-grpc configured (${BINARY_VARIABLE}); skipped the service run")
+            print(f"OK {args.expect}")
+            print(f"OK {served}" if served else f"- no sysml-grpc configured (${BINARY_VARIABLE}); skipped the service run")
         else:
             for report, covered, valid in coverage(args.results_dir, args.generated):
-                print(f"✓ {report}: {covered} of {valid} lines covered")
+                print(f"OK {report}: {covered} of {valid} lines covered")
     except GateError as e:
         print(f"error: {e}", file=sys.stderr)
         return 1

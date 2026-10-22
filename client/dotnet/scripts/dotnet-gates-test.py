@@ -11,6 +11,7 @@ import sys
 import tempfile
 import textwrap
 import unittest
+from unittest import mock
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 spec = importlib.util.spec_from_file_location("dotnet_gates", os.path.join(HERE, "dotnet-gates.py"))
@@ -62,6 +63,36 @@ class GatesTest(unittest.TestCase):
         with open(path, "w", encoding="utf-8") as f:
             f.write(text)
         return path
+
+    def main_on_legacy_console(self, argv):
+        buffer = io.BytesIO()
+        with io.TextIOWrapper(buffer, encoding="cp1252", errors="strict") as stdout:
+            with contextlib.redirect_stdout(stdout):
+                result = gates.main(argv)
+            stdout.flush()
+            return result, buffer.getvalue().decode("cp1252")
+
+    def test_main_preflight_can_report_success_on_a_legacy_windows_console(self):
+        with mock.patch.object(gates, "preflight", return_value=("10.0.402", ["10.0.13"])):
+            result, stdout = self.main_on_legacy_console(["preflight"])
+        self.assertEqual(result, 0)
+        self.assertEqual(stdout, "OK .NET SDK 10.0.402, runtime 10.0.13\n")
+
+    def test_main_coverage_can_report_success_on_a_legacy_windows_console(self):
+        path = self.write("run/coverage.cobertura.1.xml", report(["/_/client/dotnet/src/Lib/A.cs"]))
+        result, stdout = self.main_on_legacy_console(["coverage", os.path.dirname(path)])
+        self.assertEqual(result, 0)
+        self.assertEqual(stdout, f"OK {path}: 5 of 10 lines covered\n")
+
+    def test_main_sample_can_report_success_on_a_legacy_windows_console(self):
+        for served in (None, "sysml-grpc v1.0.0, 3 capabilities"):
+            with self.subTest(served=served), mock.patch.object(gates, "sample", return_value=served):
+                result, stdout = self.main_on_legacy_console(["sample", "--expect", IDENTITY])
+                self.assertEqual(result, 0)
+                expected = f"OK {served}\n" if served else (
+                    "- no sysml-grpc configured ($OPENSYSML_GRPC_BINARY); skipped the service run\n"
+                )
+                self.assertEqual(stdout, f"OK {IDENTITY}\n" + expected)
 
     def test_preflight_accepts_the_pinned_sdk_with_a_net10_runtime(self):
         sdk, runtimes = gates.preflight(self.host("10.0.402", RUNTIMES_10), self.global_json)

@@ -113,6 +113,26 @@ public sealed class GrpcTransportTests
         Assert.Contains("ConnectionOptions.Protocol set to Protocol.Connect", mapped.Message, StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData(Grpc.Core.StatusCode.Internal)]
+    [InlineData(Grpc.Core.StatusCode.Unavailable)]
+    public void AnHttp2NegotiationFailureNamesAnHttp11EndpointWhateverStatusGrpcAssigned(Grpc.Core.StatusCode status)
+    {
+        var cause = new HttpRequestException(
+            HttpRequestError.VersionNegotiationError,
+            "An HTTP/2 connection could not be established because the server did not complete the HTTP/2 handshake.");
+        var error = new RpcException(new Status(status, "Error starting gRPC call.", cause));
+
+        var mapped = Assert.IsType<TransportException>(GrpcTransport.Map(error, serverStatus: null, GetSymbol, Address, CancellationToken.None));
+
+        Assert.Equal(StatusCode.Internal, mapped.StatusCode);
+        Assert.Equal(GetSymbol, mapped.Method);
+        Assert.Same(cause, mapped.InnerException);
+        Assert.Contains("did not answer as an HTTP/2 gRPC endpoint (HTTP/2 negotiation failed)", mapped.Message, StringComparison.Ordinal);
+        Assert.Contains("HTTP/1.1", mapped.Message, StringComparison.Ordinal);
+        Assert.Contains("ConnectionOptions.Protocol set to Protocol.Connect", mapped.Message, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void AnUnavailableConnectionResetIsNotBlamedOnHttp11()
     {
