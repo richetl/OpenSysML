@@ -14,17 +14,29 @@ namespace OpenMBEE.OpenSysML;
 /// this client did not start is never stopped by it.
 /// </summary>
 /// <remarks>
+/// <para>
 /// A connection speaks gRPC, or the Connect protocol with protobuf or JSON bodies, as
 /// <see cref="ConnectionOptions.Protocol"/> and <see cref="ConnectionOptions.Encoding"/> say, and
-/// never another. This release connects to a service that is already running, named by
-/// <see cref="ConnectionOptions.Address"/> or <see cref="ConnectionOptions.ServiceVariable"/>; it
-/// does not yet start a private one.
+/// never another. It reaches the service <see cref="ConnectionOptions.Address"/> names, else the one
+/// <see cref="ConnectionOptions.ServiceVariable"/> names, else a private service it starts.
+/// </para>
+/// <para>
+/// A private service is a <c>sysml-grpc</c> child of this process that only this process can reach,
+/// and that exits when this process does, however it ends. The connections of one copy of this client
+/// that would start the same service share it: the same binary, with the same contents, under the
+/// same <see cref="ConnectionOptions.StartupTimeout"/>, <see cref="ConnectionOptions.ShutdownTimeout"/>
+/// and <see cref="ConnectionOptions.Version"/>. The last of them to close stops it.
+/// <see cref="ConnectionOptions.IsolatedService"/> gives a connection one of its own. A private service
+/// that exits on its own is not restarted: its connections fail from then on with
+/// <see cref="TransportException"/>, and a connection opened afterwards starts another.
+/// </para>
 /// </remarks>
 public sealed partial class Connection : IAsyncDisposable
 {
     private const string ServerInfoMethod = "GetServerInfo";
 
     private readonly ITransport transport;
+    private readonly ServiceRegistry.Lease? lease;
     private readonly ILogger logger;
     private readonly TimeSpan requestTimeout;
     private readonly CancellationTokenSource closing = new();
@@ -34,15 +46,16 @@ public sealed partial class Connection : IAsyncDisposable
     private int active;
     private int disposing;
 
-    private Connection(ITransport transport, Uri address, ConnectionOptions options)
+    private Connection(ITransport transport, Uri address, ConnectionOptions options, ServiceRegistry.Lease? lease)
     {
         this.transport = transport;
+        this.lease = lease;
         Address = address;
         logger = options.Logger;
         requestTimeout = options.RequestTimeout;
     }
 
-    /// <summary>The base URL of the service.</summary>
+    /// <summary>The base URL of the service: for a private service, the loopback address it reported.</summary>
     public Uri Address { get; }
 
     /// <summary>The protocol the connection speaks.</summary>
@@ -58,21 +71,40 @@ public sealed partial class Connection : IAsyncDisposable
     public Capabilities Capabilities => ServerInfo.Capabilities;
 
     /// <summary>
-    /// Opens a connection: asks the service for its <see cref="ServerInfo"/>, then checks
+    /// Opens a connection: to the service named, or else to a private one, started unless one the
+    /// connection can share is running; asks the service for its <see cref="ServerInfo"/>, then checks
     /// <see cref="ConnectionOptions.Version"/> and <see cref="ConnectionOptions.RequireCapabilities"/>
-    /// against the answer. A failure after the channel was made closes it again.
+    /// against the answer. A failure after the channel was made closes it again, and gives up its hold
+    /// on a private service, which stops when nothing else holds it.
     /// </summary>
     /// <param name="options">How to reach the service; null for <see cref="ConnectionOptions.Default"/>.</param>
-    /// <param name="cancellationToken">Cancels the open.</param>
+    /// <param name="cancellationToken">Cancels the open, and the start of a private service no other open waits for.</param>
     /// <returns>The open connection, which the caller disposes.</returns>
     /// <exception cref="InvalidRequestException">An option is invalid.</exception>
-    /// <exception cref="ServiceStartException">No service is named; this release does not start one.</exception>
+    /// <exception cref="BinaryNotFoundException">No service is named, and no binary was found to start one.</exception>
+    /// <exception cref="ChecksumMismatchException">The binary does not have <see cref="ConnectionOptions.ExpectedBinarySha256"/>.</exception>
+    /// <exception cref="UnsupportedPlatformException">No service is named, and this platform cannot start one.</exception>
+    /// <exception cref="ServiceStartException">No service is named and <see cref="ConnectionOptions.AutoStart"/> is false, or the private service did not start.</exception>
     /// <exception cref="StaleServiceException">The service is not the <see cref="ConnectionOptions.Version"/> asked for.</exception>
     /// <exception cref="CapabilityException">The service lacks a required capability.</exception>
     /// <exception cref="TransportException">The service could not be reached.</exception>
     /// <exception cref="ServiceException">The service refused GetServerInfo.</exception>
     public static Task<Connection> OpenAsync(ConnectionOptions? options = null, CancellationToken cancellationToken = default) =>
         OpenAsync(options, Environment.GetEnvironmentVariable, cancellationToken);
+
+    /// <summary>
+    /// Stops every private service the connections of this copy of the client share, whoever holds
+    /// them, as a host does before unloading the client. Connections to them fail from then on with
+    /// <see cref="TransportException"/>; they are never moved to another service. A connection opened
+    /// afterwards starts a new one. Isolated services are left to their connections, and a service
+    /// this client did not start is never touched. Every service is tried before any failure is reported.
+    /// </summary>
+    /// <param name="cancellationToken">Stops the wait; the services are stopped regardless.</param>
+    /// <returns>How many services were stopped.</returns>
+    /// <exception cref="ServiceStopException">Some services could not be stopped cleanly.</exception>
+    /// <exception cref="OperationCanceledException"><paramref name="cancellationToken"/> was cancelled.</exception>
+    public static Task<int> StopSharedServicesAsync(CancellationToken cancellationToken = default) =>
+        ServiceRegistry.Shared.StopAllAsync(cancellationToken);
 
     /// <summary>
     /// Calls a method of the service directly, with the connection's headers, timeout, size limits,
@@ -108,8 +140,9 @@ public sealed partial class Connection : IAsyncDisposable
 
     /// <summary>
     /// Closes the connection: refuses new calls, cancels the calls in flight, which fail with
-    /// <see cref="ObjectDisposedException"/>, waits for them, and closes the channel. Disposing again,
-    /// or concurrently, waits for the same close; it never throws. A failure to close is logged.
+    /// <see cref="ObjectDisposedException"/>, waits for them, and closes the channel; then gives up its
+    /// hold on a private service, stopping it when it was the last. Disposing again, or concurrently,
+    /// waits for the same close; it never throws. A failure to close or to stop is logged.
     /// </summary>
     /// <returns>When the connection is closed.</returns>
     public async ValueTask DisposeAsync()
@@ -148,6 +181,11 @@ public sealed partial class Connection : IAsyncDisposable
 
         closing.Dispose();
         LogClosed(logger, Address);
+        if (lease is not null)
+        {
+            await lease.ReleaseAsync(logger).ConfigureAwait(false);
+        }
+
         closed.TrySetResult();
     }
 
@@ -156,32 +194,72 @@ public sealed partial class Connection : IAsyncDisposable
     /// <param name="environment">Reads an environment variable; null when it is unset.</param>
     /// <param name="cancellationToken">Cancels the open.</param>
     /// <returns>The open connection.</returns>
+    internal static Task<Connection> OpenAsync(
+        ConnectionOptions? options,
+        Func<string, string?> environment,
+        CancellationToken cancellationToken) =>
+        OpenAsync(options, environment, ServiceRegistry.Shared, cancellationToken);
+
+    /// <summary>Opens a connection, starting a private service through <paramref name="registry"/> when none is named.</summary>
+    /// <param name="options">How to reach the service; null for <see cref="ConnectionOptions.Default"/>.</param>
+    /// <param name="environment">Reads an environment variable; null when it is unset.</param>
+    /// <param name="registry">The registry a private service is taken from.</param>
+    /// <param name="cancellationToken">Cancels the open.</param>
+    /// <returns>The open connection.</returns>
     internal static async Task<Connection> OpenAsync(
         ConnectionOptions? options,
         Func<string, string?> environment,
+        ServiceRegistry registry,
         CancellationToken cancellationToken)
     {
         options ??= ConnectionOptions.Default;
         options.Validate();
         var address = ResolveAddress(options, environment);
         cancellationToken.ThrowIfCancellationRequested();
-        ITransport transport = options.Protocol == Protocol.Connect ? new ConnectTransport(address, options) : new GrpcTransport(address, options);
-        return await OpenAsync(transport, address, options, cancellationToken).ConfigureAwait(false);
+        if (address is not null)
+        {
+            if (options.BinaryPath is not null || options.ExpectedBinarySha256 is not null || options.IsolatedService)
+            {
+                LogPrivateOptionsUnused(options.Logger, address);
+            }
+
+            return await OpenAsync(CreateTransport(address, options), address, options, null, cancellationToken).ConfigureAwait(false);
+        }
+
+        var binary = await BinaryResolver.ResolveAsync(options, environment, cancellationToken).ConfigureAwait(false);
+        var lease = await registry.AcquireAsync(ServiceIdentity.Of(binary, options), options.IsolatedService, options.Logger, cancellationToken).ConfigureAwait(false);
+        ITransport transport;
+        try
+        {
+            transport = CreateTransport(lease.Address, options);
+        }
+        catch
+        {
+            await lease.ReleaseAsync(options.Logger).ConfigureAwait(false);
+            throw;
+        }
+
+        return await OpenAsync(transport, lease.Address, options, lease, cancellationToken).ConfigureAwait(false);
     }
 
-    /// <summary>Opens a connection over a transport, which the connection then owns, even when the open fails.</summary>
+    /// <summary>
+    /// Opens a connection over a transport, which the connection then owns, with a lease it then holds,
+    /// even when the open fails.
+    /// </summary>
     /// <param name="transport">The transport.</param>
     /// <param name="address">The service's base URL.</param>
     /// <param name="options">The connection's options, already validated.</param>
+    /// <param name="lease">The hold on the private service, or null for a named one.</param>
     /// <param name="cancellationToken">Cancels the open.</param>
     /// <returns>The open connection.</returns>
     internal static async Task<Connection> OpenAsync(
         ITransport transport,
         Uri address,
         ConnectionOptions options,
+        ServiceRegistry.Lease? lease,
         CancellationToken cancellationToken)
     {
-        var connection = new Connection(transport, address, options);
+        var connection = new Connection(transport, address, options, lease);
         try
         {
             connection.serverInfo = await connection.AskServerInfoAsync(cancellationToken).ConfigureAwait(false);
@@ -197,11 +275,12 @@ public sealed partial class Connection : IAsyncDisposable
         return connection;
     }
 
-    /// <summary>The address options name, or the refusal of a connection that names none.</summary>
+    /// <summary>The address options name, null for a private service, or the refusal of a connection that names none and starts none.</summary>
     /// <param name="options">The connection's options.</param>
     /// <param name="environment">Reads an environment variable.</param>
-    /// <returns>The service's base URL.</returns>
-    internal static Uri ResolveAddress(ConnectionOptions options, Func<string, string?> environment)
+    /// <returns>The service's base URL; null when a private service is to be started.</returns>
+    /// <exception cref="ServiceStartException">No service is named and <see cref="ConnectionOptions.AutoStart"/> is false.</exception>
+    internal static Uri? ResolveAddress(ConnectionOptions options, Func<string, string?> environment)
     {
         if (options.Address is not null)
         {
@@ -214,12 +293,17 @@ public sealed partial class Connection : IAsyncDisposable
             return ServiceAddress.Parse(named, "$" + ConnectionOptions.ServiceVariable);
         }
 
-        throw new ServiceStartException(options.AutoStart
-            ? "No service was named, and this release of the .NET client cannot start a private one yet: "
-                + $"name a running sysml-grpc with ConnectionOptions.Address or ${ConnectionOptions.ServiceVariable}."
-            : "No service was named and ConnectionOptions.AutoStart is false: "
-                + $"name a running sysml-grpc with ConnectionOptions.Address or ${ConnectionOptions.ServiceVariable}.");
+        if (options.AutoStart)
+        {
+            return null;
+        }
+
+        throw new ServiceStartException("No service was named and ConnectionOptions.AutoStart is false: "
+            + $"name a running sysml-grpc with ConnectionOptions.Address or ${ConnectionOptions.ServiceVariable}, or allow a private one.");
     }
+
+    private static ITransport CreateTransport(Uri address, ConnectionOptions options) =>
+        options.Protocol == Protocol.Connect ? new ConnectTransport(address, options) : new GrpcTransport(address, options);
 
     private async Task<ServerInfo> AskServerInfoAsync(CancellationToken cancellationToken)
     {
@@ -260,7 +344,10 @@ public sealed partial class Connection : IAsyncDisposable
                 throw new StaleServiceException(
                     Address.ToString(),
                     reason,
-                    $"connect to a service of version {version}, or accept the one at {Address} by leaving ConnectionOptions.Version null",
+                    lease is null
+                        ? $"connect to a service of version {version}, or accept the one at {Address} by leaving ConnectionOptions.Version null"
+                        : $"start a sysml-grpc of version {version}, named by ConnectionOptions.BinaryPath or ${ConnectionOptions.BinaryVariable}, "
+                            + "or accept the one found by leaving ConnectionOptions.Version null",
                     info.Version);
             }
         }
@@ -279,7 +366,14 @@ public sealed partial class Connection : IAsyncDisposable
         try
         {
             cancellationToken.ThrowIfCancellationRequested();
-            using var call = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, closing.Token);
+            if (lease?.EndReason is { } ended)
+            {
+                throw new TransportException(StatusCode.Unavailable, ended, method.Untyped.QualifiedName);
+            }
+
+            using var call = lease is null
+                ? CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, closing.Token)
+                : CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, closing.Token, lease.Ended);
             var deadline = DateTime.UtcNow + requestTimeout;
             try
             {
@@ -297,7 +391,17 @@ public sealed partial class Connection : IAsyncDisposable
                     throw new ObjectDisposedException($"{method.Untyped.QualifiedName} was cancelled because its connection was disposed.", error);
                 }
 
+                if (lease?.EndReason is { } reason)
+                {
+                    throw new TransportException(StatusCode.Unavailable, reason, method.Untyped.QualifiedName, error);
+                }
+
                 throw;
+            }
+            catch (TransportException error) when (lease?.EndReason is { } reason)
+            {
+                // The private service went: whatever the transport made of that, this is what happened.
+                throw new TransportException(StatusCode.Unavailable, reason, method.Untyped.QualifiedName, error);
             }
         }
         finally
@@ -329,6 +433,9 @@ public sealed partial class Connection : IAsyncDisposable
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "The service at {Address} did not answer GetServerInfo; it is assumed to advertise no capability")]
     private static partial void LogServerInfoUnanswered(ILogger logger, Uri address);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Connecting to {Address}, which ${Variable} names: the options describing a private service are not used")]
+    private static partial void LogPrivateOptionsUnused(ILogger logger, Uri address, string variable = ConnectionOptions.ServiceVariable);
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Closed the connection to {Address}")]
     private static partial void LogClosed(ILogger logger, Uri address);

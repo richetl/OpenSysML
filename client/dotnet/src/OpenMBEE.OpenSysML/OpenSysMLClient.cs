@@ -11,9 +11,9 @@ namespace OpenMBEE.OpenSysML;
 /// <see cref="Connection"/> and load them through it instead.
 /// </summary>
 /// <remarks>
-/// The connection is opened as <see cref="Connection.OpenAsync(ConnectionOptions?, CancellationToken)"/> opens it, so this release reaches
-/// a service that is already running, named by <see cref="ConnectionOptions.Address"/> or
-/// <see cref="ConnectionOptions.ServiceVariable"/>.
+/// The connection is opened as <see cref="Connection.OpenAsync(ConnectionOptions?, CancellationToken)"/> opens it: to the service
+/// <see cref="ConnectionOptions.Address"/> or <see cref="ConnectionOptions.ServiceVariable"/> names, or else to a private
+/// one, which the model's connection holds like any other, so the service stops when nothing else holds it.
 /// </remarks>
 public static class OpenSysMLClient
 {

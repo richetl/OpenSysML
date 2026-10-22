@@ -17,5 +17,7 @@
 
   <ItemGroup>
     <ProjectReference Include="../../src/OpenMBEE.OpenSysML/OpenMBEE.OpenSysML.csproj" />
+    <!-- Built first, but not copied here: FakeChild runs it from its own output, as a separate process. -->
+    <ProjectReference Include="../FakeService/FakeService.csproj" ReferenceOutputAssembly="false" Private="false" />
   </ItemGroup>
 </Project>

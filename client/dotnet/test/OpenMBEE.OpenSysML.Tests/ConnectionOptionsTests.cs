@@ -25,6 +25,18 @@ public sealed class ConnectionOptionsTests
         { "Encoding is Json, which gRPC does not carry", handler => new ConnectionOptions { Address = FakeServiceHandler.Address, HttpMessageHandler = handler, Encoding = MessageEncoding.Json } },
         { "Address", handler => new ConnectionOptions { Address = "ftp://host:1", HttpMessageHandler = handler } },
         { "Header", handler => FakeConnection.Options(handler, headers: new Dictionary<string, string> { ["Content-Type"] = "text/plain" }) },
+        { "StartupTimeout is 00:00:00;", handler => new ConnectionOptions { Address = FakeServiceHandler.Address, HttpMessageHandler = handler, StartupTimeout = TimeSpan.Zero } },
+        { "StartupTimeout is -00:00:01;", handler => new ConnectionOptions { Address = FakeServiceHandler.Address, HttpMessageHandler = handler, StartupTimeout = TimeSpan.FromSeconds(-1) } },
+        { "StartupTimeout", handler => new ConnectionOptions { Address = FakeServiceHandler.Address, HttpMessageHandler = handler, StartupTimeout = ConnectionOptions.MaxRequestTimeout + TimeSpan.FromMilliseconds(1) } },
+        { "ShutdownTimeout is 00:00:00;", handler => new ConnectionOptions { Address = FakeServiceHandler.Address, HttpMessageHandler = handler, ShutdownTimeout = TimeSpan.Zero } },
+        { "ShutdownTimeout", handler => new ConnectionOptions { Address = FakeServiceHandler.Address, HttpMessageHandler = handler, ShutdownTimeout = System.Threading.Timeout.InfiniteTimeSpan } },
+        { "BinaryPath is blank", handler => new ConnectionOptions { HttpMessageHandler = handler, BinaryPath = " " } },
+        { "ExpectedBinarySha256 is not a SHA-256 digest", handler => new ConnectionOptions { HttpMessageHandler = handler, ExpectedBinarySha256 = new string('a', 63) } },
+        { "ExpectedBinarySha256 is not a SHA-256 digest", handler => new ConnectionOptions { HttpMessageHandler = handler, ExpectedBinarySha256 = new string('g', 64) } },
+        { "BinaryPath describes a private service, but ConnectionOptions.Address names a running one", handler => new ConnectionOptions { Address = FakeServiceHandler.Address, HttpMessageHandler = handler, BinaryPath = "/bin/sysml-grpc" } },
+        { "ExpectedBinarySha256 describes a private service, but ConnectionOptions.Address", handler => new ConnectionOptions { Address = FakeServiceHandler.Address, HttpMessageHandler = handler, ExpectedBinarySha256 = new string('a', 64) } },
+        { "IsolatedService describes a private service, but ConnectionOptions.Address", handler => new ConnectionOptions { Address = FakeServiceHandler.Address, HttpMessageHandler = handler, IsolatedService = true } },
+        { "IsolatedService describes a private service, but ConnectionOptions.AutoStart is false", handler => new ConnectionOptions { HttpMessageHandler = handler, AutoStart = false, IsolatedService = true } },
     };
 
     [Fact]
@@ -44,7 +56,15 @@ public sealed class ConnectionOptionsTests
         Assert.Null(options.Version);
         Assert.Same(NullLogger.Instance, options.Logger);
         Assert.Null(options.HttpMessageHandler);
+        Assert.Null(options.BinaryPath);
+        Assert.Null(options.ExpectedBinarySha256);
+        Assert.False(options.IsolatedService);
+        Assert.Equal(TimeSpan.FromSeconds(30), options.StartupTimeout);
+        Assert.Equal(TimeSpan.FromSeconds(5), options.ShutdownTimeout);
+        Assert.Equal(options.StartupTimeout, ConnectionOptions.DefaultStartupTimeout);
+        Assert.Equal(options.ShutdownTimeout, ConnectionOptions.DefaultShutdownTimeout);
         Assert.Equal("OPENSYSML_SERVICE", ConnectionOptions.ServiceVariable);
+        Assert.Equal("OPENSYSML_GRPC_BINARY", ConnectionOptions.BinaryVariable);
         Assert.Equal(options.RequestTimeout, ConnectionOptions.Default.RequestTimeout);
         Assert.Equal(options.MaxResponseSize, ConnectionOptions.Default.MaxResponseSize);
         Assert.True(ConnectionOptions.Default.AutoStart);
@@ -102,11 +122,21 @@ public sealed class ConnectionOptionsTests
     }
 
     [Fact]
-    public async Task NullOptionsAreTheDefaults()
+    public async Task NullOptionsAreTheDefaultsWhichLookForABinaryToStart()
     {
-        var error = await Assert.ThrowsAsync<ServiceStartException>(() => Connection.OpenAsync(null, _ => null, TestContext.Current.CancellationToken));
+        var error = await Assert.ThrowsAsync<BinaryNotFoundException>(() => Connection.OpenAsync(null, _ => null, TestContext.Current.CancellationToken));
 
-        Assert.Contains("cannot start a private one yet", error.Message, StringComparison.Ordinal);
+        Assert.Equal("$OPENSYSML_GRPC_BINARY: unset", error.SearchedLocations[0]);
+        Assert.Contains("does not download one", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task AnAlreadyCancelledOpenLooksForNoBinary()
+    {
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => Connection.OpenAsync(
+            null,
+            name => name == ConnectionOptions.ServiceVariable ? null : throw new InvalidOperationException($"looked at ${name}"),
+            new System.Threading.CancellationToken(canceled: true)));
     }
 }
 
@@ -239,14 +269,13 @@ public sealed class ServiceAddressTests
     [InlineData(null)]
     [InlineData("")]
     [InlineData("  ")]
-    public void NoServiceNamedIsAStartFailureThatSaysWhy(string? environment)
+    public void NoServiceNamedMeansAPrivateOneUnlessAutoStartIsOff(string? environment)
     {
-        var starting = Assert.Throws<ServiceStartException>(() => Connection.ResolveAddress(new ConnectionOptions(), Environment(environment)));
-        Assert.Contains("cannot start a private one yet", starting.Message, StringComparison.Ordinal);
-        Assert.Contains("ConnectionOptions.Address or $OPENSYSML_SERVICE", starting.Message, StringComparison.Ordinal);
+        Assert.Null(Connection.ResolveAddress(new ConnectionOptions(), Environment(environment)));
 
         var off = Assert.Throws<ServiceStartException>(() => Connection.ResolveAddress(new ConnectionOptions { AutoStart = false }, Environment(environment)));
         Assert.Contains("AutoStart is false", off.Message, StringComparison.Ordinal);
+        Assert.Contains("ConnectionOptions.Address or $OPENSYSML_SERVICE", off.Message, StringComparison.Ordinal);
     }
 
     private static Func<string, string?> Environment(string? service) =>

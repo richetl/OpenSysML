@@ -4,8 +4,9 @@ using System.Runtime.Versioning;
 using OpenMBEE.OpenSysML;
 
 // A ProjectReference consumer of the client. It prints the referenced assembly's identity and,
-// when OPENSYSML_SERVICE names a running sysml-grpc, connects to it, prints what it reports, parses
-// a vehicle model, and prints the vehicle and its mass.
+// when OPENSYSML_SERVICE names a running sysml-grpc or OPENSYSML_GRPC_BINARY names one to start
+// privately, connects to it, prints what it reports, parses a vehicle model, and prints the vehicle
+// and its mass.
 const string ClientAssembly = "OpenMBEE.OpenSysML";
 const string VehicleModel = """
     package Demo {
@@ -29,7 +30,8 @@ if (version is null || framework is null)
 }
 
 Console.WriteLine($"{ClientAssembly} {version} ({framework})");
-if (string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(ConnectionOptions.ServiceVariable)))
+if (string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(ConnectionOptions.ServiceVariable))
+    && string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(ConnectionOptions.BinaryVariable)))
 {
     return 0;
 }

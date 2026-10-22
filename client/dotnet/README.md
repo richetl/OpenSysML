@@ -3,15 +3,16 @@
 `OpenMBEE.OpenSysML` is the C# client for the `sysml-grpc` service, built from a checkout
 of this repository and consumed by `ProjectReference`. It is not published to NuGet.
 
-> **Status:** the client connects to a `sysml-grpc` that is already running, over gRPC or the
-> Connect protocol with protobuf or JSON bodies, reports what that service is and can do, and
-> calls any of its methods through a raw, schema-checked escape hatch. It loads models from a
-> file, from inline notation or from several documents, and reads them: symbols and name
-> lookup, diagnostics, expression evaluation and instantiation, with the immutable values
-> those operations exchange. It does not yet start a service of its own, and offers none of
-> the other typed operations (execution, verification, conversion, queries, documents,
-> editing). The other clients ([Python](../python/), [Java](../java/), [Rust](../rust/),
-> [Node](../node/)) are the ones to use for those today.
+> **Status:** the client connects to a `sysml-grpc` that is already running, or starts a
+> private one from a binary installed locally, over gRPC or the Connect protocol with protobuf
+> or JSON bodies; reports what that service is and can do; and calls any of its methods
+> through a raw, schema-checked escape hatch. It loads models from a file, from inline
+> notation or from several documents, and reads them: symbols and name lookup, diagnostics,
+> expression evaluation and instantiation, with the immutable values those operations
+> exchange. It does not download a release of the service, and offers none of the other
+> typed operations (execution, verification, conversion, queries, documents, editing). The
+> other clients ([Python](../python/), [Java](../java/), [Rust](../rust/), [Node](../node/))
+> are the ones to use for those today.
 
 ## Requirements
 
@@ -36,12 +37,12 @@ Reference the project from your own:
 
 [`samples/Vehicle`](samples/Vehicle/) is such a consumer. It prints the referenced
 assembly's version and target framework and, when `OPENSYSML_SERVICE` names a running
-service, what that service reports, then parses a vehicle model, looks the vehicle up and
-evaluates its mass:
+service or `OPENSYSML_GRPC_BINARY` names a binary to start privately, what that service
+reports, then parses a vehicle model, looks the vehicle up and evaluates its mass:
 
 ```bash
-bin/sysml-grpc -port 50051 &
-OPENSYSML_SERVICE=localhost:50051 dotnet run --project client/dotnet/samples/Vehicle -c Release
+make build-grpc
+OPENSYSML_GRPC_BINARY="$PWD/bin/sysml-grpc" dotnet run --project client/dotnet/samples/Vehicle -c Release
 # OpenMBEE.OpenSysML 0.10.1 (.NETCoreApp,Version=v10.0)
 # sysml-grpc v0.10.1, 72 capabilities
 # Demo::Vehicle (partDef): mass = 1500.0
@@ -62,13 +63,11 @@ bool converts = connection.Capabilities.Has(Capabilities.Convert);
 ```
 
 `Connection.OpenAsync` reaches the service `ConnectionOptions.Address` names, or else the one
-the `OPENSYSML_SERVICE` environment variable names. An address is `host:port`, which means
+the `OPENSYSML_SERVICE` environment variable names, or else starts a private one (see
+[Private services](#private-services)). An address is `host:port`, which means
 `http://host:port`, a bracketed IPv6 `[::1]:port`, or an `http` or `https` URL with nothing
 after its port; user information, a path, a query or a fragment is refused. A service named
-this way is never started, stopped or downloaded by the client. With no service named,
-`OpenAsync` fails with `ServiceStartException`: starting a private service is not available
-yet, whatever `AutoStart` says, and `AutoStart` stays `true` by default so that this does not
-change when it is.
+this way is never started, stopped or downloaded by the client.
 
 Opening asks the service `GetServerInfo` once. `ServerInfo` keeps the answer: the service's
 version, informational only, and its `Capabilities`, which `Capabilities` has a constant for
@@ -91,6 +90,69 @@ makes its own and disposes it.
 
 The client never retries a call, hedges it or falls back to another protocol: a call that
 failed in transport may still have run.
+
+### Private services
+
+```csharp
+await using var connection = await Connection.OpenAsync();   // no service named: start one
+```
+
+With no service named and `ConnectionOptions.AutoStart` true, the default, `OpenAsync` starts
+`sysml-grpc` as a child of this process: `sysml-grpc -port 0 -health-port 0 -report-address
+-exit-with-parent`. The kernel chooses its port, which the child reports as the first line of
+its output; the connection dials that loopback address, which no other process is told of. The
+child exits at end of file on its input, and only this process holds the other end of that
+pipe, so it exits with this process however this process ends, a kill included; no exit
+handler is involved. Its output is read for as long as it runs, so a chatty child never
+blocks, and its last 20 lines, each cut at 1,024 characters, are kept for error messages. With
+`AutoStart` false, a connection that names no service fails with `ServiceStartException`.
+
+The binary is, in order, the one `ConnectionOptions.BinaryPath` names, the one the
+`OPENSYSML_GRPC_BINARY` environment variable names, `~/.opensysml/bin/sysml-grpc`
+(`sysml-grpc.exe` on Windows, under `%USERPROFILE%`), where every client installs its
+download, and the first `sysml-grpc` on `PATH`. A binary named by the option or the variable
+that is not an executable file fails the open with `BinaryNotFoundException` rather than
+another being used, and finding none lists every place looked at in `SearchedLocations`. This
+release does not download a release of the service. The binary is hashed before it is
+started, with symbolic links followed before any subsequent `..` component, including in
+link targets; a missing directory or regular file cannot be traversed by `..`.
+`ConnectionOptions.ExpectedBinarySha256` requires a digest, and a binary without it
+fails with `ChecksumMismatchException` and is never executed. A platform that cannot start a
+process, such as a browser, fails with `UnsupportedPlatformException`.
+
+The connections of one copy of the client share a private service while they agree on what
+it is: the same binary, by its path with every link followed and by the digest of its
+contents, and the same `StartupTimeout`, `ShutdownTimeout` and `Version`. Protocol, encoding,
+headers, logger, request timeout and HTTP handler belong to each connection and never split
+a service. Concurrent opens of one service wait for one start; one that is cancelled gives up
+only its own wait, and the start is cancelled when none waits for it any more. A start that
+fails stops its child and gives every waiting open the same failure. A connection holds the
+service from the moment it starts opening; an open that fails, its handshake included, gives
+its hold up, and the last connection to close stops the service: its input is closed, it has
+`ShutdownTimeout` (5 seconds by default) to exit, and is then killed with every process it
+started. `IsolatedService` gives a connection a service of its own, stopped when it closes.
+A copy of the client is its assembly load context: plugins sharing one loaded copy share its
+services, and a copy loaded into another context starts its own.
+
+A private service that exits on its own is not restarted: the connections to it fail from
+then on, calls in flight included, with `TransportException` and `Unavailable`, saying how it
+ended, and a connection opened afterwards starts another. `Connection.StopSharedServicesAsync`
+stops every shared private service of this copy of the client, as a host unloading it does;
+their connections fail the same way and are never moved to another service. It tries every
+service, including stops already underway, before reporting the ones it could not stop in a
+`ServiceStopException` with a read-only `Failures` snapshot, and leaves isolated services to
+their connections. Unloading also stops a child that finishes starting after its startup was
+cancelled. A shared service logs its life (start, unexpected
+exit, a kill after the grace period, a failure to stop) to the logger of the connection that
+started it; each line of its output goes to that logger at `Trace`.
+
+`StartupTimeout` (30 seconds by default) bounds the wait for the address. A child that
+reports something other than a loopback `host:port`, exits or ends its output first, or
+reports nothing in time is stopped, and the open fails with `ServiceStartException` quoting
+how it ended and what it last wrote. `BinaryPath`, `ExpectedBinarySha256` and
+`IsolatedService` only describe a private service, so they are refused alongside `Address` or
+with `AutoStart` false; when `OPENSYSML_SERVICE` names a service instead, they are unused and a
+warning says so.
 
 ### Protocols
 
@@ -147,7 +209,12 @@ use after disposal, which are the standard exceptions:
 | What happened | Exception |
 | --- | --- |
 | An option, address, header or raw method/message pairing is invalid | `InvalidRequestException`, before anything is sent |
-| No service is named | `ServiceStartException` |
+| No service is named and `AutoStart` is false, or the private service did not start | `ServiceStartException` |
+| No service is named and no binary was found to start | `BinaryNotFoundException`, a `ServiceStartException` with `SearchedLocations` |
+| The binary does not have `ExpectedBinarySha256` | `ChecksumMismatchException`, a `ServiceStartException` with `BinaryPath`, `ExpectedSha256` and `ActualSha256` |
+| This platform cannot start a process | `UnsupportedPlatformException`, a `ServiceStartException` with `Platform` |
+| The private service exited on its own, or was stopped by `StopSharedServicesAsync` | `TransportException` with `Unavailable`, saying which |
+| `StopSharedServicesAsync` could not stop some services cleanly | `ServiceStopException`, with one of `Failures` for each |
 | The service is not the `Version` asked for | `StaleServiceException` |
 | The service lacks a required capability | `CapabilityException`, with `Capability` and `Remedy` |
 | The service answered with a status other than OK, `Unavailable` included | `ServiceException`, with `StatusCode`, `ServiceMessage` and `Method` |
@@ -184,8 +251,9 @@ answer that does not parse, is cut short or is not HTTP is `Internal`, and a con
 could not be made or was lost before an answer is `Unavailable`.
 
 `DisposeAsync` refuses new calls, cancels the calls in flight, waits for them and closes the
-channel. It is idempotent, safe to call concurrently, and never throws: a failure to close
-is logged as a warning.
+channel, then gives up its hold on a private service, stopping it if it was the last. It is
+idempotent, safe to call concurrently, and never throws: a failure to close or to stop is
+logged as a warning.
 
 ## Models
 
@@ -328,14 +396,22 @@ form `dotnet test <solution>` is not supported. Every test declares a `Category`
 Integration tests run against the binary `OPENSYSML_GRPC_BINARY` names, which they start
 themselves on ports the kernel chooses and reach by address: once serving its default
 `connect` transport, reached over gRPC, Connect with protobuf and Connect with JSON, and once
-its grpc-go-only `grpc` transport, reached over gRPC, where Connect must be refused. Unit tests
-of behavior every protocol shares run over all three wires too. They skip without a binary;
-set `OPENSYSML_REQUIRE_SERVICE=1` to turn that skip into a failure, as CI does. `make
-dotnet-test` also runs the Vehicle sample against such a service, under the same rule:
+its grpc-go-only `grpc` transport, reached over gRPC, where Connect must be refused. Others
+start it as a private service, shared, isolated, killed and stopped. Unit tests of behavior
+every protocol shares run over all three wires too. They skip without a binary; set
+`OPENSYSML_REQUIRE_SERVICE=1` to turn that skip into a failure, as CI does. `make
+dotnet-test` also runs the Vehicle sample against such a service, and with the binary alone,
+which it starts privately, under the same rule:
 
 ```bash
 OPENSYSML_GRPC_BINARY="$PWD/bin/sysml-grpc" OPENSYSML_REQUIRE_SERVICE=1 make dotnet-test
 ```
+
+Unit tests drive every way a private service starts and stops against
+[`test/FakeService`](test/FakeService/), a stand-in the solution builds and the tests copy,
+under the binary's name, into a directory of their own with a script beside it: it reports,
+misreports or withholds an address, exits, lingers or floods its output as the script says.
+It serves nothing; the in-process fake HTTP handler answers the connection.
 
 ## Protocol code
 

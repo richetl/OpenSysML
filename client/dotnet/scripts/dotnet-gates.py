@@ -15,11 +15,13 @@ each measuring some handwritten library code under client/dotnet/src and none of
 the generated files named by --generated, which the run must exclude by path.
 There is no percentage threshold.
 
-`sample` runs the built Vehicle sample twice: with no service named, when it must print
-exactly the --expect line, and with $OPENSYSML_SERVICE naming a sysml-grpc the gate starts
-on a port the kernel chooses, when it must also print the version that binary reports and
-its capability count, then the vehicle it parsed, looked up and evaluated. The binary is --binary or $OPENSYSML_GRPC_BINARY; without one the
-second run is skipped, unless $OPENSYSML_REQUIRE_SERVICE is set, which makes it a failure.
+`sample` runs the built Vehicle sample three times: with neither a service nor a binary named,
+when it must print exactly the --expect line; with $OPENSYSML_SERVICE naming a sysml-grpc the
+gate starts on a port the kernel chooses; and with $OPENSYSML_GRPC_BINARY alone naming the
+binary, which the sample starts as its private service. Each of the last two must also print
+the version that binary reports and its capability count, then the vehicle it parsed, looked up
+and evaluated. The binary is --binary or $OPENSYSML_GRPC_BINARY; without one the last two runs
+are skipped, unless $OPENSYSML_REQUIRE_SERVICE is set, which makes it a failure.
 """
 
 import argparse
@@ -225,8 +227,17 @@ def _read_line(stream, timeout):
     return line[0] if line else None
 
 
+def _check_served(lines, expect, version, how):
+    pattern = rf"sysml-grpc {re.escape(version)}, [1-9][0-9]* capabilities"
+    if len(lines) != 3 or lines[0] != expect or not re.fullmatch(pattern, lines[1]) or lines[2] != SAMPLE_MODEL_LINE:
+        raise GateError(
+            f"{how}, the sample printed {lines!r}, not {expect!r}, "
+            f"a line matching {pattern!r} and {SAMPLE_MODEL_LINE!r}"
+        )
+
+
 def sample(expect, dotnet="dotnet", binary=None, project=SAMPLE_PROJECT, environ=None):
-    """Run the sample without a service and against one the gate starts.
+    """Run the sample without a service, against one the gate starts, and against one it starts privately.
 
     Args:
         expect (str): The line the sample prints first, its client identity
@@ -243,11 +254,12 @@ def sample(expect, dotnet="dotnet", binary=None, project=SAMPLE_PROJECT, environ
     """
     environ = dict(os.environ if environ is None else environ)
     environ.pop(SERVICE_VARIABLE, None)
+    binary = binary or environ.get(BINARY_VARIABLE)
+    environ.pop(BINARY_VARIABLE, None)
     lines = _run_sample(dotnet, project, environ)
     if lines != [expect]:
         raise GateError(f"with no service named, the sample printed {lines!r}, not {[expect]!r}")
 
-    binary = binary or environ.get(BINARY_VARIABLE)
     if not binary:
         if _required(environ):
             raise GateError(f"${REQUIRE_VARIABLE} is set, but ${BINARY_VARIABLE} names no sysml-grpc for the sample")
@@ -267,8 +279,9 @@ def sample(expect, dotnet="dotnet", binary=None, project=SAMPLE_PROJECT, environ
         address = _read_line(service.stdout, STARTUP_TIMEOUT)
         if not address or not address.strip():
             raise GateError(f"{binary} reported no address within {STARTUP_TIMEOUT}s")
-        environ[SERVICE_VARIABLE] = address.strip()
-        lines = _run_sample(dotnet, project, environ)
+        named = dict(environ)
+        named[SERVICE_VARIABLE] = address.strip()
+        lines = _run_sample(dotnet, project, named)
     finally:
         service.stdin.close()
         try:
@@ -278,12 +291,12 @@ def sample(expect, dotnet="dotnet", binary=None, project=SAMPLE_PROJECT, environ
             service.wait()
         service.stdout.close()
 
-    pattern = rf"sysml-grpc {re.escape(version)}, [1-9][0-9]* capabilities"
-    if len(lines) != 3 or lines[0] != expect or not re.fullmatch(pattern, lines[1]) or lines[2] != SAMPLE_MODEL_LINE:
-        raise GateError(
-            f"connected to sysml-grpc {version}, the sample printed {lines!r}, not {expect!r}, "
-            f"a line matching {pattern!r} and {SAMPLE_MODEL_LINE!r}"
-        )
+    _check_served(lines, expect, version, f"connected to sysml-grpc {version}")
+
+    private = dict(environ)
+    private[BINARY_VARIABLE] = binary
+    lines = _run_sample(dotnet, project, private)
+    _check_served(lines, expect, version, f"starting sysml-grpc {version} privately")
     return lines[1]
 
 

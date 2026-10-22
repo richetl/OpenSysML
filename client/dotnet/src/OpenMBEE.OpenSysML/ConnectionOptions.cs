@@ -20,6 +20,12 @@ public sealed class ConnectionOptions
     /// <summary>The environment variable naming the service to connect to when <see cref="Address"/> does not.</summary>
     public const string ServiceVariable = "OPENSYSML_SERVICE";
 
+    /// <summary>
+    /// The environment variable naming the <c>sysml-grpc</c> binary to start as a private service when
+    /// <see cref="BinaryPath"/> does not.
+    /// </summary>
+    public const string BinaryVariable = "OPENSYSML_GRPC_BINARY";
+
     /// <summary>The default largest request and response message, in bytes: 512 MiB.</summary>
     public const int DefaultMaxMessageSize = 512 * 1024 * 1024;
 
@@ -27,7 +33,7 @@ public sealed class ConnectionOptions
     private IReadOnlyList<string> requireCapabilities = [];
     private ILogger logger = NullLogger.Instance;
 
-    /// <summary>The default options: the service <see cref="ServiceVariable"/> names, over gRPC.</summary>
+    /// <summary>The default options: the service <see cref="ServiceVariable"/> names, else a private one, over gRPC.</summary>
     public static ConnectionOptions Default { get; } = new();
 
     /// <summary>The default time a call may take: 60 seconds.</summary>
@@ -36,11 +42,18 @@ public sealed class ConnectionOptions
     /// <summary>The longest <see cref="RequestTimeout"/> a connection accepts: <see cref="int.MaxValue"/> milliseconds.</summary>
     public static TimeSpan MaxRequestTimeout => TimeSpan.FromMilliseconds(int.MaxValue);
 
+    /// <summary>The default time a private service has to report its address: 30 seconds.</summary>
+    public static TimeSpan DefaultStartupTimeout => TimeSpan.FromSeconds(30);
+
+    /// <summary>The default time a private service has to exit once asked to: 5 seconds.</summary>
+    public static TimeSpan DefaultShutdownTimeout => TimeSpan.FromSeconds(5);
+
     /// <summary>
     /// The service to connect to: <c>host:port</c>, which means <c>http://host:port</c>, or an
     /// <c>http</c> or <c>https</c> URL with no path, query, fragment or user information. A bracketed
     /// IPv6 host, as <c>[::1]:50051</c>, is accepted. When null, <see cref="ServiceVariable"/> names
-    /// it. A named service is never started, stopped or downloaded by this client.
+    /// it, and when that is unset too, a private service is started (<see cref="AutoStart"/>). A named
+    /// service is never started, stopped or downloaded by this client.
     /// </summary>
     public string? Address { get; init; }
 
@@ -58,11 +71,53 @@ public sealed class ConnectionOptions
     public MessageEncoding Encoding { get; init; } = MessageEncoding.Protobuf;
 
     /// <summary>
-    /// Whether to start a private service when none is named; true by default. This release of the
-    /// client does not yet start one, so a connection with no service named fails with
-    /// <see cref="ServiceStartException"/> either way, saying which.
+    /// Whether to start a private service when none is named; true by default. A private service is a
+    /// <c>sysml-grpc</c> child of this process, on a port the kernel chooses, which only this process
+    /// can reach and which exits when this process does, however it ends. Connections share one
+    /// while they are open (see <see cref="IsolatedService"/>), and the last to close stops it. When
+    /// false, a connection with no service named fails with <see cref="ServiceStartException"/>.
     /// </summary>
     public bool AutoStart { get; init; } = true;
+
+    /// <summary>
+    /// The <c>sysml-grpc</c> binary to start as a private service, or null to look for one: the binary
+    /// <see cref="BinaryVariable"/> names, else <c>~/.opensysml/bin/sysml-grpc</c> (<c>sysml-grpc.exe</c>
+    /// on Windows), else the first on <c>PATH</c>. A binary named here or by <see cref="BinaryVariable"/>
+    /// that is not an executable file fails the open with <see cref="BinaryNotFoundException"/>
+    /// rather than another being looked for. Only for a private service: refused with
+    /// <see cref="Address"/> set or <see cref="AutoStart"/> false.
+    /// </summary>
+    public string? BinaryPath { get; init; }
+
+    /// <summary>
+    /// The SHA-256 digest, as 64 hexadecimal digits in either case, the private service's binary
+    /// must have, or null to require none. A binary with another fails the open with
+    /// <see cref="ChecksumMismatchException"/> before it is started. Only for a private service:
+    /// refused with <see cref="Address"/> set or <see cref="AutoStart"/> false.
+    /// </summary>
+    public string? ExpectedBinarySha256 { get; init; }
+
+    /// <summary>
+    /// Whether the private service is this connection's alone, rather than shared with the other
+    /// connections of this copy of the client that would start the same one; false by default. An
+    /// isolated service is stopped when its connection closes, and never by
+    /// <see cref="Connection.StopSharedServicesAsync"/>. Only for a private service: refused with
+    /// <see cref="Address"/> set or <see cref="AutoStart"/> false.
+    /// </summary>
+    public bool IsolatedService { get; init; }
+
+    /// <summary>
+    /// How long a private service has to report the address it listens on once started:
+    /// <see cref="DefaultStartupTimeout"/> by default. Positive and at most <see cref="MaxRequestTimeout"/>.
+    /// </summary>
+    public TimeSpan StartupTimeout { get; init; } = DefaultStartupTimeout;
+
+    /// <summary>
+    /// How long a private service has to exit once its last connection closes its input, after which
+    /// it and any process it started are killed: <see cref="DefaultShutdownTimeout"/> by default.
+    /// Positive and at most <see cref="MaxRequestTimeout"/>.
+    /// </summary>
+    public TimeSpan ShutdownTimeout { get; init; } = DefaultShutdownTimeout;
 
     /// <summary>
     /// How long a call may take, from when it is made: <see cref="DefaultRequestTimeout"/> by default.
@@ -169,6 +224,18 @@ public sealed class ConnectionOptions
                 $"ConnectionOptions.RequestTimeout is {RequestTimeout}; it must be positive and at most {MaxRequestTimeout}.");
         }
 
+        if (StartupTimeout <= TimeSpan.Zero || StartupTimeout > MaxRequestTimeout)
+        {
+            throw new InvalidRequestException(
+                $"ConnectionOptions.StartupTimeout is {StartupTimeout}; it must be positive and at most {MaxRequestTimeout}.");
+        }
+
+        if (ShutdownTimeout <= TimeSpan.Zero || ShutdownTimeout > MaxRequestTimeout)
+        {
+            throw new InvalidRequestException(
+                $"ConnectionOptions.ShutdownTimeout is {ShutdownTimeout}; it must be positive and at most {MaxRequestTimeout}.");
+        }
+
         if (MaxRequestSize <= 0)
         {
             throw new InvalidRequestException($"ConnectionOptions.MaxRequestSize is {MaxRequestSize}; it must be positive.");
@@ -190,5 +257,43 @@ public sealed class ConnectionOptions
         }
 
         RequestHeaders.Validate(Headers);
+        ValidatePrivateService();
     }
+
+    private void ValidatePrivateService()
+    {
+        if (BinaryPath is not null && string.IsNullOrWhiteSpace(BinaryPath))
+        {
+            throw new InvalidRequestException("ConnectionOptions.BinaryPath is blank; name a sysml-grpc binary, or leave it null to look for one.");
+        }
+
+        if (ExpectedBinarySha256 is not null && !IsSha256(ExpectedBinarySha256))
+        {
+            throw new InvalidRequestException(
+                "ConnectionOptions.ExpectedBinarySha256 is not a SHA-256 digest: it must be 64 hexadecimal digits.");
+        }
+
+        var named = BinaryPath is not null ? nameof(BinaryPath)
+            : ExpectedBinarySha256 is not null ? nameof(ExpectedBinarySha256)
+            : IsolatedService ? nameof(IsolatedService)
+            : null;
+        if (named is null)
+        {
+            return;
+        }
+
+        if (Address is not null)
+        {
+            throw new InvalidRequestException(
+                $"ConnectionOptions.{named} describes a private service, but ConnectionOptions.Address names a running one; set one or the other.");
+        }
+
+        if (!AutoStart)
+        {
+            throw new InvalidRequestException(
+                $"ConnectionOptions.{named} describes a private service, but ConnectionOptions.AutoStart is false, so none is started.");
+        }
+    }
+
+    private static bool IsSha256(string digest) => digest.Length == 64 && digest.All(char.IsAsciiHexDigit);
 }

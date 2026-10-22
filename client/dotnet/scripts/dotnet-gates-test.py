@@ -170,19 +170,29 @@ class GatesTest(unittest.TestCase):
         os.chmod(path, os.stat(path).st_mode | stat.S_IEXEC)
         return path
 
-    def sample_host(self, service_line="sysml-grpc v1.0.0, 3 capabilities", identity=IDENTITY, model_line=gates.SAMPLE_MODEL_LINE):
-        """A stand-in dotnet whose sample prints its identity and, with a service named, a service line and a model line."""
+    def sample_host(self, service_line="sysml-grpc v1.0.0, 3 capabilities", identity=IDENTITY, model_line=gates.SAMPLE_MODEL_LINE,
+                    private_model_line=gates.SAMPLE_MODEL_LINE):
+        """A stand-in dotnet whose sample prints its identity and, with a service or a binary named, a service line and a model line."""
         seen = os.path.join(self.tmp.name, "seen-service")
+        started = os.path.join(self.tmp.name, "seen-binary")
         return self.executable("sample-dotnet", f"""\
             import os
             print({identity!r})
             service = os.environ.get("OPENSYSML_SERVICE")
-            if service:
+            binary = os.environ.get("OPENSYSML_GRPC_BINARY")
+            if service and binary:
+                print("both named")
+            elif service:
                 open({seen!r}, "w").write(service)
                 if {service_line!r}:
                     print({service_line!r})
                 if {model_line!r}:
                     print({model_line!r})
+            elif binary:
+                open({started!r}, "w").write(binary)
+                print({service_line!r})
+                if {private_model_line!r}:
+                    print({private_model_line!r})
             """), seen
 
     def service_binary(self, address="127.0.0.1:4321", version="v1.0.0"):
@@ -225,6 +235,20 @@ class GatesTest(unittest.TestCase):
         dotnet, _ = self.sample_host()
         binary, _ = self.service_binary()
         self.assertIsNotNone(gates.sample(IDENTITY, dotnet, environ={"OPENSYSML_GRPC_BINARY": binary}))
+
+    def test_sample_starts_the_binary_privately_with_no_service_named(self):
+        dotnet, _ = self.sample_host()
+        binary, _ = self.service_binary()
+        gates.sample(IDENTITY, dotnet, binary, environ={"OPENSYSML_SERVICE": "elsewhere:1"})
+        with open(os.path.join(self.tmp.name, "seen-binary"), encoding="utf-8") as f:
+            self.assertEqual(f.read(), binary)
+
+    def test_sample_rejects_a_private_run_that_does_not_reach_the_model(self):
+        dotnet, _ = self.sample_host(private_model_line="")
+        binary, stopped = self.service_binary()
+        with self.assertRaisesRegex(gates.GateError, "starting sysml-grpc v1.0.0 privately, the sample printed"):
+            gates.sample(IDENTITY, dotnet, binary, environ={})
+        self.assertTrue(os.path.exists(stopped))
 
     def test_sample_rejects_a_service_line_of_another_version(self):
         dotnet, _ = self.sample_host(service_line="sysml-grpc v2.0.0, 3 capabilities")

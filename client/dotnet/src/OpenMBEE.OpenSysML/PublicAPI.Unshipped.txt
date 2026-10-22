@@ -75,6 +75,7 @@ const OpenMBEE.OpenSysML.Capabilities.VerificationArguments = "verification_argu
 const OpenMBEE.OpenSysML.Capabilities.VerificationObjectiveAuthoring = "verification_objective_authoring" -> string!
 const OpenMBEE.OpenSysML.Capabilities.VerificationQuestions = "verification_questions" -> string!
 const OpenMBEE.OpenSysML.Capabilities.VerificationVerdicts = "verification_verdicts" -> string!
+const OpenMBEE.OpenSysML.ConnectionOptions.BinaryVariable = "OPENSYSML_GRPC_BINARY" -> string!
 const OpenMBEE.OpenSysML.ConnectionOptions.DefaultMaxMessageSize = 536870912 -> int
 const OpenMBEE.OpenSysML.ConnectionOptions.ServiceVariable = "OPENSYSML_SERVICE" -> string!
 OpenMBEE.OpenSysML.AttributeInfo
@@ -85,6 +86,9 @@ OpenMBEE.OpenSysML.AttributeInfo.Name.get -> string!
 OpenMBEE.OpenSysML.AttributeInfo.Type.get -> string!
 OpenMBEE.OpenSysML.AttributeInfo.Unit.get -> string!
 OpenMBEE.OpenSysML.AttributeInfo.Value.get -> OpenMBEE.OpenSysML.Value?
+OpenMBEE.OpenSysML.BinaryNotFoundException
+OpenMBEE.OpenSysML.BinaryNotFoundException.BinaryNotFoundException(string! message, System.Collections.Generic.IEnumerable<string!>! searchedLocations) -> void
+OpenMBEE.OpenSysML.BinaryNotFoundException.SearchedLocations.get -> OpenMBEE.OpenSysML.ValueList<string!>
 OpenMBEE.OpenSysML.Capabilities
 OpenMBEE.OpenSysML.Capabilities.Capabilities(System.Collections.Generic.IEnumerable<string!>! names) -> void
 OpenMBEE.OpenSysML.Capabilities.Equals(OpenMBEE.OpenSysML.Capabilities? other) -> bool
@@ -95,6 +99,11 @@ OpenMBEE.OpenSysML.CapabilityException
 OpenMBEE.OpenSysML.CapabilityException.Capability.get -> string!
 OpenMBEE.OpenSysML.CapabilityException.CapabilityException(string! capability, string! message, string! remedy) -> void
 OpenMBEE.OpenSysML.CapabilityException.Remedy.get -> string!
+OpenMBEE.OpenSysML.ChecksumMismatchException
+OpenMBEE.OpenSysML.ChecksumMismatchException.ActualSha256.get -> string!
+OpenMBEE.OpenSysML.ChecksumMismatchException.BinaryPath.get -> string!
+OpenMBEE.OpenSysML.ChecksumMismatchException.ChecksumMismatchException(string! binaryPath, string! expectedSha256, string! actualSha256, string! remedy) -> void
+OpenMBEE.OpenSysML.ChecksumMismatchException.ExpectedSha256.get -> string!
 OpenMBEE.OpenSysML.Connection
 OpenMBEE.OpenSysML.Connection.Address.get -> System.Uri!
 OpenMBEE.OpenSysML.Connection.CallAsync<TRequest, TResponse>(string! method, TRequest! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<TResponse!>!
@@ -112,13 +121,19 @@ OpenMBEE.OpenSysML.ConnectionOptions.Address.get -> string?
 OpenMBEE.OpenSysML.ConnectionOptions.Address.init -> void
 OpenMBEE.OpenSysML.ConnectionOptions.AutoStart.get -> bool
 OpenMBEE.OpenSysML.ConnectionOptions.AutoStart.init -> void
+OpenMBEE.OpenSysML.ConnectionOptions.BinaryPath.get -> string?
+OpenMBEE.OpenSysML.ConnectionOptions.BinaryPath.init -> void
 OpenMBEE.OpenSysML.ConnectionOptions.ConnectionOptions() -> void
 OpenMBEE.OpenSysML.ConnectionOptions.Encoding.get -> OpenMBEE.OpenSysML.MessageEncoding
 OpenMBEE.OpenSysML.ConnectionOptions.Encoding.init -> void
+OpenMBEE.OpenSysML.ConnectionOptions.ExpectedBinarySha256.get -> string?
+OpenMBEE.OpenSysML.ConnectionOptions.ExpectedBinarySha256.init -> void
 OpenMBEE.OpenSysML.ConnectionOptions.Headers.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string!>!
 OpenMBEE.OpenSysML.ConnectionOptions.Headers.init -> void
 OpenMBEE.OpenSysML.ConnectionOptions.HttpMessageHandler.get -> System.Net.Http.HttpMessageHandler?
 OpenMBEE.OpenSysML.ConnectionOptions.HttpMessageHandler.init -> void
+OpenMBEE.OpenSysML.ConnectionOptions.IsolatedService.get -> bool
+OpenMBEE.OpenSysML.ConnectionOptions.IsolatedService.init -> void
 OpenMBEE.OpenSysML.ConnectionOptions.Logger.get -> Microsoft.Extensions.Logging.ILogger!
 OpenMBEE.OpenSysML.ConnectionOptions.Logger.init -> void
 OpenMBEE.OpenSysML.ConnectionOptions.MaxRequestSize.get -> int
@@ -131,6 +146,10 @@ OpenMBEE.OpenSysML.ConnectionOptions.RequestTimeout.get -> System.TimeSpan
 OpenMBEE.OpenSysML.ConnectionOptions.RequestTimeout.init -> void
 OpenMBEE.OpenSysML.ConnectionOptions.RequireCapabilities.get -> System.Collections.Generic.IReadOnlyList<string!>!
 OpenMBEE.OpenSysML.ConnectionOptions.RequireCapabilities.init -> void
+OpenMBEE.OpenSysML.ConnectionOptions.ShutdownTimeout.get -> System.TimeSpan
+OpenMBEE.OpenSysML.ConnectionOptions.ShutdownTimeout.init -> void
+OpenMBEE.OpenSysML.ConnectionOptions.StartupTimeout.get -> System.TimeSpan
+OpenMBEE.OpenSysML.ConnectionOptions.StartupTimeout.init -> void
 OpenMBEE.OpenSysML.ConnectionOptions.Version.get -> string?
 OpenMBEE.OpenSysML.ConnectionOptions.Version.init -> void
 OpenMBEE.OpenSysML.Diagnostic
@@ -283,6 +302,9 @@ OpenMBEE.OpenSysML.ServiceException.StatusCode.get -> OpenMBEE.OpenSysML.StatusC
 OpenMBEE.OpenSysML.ServiceStartException
 OpenMBEE.OpenSysML.ServiceStartException.ServiceStartException(string! message) -> void
 OpenMBEE.OpenSysML.ServiceStartException.ServiceStartException(string! message, System.Exception? innerException) -> void
+OpenMBEE.OpenSysML.ServiceStopException
+OpenMBEE.OpenSysML.ServiceStopException.Failures.get -> System.Collections.Generic.IReadOnlyList<System.Exception!>!
+OpenMBEE.OpenSysML.ServiceStopException.ServiceStopException(System.Collections.Generic.IEnumerable<System.Exception!>! failures) -> void
 OpenMBEE.OpenSysML.SourceDocument
 OpenMBEE.OpenSysML.SourceDocument.<Clone>$() -> OpenMBEE.OpenSysML.SourceDocument!
 OpenMBEE.OpenSysML.SourceDocument.Content.get -> string?
@@ -386,6 +408,9 @@ OpenMBEE.OpenSysML.UnitTerm.Factors.get -> OpenMBEE.OpenSysML.ValueList<OpenMBEE
 OpenMBEE.OpenSysML.UnitTerm.ScaleDenominator.get -> double
 OpenMBEE.OpenSysML.UnitTerm.ScaleNumerator.get -> double
 OpenMBEE.OpenSysML.UnitTerm.UnitTerm(double scaleNumerator, double scaleDenominator, System.Collections.Generic.IEnumerable<OpenMBEE.OpenSysML.UnitFactor!>! factors) -> void
+OpenMBEE.OpenSysML.UnsupportedPlatformException
+OpenMBEE.OpenSysML.UnsupportedPlatformException.Platform.get -> string!
+OpenMBEE.OpenSysML.UnsupportedPlatformException.UnsupportedPlatformException(string! platform, string! message) -> void
 OpenMBEE.OpenSysML.UnsupportedValueException
 OpenMBEE.OpenSysML.UnsupportedValueException.Method.get -> string!
 OpenMBEE.OpenSysML.UnsupportedValueException.Path.get -> string!
@@ -693,8 +718,11 @@ static OpenMBEE.OpenSysML.AttributeInfo.operator ==(OpenMBEE.OpenSysML.Attribute
 static OpenMBEE.OpenSysML.Capabilities.None.get -> OpenMBEE.OpenSysML.Capabilities!
 static OpenMBEE.OpenSysML.Capabilities.UpgradeRemedy(string! capability) -> string!
 static OpenMBEE.OpenSysML.Connection.OpenAsync(OpenMBEE.OpenSysML.ConnectionOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<OpenMBEE.OpenSysML.Connection!>!
+static OpenMBEE.OpenSysML.Connection.StopSharedServicesAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<int>!
 static OpenMBEE.OpenSysML.ConnectionOptions.Default.get -> OpenMBEE.OpenSysML.ConnectionOptions!
 static OpenMBEE.OpenSysML.ConnectionOptions.DefaultRequestTimeout.get -> System.TimeSpan
+static OpenMBEE.OpenSysML.ConnectionOptions.DefaultShutdownTimeout.get -> System.TimeSpan
+static OpenMBEE.OpenSysML.ConnectionOptions.DefaultStartupTimeout.get -> System.TimeSpan
 static OpenMBEE.OpenSysML.ConnectionOptions.MaxRequestTimeout.get -> System.TimeSpan
 static OpenMBEE.OpenSysML.Diagnostic.operator !=(OpenMBEE.OpenSysML.Diagnostic? left, OpenMBEE.OpenSysML.Diagnostic? right) -> bool
 static OpenMBEE.OpenSysML.Diagnostic.operator ==(OpenMBEE.OpenSysML.Diagnostic? left, OpenMBEE.OpenSysML.Diagnostic? right) -> bool
