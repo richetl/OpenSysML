@@ -496,6 +496,57 @@ and the tests hold it to the schema and the [conformance scenarios](../../confor
 The checks compare sets, never counts: an RPC, field, arm or scenario the schema or the
 suite adds, renames or removes fails the tests until the inventory accounts for it, and so
 does a scenario that requires a capability no gate or governed field of its RPC names.
+The scenarios are read with the conformance runner's own reader, described next.
+
+## Conformance runner core
+
+[`src/OpenMBEE.OpenSysML.Conformance`](src/OpenMBEE.OpenSysML.Conformance/) is the part of a
+.NET runner for the [conformance suite](../../conformance/) that does not depend on how a
+call is made: it reads the scenarios, builds each request, judges each answer and writes the
+reports, by the rules of the suite's README and as the reference runner,
+[`tools/cmd/conformance`](../../tools/cmd/conformance/), applies them.
+
+- **Reading.** Every `*.json` of `conformance/scenarios`, in the order of the file names'
+  bytes (`1-…`, `10-…`, `2-…`), then of declaration. Reading is strict: a member the format
+  does not define or states twice, a value of the wrong kind, a scenario without an id or an
+  RPC, a model naming no fixture or both forms, and an id declared twice are refused.
+- **Requests.** `${model_hash}`, `${fixture:…}` and `${fixture_base64:…}` are resolved where
+  a whole string is one of them, a fixture outside `conformance/fixtures` is refused, and the
+  protobuf-JSON is decoded into the RPC's message by the generated schema. A 64-bit integer
+  keeps every digit, including decimal and exponent spellings: they are normalized exactly,
+  range-checked and passed to Google.Protobuf as text rather than through a `double`.
+  An invalid fixture path is a scenario error, not an abort of the remaining suite.
+- **Judging.** Capability gating and without-capability expectations; each model parsed once
+  per run; a deadline per parse and call, a call outliving it answering `DEADLINE_EXCEEDED`;
+  the runner bounds its wait even if an adapter ignores cancellation, observes late failures
+  and never caches a late parse hash. Caller cancellation is thrown, not reported as an outcome.
+  Statuses compare by canonical name; responses are normalized by descriptor (version, model hash and
+  absolute paths replaced, runtime instance ids labelled `@1`, `@2`, … in order of first
+  appearance, enums by name, integral fields never compared as Reals) and compared: only
+  what is named, every named list at its exact length, an unset field equal to its default,
+  finite Reals within a relative 1e-9, integers by their exact digits for every whole-number
+  spelling. NaN and infinities match only their explicit text spellings, never a finite number;
+  overflowing or nonzero underflowing expectations are rejected. Mismatch messages spell
+  values as the reference does.
+- **Reports.** The JSON `-report` and JUnit `-junit` shapes the reference writes, member for
+  member, with outcomes `pass`, `fail`, `skip` and `error`. JUnit replaces XML-invalid
+  characters with U+FFFD in text and attributes; JSON retains the original strings.
+
+How a scenario reaches the service is an adapter's: an `IScenarioClient` answers through the
+client's public API and renders the result as the RPC's response message, or reports that the
+API cannot express the request, which is a skip with that reason. No adapter exists yet, so
+nothing here runs the suite against a service, and there is no command-line runner.
+
+[`test/OpenMBEE.OpenSysML.Conformance.Tests`](test/OpenMBEE.OpenSysML.Conformance.Tests/)
+holds every comparison rule to a case that must hold and one that must not, ports the
+reference runner's suite checks (every RPC covered, both kinds of failure pinned, every
+fixture read), and pins a whole run of a small suite against a scripted adapter as goldens
+of its JSON report, JUnit report and log. After an intended change to any of them, rewrite
+the goldens and review the difference:
+
+```bash
+OPENSYSML_UPDATE_GOLDENS=1 dotnet test --project client/dotnet/test/OpenMBEE.OpenSysML.Conformance.Tests -c Release
+```
 
 ## Build policy
 

@@ -266,6 +266,12 @@
           "Microsoft.Extensions.Logging.Abstractions": "[10.0.13, )"
         }
       },
+      "openmbee.opensysml.conformance": {
+        "type": "Project",
+        "dependencies": {
+          "OpenMBEE.OpenSysML": "[0.10.1, )"
+        }
+      },
       "Google.Protobuf": {
         "type": "CentralTransitive",
         "requested": "[3.36.2, )",

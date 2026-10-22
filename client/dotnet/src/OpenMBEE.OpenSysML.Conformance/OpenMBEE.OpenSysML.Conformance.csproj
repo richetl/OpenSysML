@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>OpenMBEE.OpenSysML.Conformance</AssemblyName>
+    <RootNamespace>OpenMBEE.OpenSysML.Conformance</RootNamespace>
+    <Description>Reads the language-independent conformance scenarios and judges what a client answered to them.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- The generated protocol code: requests are built from, and responses judged by, its descriptors. -->
+    <ProjectReference Include="../OpenMBEE.OpenSysML/OpenMBEE.OpenSysML.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="OpenMBEE.OpenSysML.Conformance.Tests" />
+    <!-- The parity inventory reads the scenarios through this loader rather than a second one. -->
+    <InternalsVisibleTo Include="OpenMBEE.OpenSysML.Tests" />
+  </ItemGroup>
+</Project>

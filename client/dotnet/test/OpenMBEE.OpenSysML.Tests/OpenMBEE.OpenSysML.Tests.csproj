@@ -17,6 +17,8 @@
 
   <ItemGroup>
     <ProjectReference Include="../../src/OpenMBEE.OpenSysML/OpenMBEE.OpenSysML.csproj" />
+    <!-- The parity inventory reads the conformance scenarios with the runner's own reader. -->
+    <ProjectReference Include="../../src/OpenMBEE.OpenSysML.Conformance/OpenMBEE.OpenSysML.Conformance.csproj" />
     <!-- Built first, but not copied here: FakeChild runs it from its own output, as a separate process. -->
     <ProjectReference Include="../FakeService/FakeService.csproj" ReferenceOutputAssembly="false" Private="false" />
     <!-- Likewise the lifecycle probes, which the orphan and load-context tests run as processes of their own. -->
