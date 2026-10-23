@@ -35,8 +35,8 @@ internal static class ExecutionWire
     internal static List<DocumentEvent> Trace(RepeatedField<Wire.DocumentEvent> trace, string method) =>
         [.. trace.Select((record, i) => DocumentWire.Event(record, method, $"trace[{i}]"))];
 
-    /// <summary>Reads an exploration: its outcomes and how it ended.</summary>
-    internal static Exploration Exploration(RepeatedField<Wire.Outcome> outcomes, Wire.ExplorationStatus status, string method) =>
+    /// <summary>Reads an exploration: its outcomes, how it ended and the standing of the engine that answered.</summary>
+    internal static Exploration Exploration(RepeatedField<Wire.Outcome> outcomes, Wire.ExplorationStatus status, Standing standing, string method) =>
         new(
             outcomes.Select((outcome, i) => Outcome(outcome, method, $"outcomes[{i}]")),
             status.Complete,
@@ -46,7 +46,8 @@ internal static class ExecutionWire
             status.DepthBudget,
             status.ProbabilitiesLowerBound,
             status.FailedLinearizations,
-            status.Unenumerated);
+            status.Unenumerated,
+            standing);
 
     /// <summary>Reads what a check found; the failure an answer reports is the caller's to raise.</summary>
     internal static CheckResult Check(Wire.CheckBehaviorResponse response) =>
@@ -83,8 +84,14 @@ internal static class ExecutionWire
             response.Assumptions,
             Witness(response.Witness),
             Witness(response.Contrast),
-            new Standing(response.Engine, response.Strength, response.Bounds.Select(bound => new Bound(bound.Name, bound.Limit, bound.Reached))),
+            StandingOf(response.Engine, response.Strength, response.Bounds),
             response.Reason);
+
+    /// <summary>Reads the engine an answer names, the strength of its evidence and its bounds.</summary>
+    internal static Standing StandingOf(string engine, string strength, RepeatedField<Wire.Bound> bounds) =>
+        engine.Length == 0 && strength.Length == 0 && bounds.Count == 0
+            ? Standing.None
+            : new(engine, strength, bounds.Select(bound => new Bound(bound.Name, bound.Limit, bound.Reached)));
 
     private static Outcome Outcome(Wire.Outcome outcome, string method, string path) =>
         new(

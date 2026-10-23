@@ -66,7 +66,13 @@ public sealed class ConformanceAdapterTests
         { "ParseSources", """{"documents": [{"file_path": ""}]}""", "the public API names a file document by a path that is not empty" },
         { "GetSymbol", """{"model_hash": " ", "symbol_id": "Demo::Vehicle"}""", "the public API names a model by a hash that is not blank" },
         { "Evaluate", """{"expression": "2 + 2"}""", "the public API names a model by a hash that is not blank" },
-        { "VerifyConstraint", """{"model_hash": "h"}""", "the public API does not cover VerifyConstraint" },
+        { "SelfCheck", """{"model_hash": "h"}""", "the public API does not cover SelfCheck" },
+        { "VerifyConstraint", """{"symbol_id": "C"}""", "the public API names a model by a hash that is not blank" },
+        { "EvaluateCalc", """{"model_hash": "h", "arguments": [{"function": {"calc_id": "F::Scaler::scale", "self_id": 3}}]}""", "The value at arguments[0] is the function F::Scaler::scale closing over instance(3), which lives only within the response that held it." },
+        { "EvaluateCalc", """{"model_hash": "h", "arguments": [{"measurement_ref": {"unit": "m"}}]}""", "the public API holds a measurement reference with its reduction, which arguments[0] has none of" },
+        { "VerifyRequirement", """{"model_hash": "h", "named_arguments": {"x": {"undetermined": {}}}}""", "The value at named_arguments[\"x\"] is undetermined, which is a result the model leaves open, never an argument." },
+        { "RunSweep", """{"model_hash": "h", "ranges": [{"parameter": "b", "end": {"int_value": 1}}]}""", "the public API holds a sweep range with both endpoints, which ranges[0] does not state" },
+        { "RunAnalysis", """{"model_hash": "h", "schedule": "explore", "tool_dry_run": true}""", "AnalysisOptions.ToolDryRun previews one run of the case, which an exploration makes none of; leave it false." },
         { "ExecuteAction", """{"model_hash": "h", "inputs": {"x": {"unset": true}}}""", "The value at inputs[\"x\"] is unset, which is what a feature with no value reads as, never an argument; leave the argument out instead." },
         { "ExecuteAction", """{"model_hash": "h", "inputs": {"x": {"big_int_value": "+9223372036854775808"}}}""", "the public API writes an integer in canonical digits, which inputs[\"x\"]'s \"+9223372036854775808\" is not" },
         { "ExecuteAction", """{"model_hash": "h", "inputs": {"x": {"rational_value": {"numerator": "2", "denominator": "4"}}}}""", "the public API writes a rational in lowest terms over a positive denominator, which inputs[\"x\"]'s 2/4 is not" },
@@ -184,6 +190,79 @@ public sealed class ConformanceAdapterTests
         ["CheckBehavior of a state machine"] = (
             new Wire.CheckBehaviorRequest { ModelHash = Hash, StateMachineSymbolId = "Test::Machine", CheckProperty = { "Test::ok" } },
             new Wire.CheckBehaviorResponse { Verdict = "holds", Engine = "check" }),
+        ["VerifyConstraint"] = (
+            new Wire.VerifyConstraintRequest
+            {
+                ModelHash = Hash,
+                SymbolId = "Demo::Vehicle::massLight",
+                SubjectSymbolId = "Demo::sedan",
+                Engine = "explore",
+                Question = "holds",
+                Arguments = { SendableValues.Values },
+                NamedArguments = { SendableValues },
+            },
+            CompleteVerificationWire.Constraint),
+        ["VerifyRequirement"] = (
+            new Wire.VerifyRequirementRequest
+            {
+                ModelHash = Hash,
+                SymbolId = "Demo::bounded",
+                SubjectSymbolId = "Demo::sedan",
+                Engine = "all",
+                Question = "bogus",
+                Arguments = { SendableValues.Values },
+                NamedArguments = { SendableValues },
+            },
+            CompleteVerificationWire.Requirement),
+        ["VerifySatisfaction"] = (
+            new Wire.VerifySatisfactionRequest { ModelHash = Hash, SymbolId = "Demo::checks", Engine = "auto", Question = "satisfiable" },
+            CompleteVerificationWire.Satisfaction),
+        ["VerifySatisfaction of every assertion"] = (
+            new Wire.VerifySatisfactionRequest { ModelHash = Hash },
+            new Wire.VerifySatisfactionResponse()),
+        ["ValidateInstance"] = (
+            new Wire.ValidateInstanceRequest { ModelHash = Hash, SymbolId = "Demo::sedan", Engine = "run" },
+            CompleteVerificationWire.Validation),
+        ["EvaluateCalc"] = (
+            new Wire.EvaluateCalcRequest { ModelHash = Hash, SymbolId = "Demo::add", Arguments = { SendableValues.Values }, Engine = "run" },
+            CompleteVerificationWire.Calculation),
+        ["RunAnalysis"] = (
+            new Wire.RunAnalysisRequest
+            {
+                ModelHash = Hash,
+                SymbolId = "An::CostAnalysis",
+                SubjectSymbolId = "An::barge",
+                Arguments = { SendableValues.Values },
+                NamedArguments = { SendableValues },
+                Schedule = "declared",
+                Engine = "run",
+                ToolDryRun = true,
+            },
+            CompleteVerificationWire.Analysis),
+        ["RunAnalysis exploring"] = (
+            new Wire.RunAnalysisRequest { ModelHash = Hash, SymbolId = "An::race", Engine = " explore " },
+            CompleteVerificationWire.Exploration),
+        ["RunSweep"] = (
+            new Wire.RunSweepRequest
+            {
+                ModelHash = Hash,
+                SymbolId = "Sw::CostAnalysis",
+                SubjectSymbolId = "Sw::barge",
+                Arguments = { SendableValues.Values },
+                NamedArguments = { SendableValues },
+                Ranges =
+                {
+                    new Wire.SweepRange { Parameter = "limit", Start = new Wire.Value { RealValue = 0 }, End = new Wire.Value { RealValue = 40 }, Step = new Wire.Value { RealValue = 20 } },
+                    new Wire.SweepRange { Start = new Wire.Value { IntValue = -1 }, End = new Wire.Value { Quantity = new Wire.Quantity { IntMagnitude = 1 } } },
+                },
+                Samples = -2,
+                Seed = ulong.MaxValue,
+                Engine = "sweep",
+            },
+            CompleteVerificationWire.Sweep),
+        ["ListEngines"] = (
+            new Wire.ListEnginesRequest { Probe = true },
+            CompleteVerificationWire.Engines),
         ["CheckBehavior of no behavior"] = (
             new Wire.CheckBehaviorRequest { ModelHash = Hash },
             new Wire.CheckBehaviorResponse { Verdict = "undecided" }),
@@ -227,6 +306,64 @@ public sealed class ConformanceAdapterTests
         ["CheckBehavior"] = (
             new Wire.CheckBehaviorRequest { ModelHash = Hash, ActionSymbolId = "Plant::Tank::drain" },
             CompleteExecutionWire.FailedCheck),
+        ["VerifyConstraint"] = (
+            new Wire.VerifyConstraintRequest { ModelHash = Hash, SymbolId = "Demo::nope" },
+            new Wire.VerifyConstraintResponse { Error = "symbol not found: Demo::nope", Instances = { CompleteWire.Instance }, Diagnostics = { CompleteWire.Diagnostic } }),
+        ["VerifyRequirement"] = (
+            new Wire.VerifyRequirementRequest { ModelHash = Hash, SymbolId = "Demo::nope" },
+            new Wire.VerifyRequirementResponse
+            {
+                Error = "symbol not found: Demo::nope",
+                Instances = { CompleteWire.Instance },
+                Diagnostics = { CompleteWire.Diagnostic },
+                VerificationVerdicts = { CompleteVerificationWire.Verification },
+            }),
+        ["VerifySatisfaction"] = (
+            new Wire.VerifySatisfactionRequest { ModelHash = Hash, SymbolId = "Demo" },
+            new Wire.VerifySatisfactionResponse
+            {
+                Error = "Demo states no satisfaction assertion",
+                FailureReason = Wire.FailureReason.WrongKind,
+                Instances = { CompleteWire.Instance },
+                Diagnostics = { CompleteWire.Diagnostic },
+                VerificationVerdicts = { CompleteVerificationWire.Verification },
+            }),
+        ["ValidateInstance"] = (
+            new Wire.ValidateInstanceRequest { ModelHash = Hash, SymbolId = "Demo" },
+            new Wire.ValidateInstanceResponse
+            {
+                Error = "Demo declares no object",
+                FailureReason = Wire.FailureReason.WrongKind,
+                Instances = { CompleteWire.Instance },
+                Diagnostics = { CompleteWire.Diagnostic },
+                VerificationVerdicts = { CompleteVerificationWire.Verification },
+            }),
+        ["EvaluateCalc"] = (
+            new Wire.EvaluateCalcRequest { ModelHash = Hash, SymbolId = "Demo::sedan" },
+            new Wire.EvaluateCalcResponse
+            {
+                Error = "Demo::sedan declares no calc",
+                FailureReason = Wire.FailureReason.WrongKind,
+                Diagnostics = { CompleteWire.Diagnostic },
+                Engine = "run",
+                Strength = "not covered",
+                Bounds = { CompleteVerificationWire.Bounds },
+            }),
+        ["RunAnalysis"] = (
+            new Wire.RunAnalysisRequest { ModelHash = Hash, SymbolId = "An::CostAnalysis" },
+            CompleteVerificationWire.FailedAnalysis),
+        ["RunSweep"] = (
+            new Wire.RunSweepRequest { ModelHash = Hash, SymbolId = "Sw::barge" },
+            new Wire.RunSweepResponse
+            {
+                Error = "Sw::barge declares neither an analysis case nor a calc",
+                FailureReason = Wire.FailureReason.Evaluation,
+                Instances = { CompleteWire.Instance },
+                Diagnostics = { CompleteWire.Diagnostic },
+                Engine = "sweep",
+                Strength = "observed",
+                Bounds = { CompleteVerificationWire.Bounds },
+            }),
     };
 
     [Theory]

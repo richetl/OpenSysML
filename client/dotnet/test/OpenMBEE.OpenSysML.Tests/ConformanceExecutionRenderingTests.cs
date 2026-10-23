@@ -60,7 +60,7 @@ public sealed class ConformanceExecutionRenderingTests
     {
         foreach (var sample in new[] { CompleteExecutionWire.ActionExploration, new Wire.ExecuteActionResponse { Exploration = new Wire.ExplorationStatus() } })
         {
-            var read = ExecutionWire.Exploration(sample.Outcomes, sample.Exploration, Model.ExecuteActionMethod);
+            var read = ExecutionWire.Exploration(sample.Outcomes, sample.Exploration, Standing.None, Model.ExecuteActionMethod);
 
             Assert.Equal(sample.Outcomes, Rendering.Outcomes(read));
             Assert.Equal(sample.Exploration, Rendering.ExplorationStatus(read));

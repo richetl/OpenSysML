@@ -283,7 +283,7 @@ public sealed class ModelExecutionTests
         Assert.Single(state.FinalContext);
         Assert.Empty(state.Trace);
         Assert.Throws<ArgumentException>(() => new Outcome([KeyValuePair.Create("x", (Value)null!)], string.Empty, [], string.Empty, 0, [], [], 0, null));
-        Assert.Throws<ArgumentException>(() => new Exploration([null!], true, 0, [], 0, 0, false, 0, []));
+        Assert.Throws<ArgumentException>(() => new Exploration([null!], true, 0, [], 0, 0, false, 0, [], Standing.None));
     }
 
     private static FakeServiceHandler Serving(ClientWire wire) => new(wire) { Capabilities = FakeModels.ModelCapabilities };

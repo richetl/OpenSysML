@@ -471,6 +471,32 @@ class ConformanceCheckTest(unittest.TestCase):
         runs[0][2][0][2][1]["duration_ms"] = 99.0
         self.assertEqual(self.check(theirs=(runs, responses)), (3, 2))
 
+    def sweeping(self, response, rpc="RunSweep"):
+        """Runs whose default configuration also answers one scenario of rpc with response."""
+        runs, responses = self.runs()
+        runs[0][2][0][2].append(result("run_sweep/rows", rpc))
+        responses = dict(responses)
+        responses[("default", "grpc", "run_sweep/rows")] = response
+        return runs, responses
+
+    def test_the_wall_time_a_sweep_row_reports_is_not_compared(self):
+        row = {"inputs": [{"name": "b", "value": {"real_value": 0.0}}], "elapsed_micros": "220"}
+        ours = self.sweeping({"rows": [row, dict(row, elapsed_micros="17")]})
+        theirs = self.sweeping({"rows": [dict(row, elapsed_micros="371"), {"inputs": row["inputs"]}]})
+        self.assertEqual(self.check(ours=ours, theirs=theirs), (4, 2))
+
+    def test_every_other_field_of_a_sweep_row_is_compared(self):
+        row = {"inputs": [{"name": "b", "value": {"real_value": 0.0}}], "elapsed_micros": "220"}
+        ours = self.sweeping({"rows": [dict(row, inputs=[{"name": "b", "value": {"real_value": 2.0}}])]})
+        with self.assertRaisesRegex(gates.GateError, r"run_sweep/rows: response rows.0.inputs.0.value.real_value: 2.0, the reference 0.0"):
+            self.check(ours=ours, theirs=self.sweeping({"rows": [row]}))
+
+    def test_a_field_named_for_a_wall_time_is_compared_outside_a_sweep(self):
+        ours = self.sweeping({"rows": [{"elapsed_micros": "1"}]}, rpc="Evaluate")
+        theirs = self.sweeping({"rows": [{"elapsed_micros": "2"}]}, rpc="Evaluate")
+        with self.assertRaisesRegex(gates.GateError, r"run_sweep/rows: response rows.0.elapsed_micros: '1', the reference '2'"):
+            self.check(ours=ours, theirs=theirs)
+
     def test_capabilities_compare_as_a_set(self):
         runs, responses = self.runs()
         responses = dict(responses)

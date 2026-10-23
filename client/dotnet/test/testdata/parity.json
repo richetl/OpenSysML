@@ -489,10 +489,10 @@
       "methods": [
         "Model.VerifyConstraintAsync"
       ],
-      "input": "symbol ID, VerifyOptions",
+      "input": "symbol ID, VerifyOptions (question, subject, arguments, engine)",
       "result": "Verification",
       "area": "verification",
-      "status": "deferred",
+      "status": "implemented",
       "gates": [
         {
           "capability": "verification",
@@ -531,6 +531,19 @@
         "verify_constraint/a_bogus_question_is_invalid",
         "verify_constraint/an_undecided_holds_question_names_the_reason",
         "verify_constraint/an_explicit_evaluate_question_is_the_default"
+      ],
+      "tests": [
+        "ModelVerificationTests.VerifyConstraintSendsEveryOptionAndReadsEveryFieldOfTheVerdict",
+        "ModelVerificationTests.AVerificationTheServiceCouldNotAnswerIsAVerificationExceptionKeepingWhatItReported",
+        "ModelVerificationTests.AFalseVerdictIsDecidedAndAnUndecidedOneIsAnsweredNeitherRaised",
+        "ModelVerificationTests.AnAnswerOfNeitherVerdictNorFailureOrOfBothIsMalformed",
+        "ModelVerificationTests.VerificationGatesAreCheckedInTheServicesOrderBeforeAnythingIsSent",
+        "ModelVerificationTests.AQuestionTheServiceDoesNotGateIsSentForItToJudge",
+        "ModelVerificationTests.AnEmptyOptionASatisfactionSubjectOrAnUnsendableArgumentIsRefusedBeforeSending",
+        "ModelVerificationTests.AFailureReasonThisClientDoesNotNameIsKeptAsItsNumber",
+        "ServiceVerificationTests.ConstraintsAndRequirementsAnswerHoldingFalseAndUndecidedVerdicts",
+        "ServiceVerificationTests.AVerificationTheServiceCannotAnswerIsInBandAndAnUnknownQuestionOrEngineIsRefused",
+        "ServiceVerificationTests.AWithheldCapabilityIsRefusedBeforeAnythingIsSent"
       ]
     },
     {
@@ -540,10 +553,10 @@
       "methods": [
         "Model.VerifyRequirementAsync"
       ],
-      "input": "symbol ID, VerifyOptions",
+      "input": "symbol ID, VerifyOptions (question, subject, arguments, engine)",
       "result": "Verification",
       "area": "verification",
-      "status": "deferred",
+      "status": "implemented",
       "gates": [
         {
           "capability": "verification",
@@ -578,6 +591,15 @@
         "verify_requirement/a_satisfied_requirement_holds",
         "verify_requirement/an_unsatisfied_requirement_does_not_hold",
         "verify_requirement/the_verification_cases_verifying_it_report_beside_the_verdict"
+      ],
+      "tests": [
+        "ModelVerificationTests.VerifyRequirementReadsTheVerificationVerdictsBesideItsVerdict",
+        "ModelVerificationTests.AVerificationTheServiceCouldNotAnswerIsAVerificationExceptionKeepingWhatItReported",
+        "ModelVerificationTests.AnAnswerOfNeitherVerdictNorFailureOrOfBothIsMalformed",
+        "ModelVerificationTests.VerificationGatesAreCheckedInTheServicesOrderBeforeAnythingIsSent",
+        "ModelVerificationTests.AnEmptyOptionASatisfactionSubjectOrAnUnsendableArgumentIsRefusedBeforeSending",
+        "ConformanceAdapterTests.EachRpcSendsTheScenarioRequestThroughItsTypedCallAndRendersTheWholeAnswer",
+        "ServiceVerificationTests.ConstraintsAndRequirementsAnswerHoldingFalseAndUndecidedVerdicts"
       ]
     },
     {
@@ -588,10 +610,10 @@
         "Model.VerifySatisfactionAsync",
         "Model.SatisfiedAsync"
       ],
-      "input": "symbol or scope, VerifyOptions",
-      "result": "Satisfaction",
+      "input": "scope symbol ID or none, VerifyOptions (question, engine)",
+      "result": "Satisfaction, or whether every verdict holds",
       "area": "verification",
-      "status": "deferred",
+      "status": "implemented",
       "gates": [
         {
           "capability": "verification",
@@ -618,6 +640,15 @@
         "verify_satisfaction/every_assertion_gets_a_verdict",
         "verify_satisfaction/a_scope_limits_the_assertions_evaluated",
         "verify_satisfaction/every_requirement_asserted_reports_its_verification_cases"
+      ],
+      "tests": [
+        "ModelVerificationTests.VerifySatisfactionSendsTheScopeAndQuestionAndReadsEveryVerdict",
+        "ModelVerificationTests.AVerificationTheServiceCouldNotAnswerIsAVerificationExceptionKeepingWhatItReported",
+        "ModelVerificationTests.AnAnswerOfNeitherVerdictNorFailureOrOfBothIsMalformed",
+        "ModelVerificationTests.VerificationGatesAreCheckedInTheServicesOrderBeforeAnythingIsSent",
+        "ModelVerificationTests.AnEmptyOptionASatisfactionSubjectOrAnUnsendableArgumentIsRefusedBeforeSending",
+        "ServiceVerificationTests.SatisfactionsAndValidationsAnswerEveryAssertionWithTheirVerificationCases",
+        "ServiceVerificationTests.AWithheldCapabilityIsRefusedBeforeAnythingIsSent"
       ]
     },
     {
@@ -627,10 +658,10 @@
       "methods": [
         "Model.ValidateInstanceAsync"
       ],
-      "input": "symbol ID, ValidateOptions",
+      "input": "symbol ID, ValidateOptions (engine)",
       "result": "Validation",
       "area": "verification",
-      "status": "deferred",
+      "status": "implemented",
       "gates": [
         {
           "capability": "verification",
@@ -653,6 +684,14 @@
         "validate_instance/an_unknown_symbol_is_reported_in_band",
         "validate_instance/a_symbol_with_no_object_is_the_wrong_kind",
         "validate_instance/the_verification_cases_of_every_requirement_about_the_object_report"
+      ],
+      "tests": [
+        "ModelVerificationTests.ValidateInstanceReadsTheSummaryEveryVerdictAndTheObjectsReached",
+        "ModelVerificationTests.AVerificationTheServiceCouldNotAnswerIsAVerificationExceptionKeepingWhatItReported",
+        "ModelVerificationTests.AnAnswerOfNeitherVerdictNorFailureOrOfBothIsMalformed",
+        "ModelVerificationTests.VerificationGatesAreCheckedInTheServicesOrderBeforeAnythingIsSent",
+        "ServiceVerificationTests.SatisfactionsAndValidationsAnswerEveryAssertionWithTheirVerificationCases",
+        "ServiceVerificationTests.AVerificationTheServiceCannotAnswerIsInBandAndAnUnknownQuestionOrEngineIsRefused"
       ]
     },
     {
@@ -662,10 +701,10 @@
       "methods": [
         "Model.CalcAsync"
       ],
-      "input": "symbol ID, CalcOptions",
+      "input": "symbol ID, positional arguments, CalcOptions (engine)",
       "result": "Calculation",
       "area": "verification",
-      "status": "deferred",
+      "status": "implemented",
       "gates": [
         {
           "capability": "verification",
@@ -701,6 +740,13 @@
         "evaluate_calc/a_metaobject_argument_reads_its_reflective_features",
         "evaluate_calc/a_metaobject_naming_no_element_of_the_model_fails_in_band",
         "evaluate_calc/a_metaobject_under_a_metaclass_that_does_not_classify_its_element_fails_in_band"
+      ],
+      "tests": [
+        "ModelAnalysisTests.CalcSendsItsArgumentsInOrderAndReadsTheValueOutputsAndStanding",
+        "ModelAnalysisTests.ACalcThatFailsIsAVerificationExceptionAndAnAnswerOfNeitherOrBothIsMalformed",
+        "ModelAnalysisTests.AnalysisGatesAreCheckedInTheServicesOrderBeforeAnythingIsSent",
+        "ServiceVerificationTests.ACalculationTakesStructuredArgumentsAndFailsInBand",
+        "ServiceVerificationTests.AWithheldCapabilityIsRefusedBeforeAnythingIsSent"
       ]
     },
     {
@@ -711,10 +757,10 @@
         "Model.RunAnalysisAsync",
         "Model.ExploreAnalysisAsync"
       ],
-      "input": "symbol ID, AnalysisOptions",
+      "input": "symbol ID, AnalysisOptions (subject, arguments, schedule, engine, tool dry run)",
       "result": "Analysis or Exploration",
       "area": "verification",
-      "status": "deferred",
+      "status": "implemented",
       "gates": [
         {
           "capability": "schedule",
@@ -754,6 +800,15 @@
         "run_analysis/a_definition_with_no_subject_is_an_evaluation_failure",
         "run_analysis/a_symbol_of_another_kind_is_the_wrong_kind",
         "run_analysis/an_unknown_symbol_is_reported_in_band"
+      ],
+      "tests": [
+        "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun",
+        "ModelAnalysisTests.AFailedAnalysisIsAnAnalysisExceptionKeepingThePartialRun",
+        "ModelAnalysisTests.ExploreAnalysisSendsExploreUnlessAScheduleOrTheExploreEngineIsNamedAndReadsTheStanding",
+        "ModelAnalysisTests.ARunAndAnExplorationOfACaseEachRefuseTheOthersOptionsBeforeSending",
+        "ModelAnalysisTests.AnAnalysisAnswerOfTheOtherShapeIsMalformed",
+        "ModelAnalysisTests.AnalysisGatesAreCheckedInTheServicesOrderBeforeAnythingIsSent",
+        "ServiceVerificationTests.AnAnalysisRunsOnItsSubjectWithItsArgumentsIsExploredAndKeepsWhatAFailedRunComputed"
       ]
     },
     {
@@ -817,10 +872,10 @@
       "methods": [
         "Model.RunSweepAsync"
       ],
-      "input": "symbol ID, SweepOptions",
+      "input": "symbol ID, SweepRange list, SweepOptions (subject, arguments, samples, seed, engine)",
       "result": "Sweep",
       "area": "verification",
-      "status": "deferred",
+      "status": "implemented",
       "gates": [
         {
           "capability": "verification",
@@ -852,6 +907,13 @@
         "run_sweep/a_range_naming_no_input_of_the_target_is_reported_in_band",
         "run_sweep/a_symbol_of_another_kind_is_the_wrong_kind",
         "run_sweep/no_range_at_all_is_reported_in_band"
+      ],
+      "tests": [
+        "ModelAnalysisTests.RunSweepSendsEveryRangeAndOptionAndReadsEveryRow",
+        "ModelAnalysisTests.ASweepThatMadeNoRunIsAVerificationExceptionAndOneAnsweringRowsBesideIsMalformed",
+        "ModelAnalysisTests.SweepGatesAreCheckedInTheServicesOrderBeforeAnythingIsSent",
+        "ServiceVerificationTests.ASweepTablesEveryRowKeepsAFailedRowAndDrawsReproducibly",
+        "ServiceVerificationTests.AWithheldCapabilityIsRefusedBeforeAnythingIsSent"
       ]
     },
     {
@@ -964,10 +1026,10 @@
       "methods": [
         "Connection.ListEnginesAsync"
       ],
-      "input": "ListEnginesOptions",
+      "input": "ListEnginesOptions (probe)",
       "result": "EngineInfo list",
       "area": "verification",
-      "status": "deferred",
+      "status": "implemented",
       "gates": [
         {
           "capability": "engines",
@@ -978,6 +1040,12 @@
       "scenarios": [
         "list_engines/names_every_engine_with_its_authority_and_what_it_answers",
         "list_engines/probe_checks_each_engine_it_lists"
+      ],
+      "tests": [
+        "ModelAnalysisTests.ListEnginesSendsTheProbeAndReadsEveryFieldOfEveryEngine",
+        "ModelAnalysisTests.ListingEnginesNeedsTheEnginesCapability",
+        "ServiceVerificationTests.TheEnginesAreListedInNameOrderWithAndWithoutAProbe",
+        "ServiceVerificationTests.AWithheldCapabilityIsRefusedBeforeAnythingIsSent"
       ]
     },
     {
@@ -1871,16 +1939,40 @@
       }
     },
     "sysml.CalcOutput": {
-      "name": "deferred",
-      "value": "deferred"
+      "name": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.CalcSendsItsArgumentsInOrderAndReadsTheValueOutputsAndStanding"
+      },
+      "value": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.CalcSendsItsArgumentsInOrderAndReadsTheValueOutputsAndStanding"
+      }
     },
     "sysml.CaseEvaluation": {
-      "function_id": "deferred",
-      "arguments": "deferred",
-      "result": "deferred",
-      "error": "deferred",
-      "selected": "deferred",
-      "tied": "deferred"
+      "function_id": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
+      },
+      "arguments": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
+      },
+      "result": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
+      },
+      "error": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
+      },
+      "selected": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
+      },
+      "tied": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
+      }
     },
     "sysml.CaseStatistic": {
       "statistic": "deferred",
@@ -2535,20 +2627,62 @@
       "content": "deferred"
     },
     "sysml.EngineInfo": {
-      "name": "deferred",
-      "authority": "deferred",
-      "answers": "deferred",
-      "bounds": "deferred",
-      "process": "deferred",
-      "process_found": "deferred",
-      "ready": "deferred",
-      "unavailable": "deferred",
-      "kind": "deferred",
-      "protocol": "deferred",
-      "source": "deferred",
-      "command": "deferred",
-      "version": "deferred",
-      "served": "deferred"
+      "name": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.ListEnginesSendsTheProbeAndReadsEveryFieldOfEveryEngine"
+      },
+      "authority": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.ListEnginesSendsTheProbeAndReadsEveryFieldOfEveryEngine"
+      },
+      "answers": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.ListEnginesSendsTheProbeAndReadsEveryFieldOfEveryEngine"
+      },
+      "bounds": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.ListEnginesSendsTheProbeAndReadsEveryFieldOfEveryEngine"
+      },
+      "process": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.ListEnginesSendsTheProbeAndReadsEveryFieldOfEveryEngine"
+      },
+      "process_found": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.ListEnginesSendsTheProbeAndReadsEveryFieldOfEveryEngine"
+      },
+      "ready": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.ListEnginesSendsTheProbeAndReadsEveryFieldOfEveryEngine"
+      },
+      "unavailable": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.ListEnginesSendsTheProbeAndReadsEveryFieldOfEveryEngine"
+      },
+      "kind": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.ListEnginesSendsTheProbeAndReadsEveryFieldOfEveryEngine"
+      },
+      "protocol": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.ListEnginesSendsTheProbeAndReadsEveryFieldOfEveryEngine"
+      },
+      "source": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.ListEnginesSendsTheProbeAndReadsEveryFieldOfEveryEngine"
+      },
+      "command": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.ListEnginesSendsTheProbeAndReadsEveryFieldOfEveryEngine"
+      },
+      "version": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.ListEnginesSendsTheProbeAndReadsEveryFieldOfEveryEngine"
+      },
+      "served": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.ListEnginesSendsTheProbeAndReadsEveryFieldOfEveryEngine"
+      }
     },
     "sysml.EnumLiteral": {
       "literal_id": {
@@ -2569,20 +2703,56 @@
       }
     },
     "sysml.EvaluateCalcRequest": {
-      "model_hash": "deferred",
-      "symbol_id": "deferred",
-      "arguments": "deferred",
-      "engine": "deferred"
+      "model_hash": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.CalcSendsItsArgumentsInOrderAndReadsTheValueOutputsAndStanding"
+      },
+      "symbol_id": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.CalcSendsItsArgumentsInOrderAndReadsTheValueOutputsAndStanding"
+      },
+      "arguments": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.CalcSendsItsArgumentsInOrderAndReadsTheValueOutputsAndStanding"
+      },
+      "engine": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.CalcSendsItsArgumentsInOrderAndReadsTheValueOutputsAndStanding"
+      }
     },
     "sysml.EvaluateCalcResponse": {
-      "result": "deferred",
-      "outputs": "deferred",
-      "error": "deferred",
-      "diagnostics": "deferred",
-      "failure_reason": "deferred",
-      "engine": "deferred",
-      "strength": "deferred",
-      "bounds": "deferred"
+      "result": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.CalcSendsItsArgumentsInOrderAndReadsTheValueOutputsAndStanding"
+      },
+      "outputs": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.CalcSendsItsArgumentsInOrderAndReadsTheValueOutputsAndStanding"
+      },
+      "error": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.ACalcThatFailsIsAVerificationExceptionAndAnAnswerOfNeitherOrBothIsMalformed"
+      },
+      "diagnostics": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.CalcSendsItsArgumentsInOrderAndReadsTheValueOutputsAndStanding"
+      },
+      "failure_reason": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.ACalcThatFailsIsAVerificationExceptionAndAnAnswerOfNeitherOrBothIsMalformed"
+      },
+      "engine": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.CalcSendsItsArgumentsInOrderAndReadsTheValueOutputsAndStanding"
+      },
+      "strength": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.CalcSendsItsArgumentsInOrderAndReadsTheValueOutputsAndStanding"
+      },
+      "bounds": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.CalcSendsItsArgumentsInOrderAndReadsTheValueOutputsAndStanding"
+      }
     },
     "sysml.EvaluateRequest": {
       "model_hash": {
@@ -2933,10 +3103,16 @@
       }
     },
     "sysml.ListEnginesRequest": {
-      "probe": "deferred"
+      "probe": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.ListEnginesSendsTheProbeAndReadsEveryFieldOfEveryEngine"
+      }
     },
     "sysml.ListEnginesResponse": {
-      "engines": "deferred"
+      "engines": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.ListEnginesSendsTheProbeAndReadsEveryFieldOfEveryEngine"
+      }
     },
     "sysml.MeasurementRef": {
       "unit": {
@@ -3375,30 +3551,96 @@
       "shown": "deferred"
     },
     "sysml.RunAnalysisRequest": {
-      "model_hash": "deferred",
-      "symbol_id": "deferred",
-      "subject_symbol_id": "deferred",
-      "arguments": "deferred",
-      "named_arguments": "deferred",
-      "schedule": "deferred",
-      "engine": "deferred",
-      "tool_dry_run": "deferred"
+      "model_hash": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
+      },
+      "symbol_id": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
+      },
+      "subject_symbol_id": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
+      },
+      "arguments": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
+      },
+      "named_arguments": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
+      },
+      "schedule": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
+      },
+      "engine": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
+      },
+      "tool_dry_run": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
+      }
     },
     "sysml.RunAnalysisResponse": {
-      "outputs": "deferred",
-      "verdicts": "deferred",
-      "instances": "deferred",
-      "error": "deferred",
-      "diagnostics": "deferred",
-      "failure_reason": "deferred",
-      "verification_verdicts": "deferred",
-      "outcomes": "deferred",
-      "exploration": "deferred",
-      "evaluations": "deferred",
-      "engine": "deferred",
-      "strength": "deferred",
-      "bounds": "deferred",
-      "tool_dry_run": "deferred"
+      "outputs": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
+      },
+      "verdicts": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
+      },
+      "instances": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
+      },
+      "error": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.AFailedAnalysisIsAnAnalysisExceptionKeepingThePartialRun"
+      },
+      "diagnostics": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
+      },
+      "failure_reason": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.AFailedAnalysisIsAnAnalysisExceptionKeepingThePartialRun"
+      },
+      "verification_verdicts": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
+      },
+      "outcomes": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.ExploreAnalysisSendsExploreUnlessAScheduleOrTheExploreEngineIsNamedAndReadsTheStanding"
+      },
+      "exploration": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.ExploreAnalysisSendsExploreUnlessAScheduleOrTheExploreEngineIsNamedAndReadsTheStanding"
+      },
+      "evaluations": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
+      },
+      "engine": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
+      },
+      "strength": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
+      },
+      "bounds": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
+      },
+      "tool_dry_run": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
+      }
     },
     "sysml.RunCountedValue": {
       "value": "deferred",
@@ -3469,28 +3711,88 @@
       "seed": "deferred"
     },
     "sysml.RunSweepRequest": {
-      "model_hash": "deferred",
-      "symbol_id": "deferred",
-      "subject_symbol_id": "deferred",
-      "arguments": "deferred",
-      "named_arguments": "deferred",
-      "ranges": "deferred",
-      "samples": "deferred",
-      "seed": "deferred",
-      "engine": "deferred"
+      "model_hash": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.RunSweepSendsEveryRangeAndOptionAndReadsEveryRow"
+      },
+      "symbol_id": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.RunSweepSendsEveryRangeAndOptionAndReadsEveryRow"
+      },
+      "subject_symbol_id": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.RunSweepSendsEveryRangeAndOptionAndReadsEveryRow"
+      },
+      "arguments": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.RunSweepSendsEveryRangeAndOptionAndReadsEveryRow"
+      },
+      "named_arguments": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.RunSweepSendsEveryRangeAndOptionAndReadsEveryRow"
+      },
+      "ranges": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.RunSweepSendsEveryRangeAndOptionAndReadsEveryRow"
+      },
+      "samples": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.RunSweepSendsEveryRangeAndOptionAndReadsEveryRow"
+      },
+      "seed": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.RunSweepSendsEveryRangeAndOptionAndReadsEveryRow"
+      },
+      "engine": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.RunSweepSendsEveryRangeAndOptionAndReadsEveryRow"
+      }
     },
     "sysml.RunSweepResponse": {
-      "rows": "deferred",
-      "parameters": "deferred",
-      "sampled": "deferred",
-      "seed": "deferred",
-      "error": "deferred",
-      "diagnostics": "deferred",
-      "failure_reason": "deferred",
-      "instances": "deferred",
-      "engine": "deferred",
-      "strength": "deferred",
-      "bounds": "deferred"
+      "rows": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.RunSweepSendsEveryRangeAndOptionAndReadsEveryRow"
+      },
+      "parameters": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.RunSweepSendsEveryRangeAndOptionAndReadsEveryRow"
+      },
+      "sampled": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.RunSweepSendsEveryRangeAndOptionAndReadsEveryRow"
+      },
+      "seed": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.RunSweepSendsEveryRangeAndOptionAndReadsEveryRow"
+      },
+      "error": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.ASweepThatMadeNoRunIsAVerificationExceptionAndOneAnsweringRowsBesideIsMalformed"
+      },
+      "diagnostics": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.RunSweepSendsEveryRangeAndOptionAndReadsEveryRow"
+      },
+      "failure_reason": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.ASweepThatMadeNoRunIsAVerificationExceptionAndOneAnsweringRowsBesideIsMalformed"
+      },
+      "instances": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.RunSweepSendsEveryRangeAndOptionAndReadsEveryRow"
+      },
+      "engine": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.RunSweepSendsEveryRangeAndOptionAndReadsEveryRow"
+      },
+      "strength": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.RunSweepSendsEveryRangeAndOptionAndReadsEveryRow"
+      },
+      "bounds": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.RunSweepSendsEveryRangeAndOptionAndReadsEveryRow"
+      }
     },
     "sysml.SelfCheckApplication": {
       "constraint": "deferred",
@@ -3603,19 +3905,52 @@
       "max": "deferred"
     },
     "sysml.SweepRange": {
-      "parameter": "deferred",
-      "start": "deferred",
-      "end": "deferred",
-      "step": "deferred"
+      "parameter": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.RunSweepSendsEveryRangeAndOptionAndReadsEveryRow"
+      },
+      "start": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.RunSweepSendsEveryRangeAndOptionAndReadsEveryRow"
+      },
+      "end": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.RunSweepSendsEveryRangeAndOptionAndReadsEveryRow"
+      },
+      "step": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.RunSweepSendsEveryRangeAndOptionAndReadsEveryRow"
+      }
     },
     "sysml.SweepRow": {
-      "inputs": "deferred",
-      "outputs": "deferred",
-      "verdicts": "deferred",
-      "elapsed_micros": "deferred",
-      "error": "deferred",
-      "failure_reason": "deferred",
-      "evaluations": "deferred"
+      "inputs": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.RunSweepSendsEveryRangeAndOptionAndReadsEveryRow"
+      },
+      "outputs": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.RunSweepSendsEveryRangeAndOptionAndReadsEveryRow"
+      },
+      "verdicts": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.RunSweepSendsEveryRangeAndOptionAndReadsEveryRow"
+      },
+      "elapsed_micros": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.RunSweepSendsEveryRangeAndOptionAndReadsEveryRow"
+      },
+      "error": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.RunSweepSendsEveryRangeAndOptionAndReadsEveryRow"
+      },
+      "failure_reason": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.RunSweepSendsEveryRangeAndOptionAndReadsEveryRow"
+      },
+      "evaluations": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.RunSweepSendsEveryRangeAndOptionAndReadsEveryRow"
+      }
     },
     "sysml.SymbolInfo": {
       "id": {
@@ -3680,38 +4015,116 @@
       }
     },
     "sysml.ToolDryRun": {
-      "action": "deferred",
-      "tool": "deferred",
-      "version": "deferred",
-      "manifest": "deferred",
-      "executable": "deferred",
-      "protocol": "deferred",
-      "args": "deferred",
-      "env": "deferred",
-      "cwd": "deferred",
-      "stdin": "deferred",
-      "stdin_data": "deferred",
-      "input_file": "deferred",
-      "output_dir": "deferred",
-      "inputs": "deferred",
-      "outputs": "deferred",
-      "reply_source": "deferred",
-      "lines": "deferred"
+      "action": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
+      },
+      "tool": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
+      },
+      "version": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
+      },
+      "manifest": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
+      },
+      "executable": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
+      },
+      "protocol": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
+      },
+      "args": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
+      },
+      "env": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
+      },
+      "cwd": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
+      },
+      "stdin": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
+      },
+      "stdin_data": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
+      },
+      "input_file": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
+      },
+      "output_dir": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
+      },
+      "inputs": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
+      },
+      "outputs": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
+      },
+      "reply_source": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
+      },
+      "lines": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
+      }
     },
     "sysml.ToolDryRunFile": {
-      "name": "deferred",
-      "format": "deferred",
-      "data": "deferred"
+      "name": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
+      },
+      "format": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
+      },
+      "data": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
+      }
     },
     "sysml.ToolDryRunInput": {
-      "variable": "deferred",
-      "parameter": "deferred",
-      "value": "deferred",
-      "unit": "deferred"
+      "variable": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
+      },
+      "parameter": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
+      },
+      "value": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
+      },
+      "unit": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
+      }
     },
     "sysml.ToolDryRunOutput": {
-      "variable": "deferred",
-      "parameter": "deferred"
+      "variable": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
+      },
+      "parameter": {
+        "status": "typed",
+        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
+      }
     },
     "sysml.TypeInfo": {
       "declared": {
@@ -3778,19 +4191,52 @@
       }
     },
     "sysml.ValidateInstanceRequest": {
-      "model_hash": "deferred",
-      "symbol_id": "deferred",
-      "engine": "deferred"
+      "model_hash": {
+        "status": "typed",
+        "test": "ModelVerificationTests.ValidateInstanceReadsTheSummaryEveryVerdictAndTheObjectsReached"
+      },
+      "symbol_id": {
+        "status": "typed",
+        "test": "ModelVerificationTests.ValidateInstanceReadsTheSummaryEveryVerdictAndTheObjectsReached"
+      },
+      "engine": {
+        "status": "typed",
+        "test": "ModelVerificationTests.ValidateInstanceReadsTheSummaryEveryVerdictAndTheObjectsReached"
+      }
     },
     "sysml.ValidateInstanceResponse": {
-      "verdicts": "deferred",
-      "summary": "deferred",
-      "instances": "deferred",
-      "error": "deferred",
-      "diagnostics": "deferred",
-      "failure_reason": "deferred",
-      "verification_verdicts": "deferred",
-      "bounded": "deferred"
+      "verdicts": {
+        "status": "typed",
+        "test": "ModelVerificationTests.ValidateInstanceReadsTheSummaryEveryVerdictAndTheObjectsReached"
+      },
+      "summary": {
+        "status": "typed",
+        "test": "ModelVerificationTests.ValidateInstanceReadsTheSummaryEveryVerdictAndTheObjectsReached"
+      },
+      "instances": {
+        "status": "typed",
+        "test": "ModelVerificationTests.ValidateInstanceReadsTheSummaryEveryVerdictAndTheObjectsReached"
+      },
+      "error": {
+        "status": "typed",
+        "test": "ModelVerificationTests.AVerificationTheServiceCouldNotAnswerIsAVerificationExceptionKeepingWhatItReported"
+      },
+      "diagnostics": {
+        "status": "typed",
+        "test": "ModelVerificationTests.ValidateInstanceReadsTheSummaryEveryVerdictAndTheObjectsReached"
+      },
+      "failure_reason": {
+        "status": "typed",
+        "test": "ModelVerificationTests.AVerificationTheServiceCouldNotAnswerIsAVerificationExceptionKeepingWhatItReported"
+      },
+      "verification_verdicts": {
+        "status": "typed",
+        "test": "ModelVerificationTests.ValidateInstanceReadsTheSummaryEveryVerdictAndTheObjectsReached"
+      },
+      "bounded": {
+        "status": "typed",
+        "test": "ModelVerificationTests.ValidateInstanceReadsTheSummaryEveryVerdictAndTheObjectsReached"
+      }
     },
     "sysml.Value": {
       "int_value": {
@@ -3911,83 +4357,266 @@
       }
     },
     "sysml.Verdict": {
-      "kind": "deferred",
-      "element_id": "deferred",
-      "element": "deferred",
-      "holds": "deferred",
-      "condition": "deferred",
-      "instance_id": "deferred",
-      "instance_type_id": "deferred",
-      "error": "deferred",
-      "failure_reason": "deferred",
-      "requirement_id": "deferred",
-      "engine": "deferred",
-      "strength": "deferred",
-      "bounds": "deferred",
-      "instance_path": "deferred",
-      "question": "deferred",
-      "status": "deferred",
-      "witness": "deferred"
+      "kind": {
+        "status": "typed",
+        "test": "ModelVerificationTests.VerifyConstraintSendsEveryOptionAndReadsEveryFieldOfTheVerdict"
+      },
+      "element_id": {
+        "status": "typed",
+        "test": "ModelVerificationTests.VerifyConstraintSendsEveryOptionAndReadsEveryFieldOfTheVerdict"
+      },
+      "element": {
+        "status": "typed",
+        "test": "ModelVerificationTests.VerifyConstraintSendsEveryOptionAndReadsEveryFieldOfTheVerdict"
+      },
+      "holds": {
+        "status": "typed",
+        "test": "ModelVerificationTests.VerifyConstraintSendsEveryOptionAndReadsEveryFieldOfTheVerdict"
+      },
+      "condition": {
+        "status": "typed",
+        "test": "ModelVerificationTests.VerifyConstraintSendsEveryOptionAndReadsEveryFieldOfTheVerdict"
+      },
+      "instance_id": {
+        "status": "typed",
+        "test": "ModelVerificationTests.VerifyConstraintSendsEveryOptionAndReadsEveryFieldOfTheVerdict"
+      },
+      "instance_type_id": {
+        "status": "typed",
+        "test": "ModelVerificationTests.VerifyConstraintSendsEveryOptionAndReadsEveryFieldOfTheVerdict"
+      },
+      "error": {
+        "status": "typed",
+        "test": "ModelVerificationTests.VerifyConstraintSendsEveryOptionAndReadsEveryFieldOfTheVerdict"
+      },
+      "failure_reason": {
+        "status": "typed",
+        "test": "ModelVerificationTests.VerifyConstraintSendsEveryOptionAndReadsEveryFieldOfTheVerdict"
+      },
+      "requirement_id": {
+        "status": "typed",
+        "test": "ModelVerificationTests.VerifyConstraintSendsEveryOptionAndReadsEveryFieldOfTheVerdict"
+      },
+      "engine": {
+        "status": "typed",
+        "test": "ModelVerificationTests.VerifyConstraintSendsEveryOptionAndReadsEveryFieldOfTheVerdict"
+      },
+      "strength": {
+        "status": "typed",
+        "test": "ModelVerificationTests.VerifyConstraintSendsEveryOptionAndReadsEveryFieldOfTheVerdict"
+      },
+      "bounds": {
+        "status": "typed",
+        "test": "ModelVerificationTests.VerifyConstraintSendsEveryOptionAndReadsEveryFieldOfTheVerdict"
+      },
+      "instance_path": {
+        "status": "typed",
+        "test": "ModelVerificationTests.VerifyConstraintSendsEveryOptionAndReadsEveryFieldOfTheVerdict"
+      },
+      "question": {
+        "status": "typed",
+        "test": "ModelVerificationTests.VerifyConstraintSendsEveryOptionAndReadsEveryFieldOfTheVerdict"
+      },
+      "status": {
+        "status": "typed",
+        "test": "ModelVerificationTests.VerifyConstraintSendsEveryOptionAndReadsEveryFieldOfTheVerdict"
+      },
+      "witness": {
+        "status": "typed",
+        "test": "ModelVerificationTests.VerifyConstraintSendsEveryOptionAndReadsEveryFieldOfTheVerdict"
+      }
     },
     "sysml.VerificationVerdict": {
-      "case_id": "deferred",
-      "kind": "deferred",
-      "detail": "deferred",
-      "subcase": "deferred",
-      "requirement_id": "deferred",
-      "instance_id": "deferred",
-      "instance_type_id": "deferred"
+      "case_id": {
+        "status": "typed",
+        "test": "ModelVerificationTests.VerifyRequirementReadsTheVerificationVerdictsBesideItsVerdict"
+      },
+      "kind": {
+        "status": "typed",
+        "test": "ModelVerificationTests.VerifyRequirementReadsTheVerificationVerdictsBesideItsVerdict"
+      },
+      "detail": {
+        "status": "typed",
+        "test": "ModelVerificationTests.VerifyRequirementReadsTheVerificationVerdictsBesideItsVerdict"
+      },
+      "subcase": {
+        "status": "typed",
+        "test": "ModelVerificationTests.VerifyRequirementReadsTheVerificationVerdictsBesideItsVerdict"
+      },
+      "requirement_id": {
+        "status": "typed",
+        "test": "ModelVerificationTests.VerifyRequirementReadsTheVerificationVerdictsBesideItsVerdict"
+      },
+      "instance_id": {
+        "status": "typed",
+        "test": "ModelVerificationTests.VerifyRequirementReadsTheVerificationVerdictsBesideItsVerdict"
+      },
+      "instance_type_id": {
+        "status": "typed",
+        "test": "ModelVerificationTests.VerifyRequirementReadsTheVerificationVerdictsBesideItsVerdict"
+      }
     },
     "sysml.VerifyConstraintRequest": {
-      "model_hash": "deferred",
-      "symbol_id": "deferred",
-      "subject_symbol_id": "deferred",
-      "engine": "deferred",
-      "question": "deferred",
-      "arguments": "deferred",
-      "named_arguments": "deferred"
+      "model_hash": {
+        "status": "typed",
+        "test": "ModelVerificationTests.VerifyConstraintSendsEveryOptionAndReadsEveryFieldOfTheVerdict"
+      },
+      "symbol_id": {
+        "status": "typed",
+        "test": "ModelVerificationTests.VerifyConstraintSendsEveryOptionAndReadsEveryFieldOfTheVerdict"
+      },
+      "subject_symbol_id": {
+        "status": "typed",
+        "test": "ModelVerificationTests.VerifyConstraintSendsEveryOptionAndReadsEveryFieldOfTheVerdict"
+      },
+      "engine": {
+        "status": "typed",
+        "test": "ModelVerificationTests.VerifyConstraintSendsEveryOptionAndReadsEveryFieldOfTheVerdict"
+      },
+      "question": {
+        "status": "typed",
+        "test": "ModelVerificationTests.VerifyConstraintSendsEveryOptionAndReadsEveryFieldOfTheVerdict"
+      },
+      "arguments": {
+        "status": "typed",
+        "test": "ModelVerificationTests.VerifyConstraintSendsEveryOptionAndReadsEveryFieldOfTheVerdict"
+      },
+      "named_arguments": {
+        "status": "typed",
+        "test": "ModelVerificationTests.VerifyConstraintSendsEveryOptionAndReadsEveryFieldOfTheVerdict"
+      }
     },
     "sysml.VerifyConstraintResponse": {
-      "verdict": "deferred",
-      "instances": "deferred",
-      "error": "deferred",
-      "diagnostics": "deferred"
+      "verdict": {
+        "status": "typed",
+        "test": "ModelVerificationTests.VerifyConstraintSendsEveryOptionAndReadsEveryFieldOfTheVerdict"
+      },
+      "instances": {
+        "status": "typed",
+        "test": "ModelVerificationTests.VerifyConstraintSendsEveryOptionAndReadsEveryFieldOfTheVerdict"
+      },
+      "error": {
+        "status": "typed",
+        "test": "ModelVerificationTests.AVerificationTheServiceCouldNotAnswerIsAVerificationExceptionKeepingWhatItReported"
+      },
+      "diagnostics": {
+        "status": "typed",
+        "test": "ModelVerificationTests.VerifyConstraintSendsEveryOptionAndReadsEveryFieldOfTheVerdict"
+      }
     },
     "sysml.VerifyRequirementRequest": {
-      "model_hash": "deferred",
-      "symbol_id": "deferred",
-      "subject_symbol_id": "deferred",
-      "engine": "deferred",
-      "question": "deferred",
-      "arguments": "deferred",
-      "named_arguments": "deferred"
+      "model_hash": {
+        "status": "typed",
+        "test": "ConformanceAdapterTests.EachRpcSendsTheScenarioRequestThroughItsTypedCallAndRendersTheWholeAnswer"
+      },
+      "symbol_id": {
+        "status": "typed",
+        "test": "ConformanceAdapterTests.EachRpcSendsTheScenarioRequestThroughItsTypedCallAndRendersTheWholeAnswer"
+      },
+      "subject_symbol_id": {
+        "status": "typed",
+        "test": "ConformanceAdapterTests.EachRpcSendsTheScenarioRequestThroughItsTypedCallAndRendersTheWholeAnswer"
+      },
+      "engine": {
+        "status": "typed",
+        "test": "ConformanceAdapterTests.EachRpcSendsTheScenarioRequestThroughItsTypedCallAndRendersTheWholeAnswer"
+      },
+      "question": {
+        "status": "typed",
+        "test": "ConformanceAdapterTests.EachRpcSendsTheScenarioRequestThroughItsTypedCallAndRendersTheWholeAnswer"
+      },
+      "arguments": {
+        "status": "typed",
+        "test": "ConformanceAdapterTests.EachRpcSendsTheScenarioRequestThroughItsTypedCallAndRendersTheWholeAnswer"
+      },
+      "named_arguments": {
+        "status": "typed",
+        "test": "ConformanceAdapterTests.EachRpcSendsTheScenarioRequestThroughItsTypedCallAndRendersTheWholeAnswer"
+      }
     },
     "sysml.VerifyRequirementResponse": {
-      "verdict": "deferred",
-      "instances": "deferred",
-      "error": "deferred",
-      "diagnostics": "deferred",
-      "verification_verdicts": "deferred"
+      "verdict": {
+        "status": "typed",
+        "test": "ModelVerificationTests.VerifyRequirementReadsTheVerificationVerdictsBesideItsVerdict"
+      },
+      "instances": {
+        "status": "typed",
+        "test": "ModelVerificationTests.VerifyRequirementReadsTheVerificationVerdictsBesideItsVerdict"
+      },
+      "error": {
+        "status": "typed",
+        "test": "ModelVerificationTests.AVerificationTheServiceCouldNotAnswerIsAVerificationExceptionKeepingWhatItReported"
+      },
+      "diagnostics": {
+        "status": "typed",
+        "test": "ModelVerificationTests.VerifyRequirementReadsTheVerificationVerdictsBesideItsVerdict"
+      },
+      "verification_verdicts": {
+        "status": "typed",
+        "test": "ModelVerificationTests.VerifyRequirementReadsTheVerificationVerdictsBesideItsVerdict"
+      }
     },
     "sysml.VerifySatisfactionRequest": {
-      "model_hash": "deferred",
-      "symbol_id": "deferred",
-      "engine": "deferred",
-      "question": "deferred"
+      "model_hash": {
+        "status": "typed",
+        "test": "ModelVerificationTests.VerifySatisfactionSendsTheScopeAndQuestionAndReadsEveryVerdict"
+      },
+      "symbol_id": {
+        "status": "typed",
+        "test": "ModelVerificationTests.VerifySatisfactionSendsTheScopeAndQuestionAndReadsEveryVerdict"
+      },
+      "engine": {
+        "status": "typed",
+        "test": "ModelVerificationTests.VerifySatisfactionSendsTheScopeAndQuestionAndReadsEveryVerdict"
+      },
+      "question": {
+        "status": "typed",
+        "test": "ModelVerificationTests.VerifySatisfactionSendsTheScopeAndQuestionAndReadsEveryVerdict"
+      }
     },
     "sysml.VerifySatisfactionResponse": {
-      "verdicts": "deferred",
-      "instances": "deferred",
-      "error": "deferred",
-      "diagnostics": "deferred",
-      "failure_reason": "deferred",
-      "verification_verdicts": "deferred"
+      "verdicts": {
+        "status": "typed",
+        "test": "ModelVerificationTests.VerifySatisfactionSendsTheScopeAndQuestionAndReadsEveryVerdict"
+      },
+      "instances": {
+        "status": "typed",
+        "test": "ModelVerificationTests.VerifySatisfactionSendsTheScopeAndQuestionAndReadsEveryVerdict"
+      },
+      "error": {
+        "status": "typed",
+        "test": "ModelVerificationTests.AVerificationTheServiceCouldNotAnswerIsAVerificationExceptionKeepingWhatItReported"
+      },
+      "diagnostics": {
+        "status": "typed",
+        "test": "ModelVerificationTests.VerifySatisfactionSendsTheScopeAndQuestionAndReadsEveryVerdict"
+      },
+      "failure_reason": {
+        "status": "typed",
+        "test": "ModelVerificationTests.AVerificationTheServiceCouldNotAnswerIsAVerificationExceptionKeepingWhatItReported"
+      },
+      "verification_verdicts": {
+        "status": "typed",
+        "test": "ModelVerificationTests.VerifySatisfactionSendsTheScopeAndQuestionAndReadsEveryVerdict"
+      }
     },
     "sysml.WitnessAssignment": {
-      "feature": "deferred",
-      "value": "deferred",
-      "unit": "deferred",
-      "exact": "deferred"
+      "feature": {
+        "status": "typed",
+        "test": "ModelVerificationTests.VerifyConstraintSendsEveryOptionAndReadsEveryFieldOfTheVerdict"
+      },
+      "value": {
+        "status": "typed",
+        "test": "ModelVerificationTests.VerifyConstraintSendsEveryOptionAndReadsEveryFieldOfTheVerdict"
+      },
+      "unit": {
+        "status": "typed",
+        "test": "ModelVerificationTests.VerifyConstraintSendsEveryOptionAndReadsEveryFieldOfTheVerdict"
+      },
+      "exact": {
+        "status": "typed",
+        "test": "ModelVerificationTests.VerifyConstraintSendsEveryOptionAndReadsEveryFieldOfTheVerdict"
+      }
     }
   }
 }

@@ -31,7 +31,7 @@ its order and totals that add up, and the .NET JUnit report the same totals, one
 configuration and protocol and one case per scenario with its matching outcome. Then, scenario by
 scenario, both runs must agree on the outcome, the status, the capabilities missing and whether the without-capability
 expectation applied, and their -v logs on the normalized response. Timing and what answered are
-not compared. A .NET skip the expected skips list is excluded, as reviewed; nothing else is. The
+not compared, the wall time each row of a sweep reports included. A .NET skip the expected skips list is excluded, as reviewed; nothing else is. The
 service's capabilities are compared as a set, since the client holds them as one.
 """
 
@@ -497,6 +497,30 @@ def _sorted_capabilities(rpc, response):
     return response
 
 
+# The wall times a service measures inside a response, which no two runs share: by RPC, each path to
+# one, "*" standing for every entry of a list. Every other response field is compared.
+TIMING_FIELDS = {
+    "RunSweep": (("rows", "*", "elapsed_micros"),),
+}
+
+
+def _without_timing(rpc, response):
+    for path in TIMING_FIELDS.get(rpc, ()):
+        response = _dropped(response, path)
+    return response
+
+
+def _dropped(value, path):
+    head, rest = path[0], path[1:]
+    if head == "*":
+        return [_dropped(entry, rest) for entry in value] if isinstance(value, list) else value
+    if not isinstance(value, dict) or head not in value:
+        return value
+    if not rest:
+        return {key: entry for key, entry in value.items() if key != head}
+    return dict(value, **{head: _dropped(value[head], rest)})
+
+
 def _difference(got, want, path=""):
     """The first path at which two normalized responses differ, or None."""
     if isinstance(got, dict) and isinstance(want, dict):
@@ -598,8 +622,8 @@ def conformance_check(report, log, junit, reference_report, reference_log, expec
                     if our.get(field, default) != their.get(field, default)
                 ]
                 difference = _difference(
-                    _sorted_capabilities(our["rpc"], our_responses[scenario][2]),
-                    _sorted_capabilities(their["rpc"], their_responses[scenario][2]),
+                    _without_timing(our["rpc"], _sorted_capabilities(our["rpc"], our_responses[scenario][2])),
+                    _without_timing(their["rpc"], _sorted_capabilities(their["rpc"], their_responses[scenario][2])),
                 )
                 if difference:
                     differences.append(f"response {difference}")

@@ -282,6 +282,172 @@ internal static class Rendering
         return rendered;
     }
 
+    /// <summary>A verdict, with its standing and witness.</summary>
+    internal static Wire.Verdict Verdict(Verdict verdict)
+    {
+        ArgumentNullException.ThrowIfNull(verdict);
+        var rendered = new Wire.Verdict
+        {
+            Kind = verdict.Kind,
+            ElementId = verdict.ElementId,
+            Element = verdict.Element,
+            Holds = verdict.Holds,
+            Condition = verdict.Condition,
+            InstanceId = verdict.InstanceId,
+            InstanceTypeId = verdict.InstanceTypeId,
+            Error = verdict.Error,
+            FailureReason = Reason(verdict.FailureReason),
+            RequirementId = verdict.RequirementId,
+            Engine = verdict.Standing.Engine,
+            Strength = verdict.Standing.Strength,
+            Bounds = { Bounds(verdict.Standing) },
+            InstancePath = verdict.InstancePath,
+            Question = verdict.Question,
+            Status = verdict.Status,
+        };
+        foreach (var assignment in verdict.Witness)
+        {
+            var witness = new Wire.WitnessAssignment { Feature = assignment.Feature, Unit = assignment.Unit, Exact = assignment.Exact };
+            if (assignment.Value is { } value)
+            {
+                witness.Value = Value(value);
+            }
+
+            rendered.Witness.Add(witness);
+        }
+
+        return rendered;
+    }
+
+    /// <summary>Verdicts, in the order the API reports them.</summary>
+    internal static IEnumerable<Wire.Verdict> Verdicts(IEnumerable<Verdict> verdicts) => verdicts.Select(Verdict);
+
+    /// <summary>What verification cases' bodies answered, in the order the API reports them.</summary>
+    internal static IEnumerable<Wire.VerificationVerdict> Verifications(IEnumerable<VerificationVerdict> verdicts) =>
+        verdicts.Select(verdict => new Wire.VerificationVerdict
+        {
+            CaseId = verdict.CaseId,
+            Kind = verdict.Kind,
+            Detail = verdict.Detail,
+            Subcase = verdict.Subcase,
+            RequirementId = verdict.RequirementId,
+            InstanceId = verdict.InstanceId,
+            InstanceTypeId = verdict.InstanceTypeId,
+        });
+
+    /// <summary>Objects, in the order the API reports them.</summary>
+    internal static IEnumerable<Wire.Instance> Instances(IEnumerable<Instance> instances) => instances.Select(Instance);
+
+    /// <summary>Named values, in the order the API reports them.</summary>
+    internal static IEnumerable<Wire.CalcOutput> Outputs(IEnumerable<CalcOutput> outputs) =>
+        outputs.Select(output => new Wire.CalcOutput { Name = output.Name, Value = Value(output.Value) });
+
+    /// <summary>A failure's kind, as the number the API kept.</summary>
+    internal static Wire.FailureReason Reason(FailureReason reason) => (Wire.FailureReason)(int)reason;
+
+    /// <summary>The bounds of a standing.</summary>
+    internal static IEnumerable<Wire.Bound> Bounds(Standing standing) =>
+        standing.Bounds.Select(bound => new Wire.Bound { Name = bound.Name, Limit = bound.Limit, Reached = bound.Reached });
+
+    /// <summary>A calculation's answer.</summary>
+    internal static Wire.EvaluateCalcResponse Calculation(Calculation calculation)
+    {
+        ArgumentNullException.ThrowIfNull(calculation);
+        var rendered = new Wire.EvaluateCalcResponse
+        {
+            Outputs = { Outputs(calculation.Outputs) },
+            Diagnostics = { Diagnostics(calculation.Diagnostics) },
+            Engine = calculation.Standing.Engine,
+            Strength = calculation.Standing.Strength,
+            Bounds = { Bounds(calculation.Standing) },
+        };
+        if (calculation.Result is { } result)
+        {
+            rendered.Result = Value(result);
+        }
+
+        return rendered;
+    }
+
+    /// <summary>One run of an analysis case, with everything the API reports of it.</summary>
+    internal static Wire.RunAnalysisResponse Analysis(Analysis analysis)
+    {
+        ArgumentNullException.ThrowIfNull(analysis);
+        var rendered = new Wire.RunAnalysisResponse
+        {
+            Outputs = { Outputs(analysis.Outputs) },
+            Verdicts = { Verdicts(analysis.Verdicts) },
+            Instances = { Instances(analysis.Instances) },
+            Diagnostics = { Diagnostics(analysis.Diagnostics) },
+            VerificationVerdicts = { Verifications(analysis.Verifications) },
+            Evaluations = { Evaluations(analysis.Evaluations) },
+            Engine = analysis.Standing.Engine,
+            Strength = analysis.Standing.Strength,
+            Bounds = { Bounds(analysis.Standing) },
+        };
+        if (analysis.ToolDryRun is { } preview)
+        {
+            rendered.ToolDryRun = ToolDryRun(preview);
+        }
+
+        return rendered;
+    }
+
+    /// <summary>A sweep's table, with every row's inputs, outputs, verdicts and failure.</summary>
+    internal static Wire.RunSweepResponse Sweep(Sweep sweep)
+    {
+        ArgumentNullException.ThrowIfNull(sweep);
+        var rendered = new Wire.RunSweepResponse
+        {
+            Parameters = { sweep.Parameters },
+            Sampled = sweep.Sampled,
+            Seed = sweep.Seed,
+            Instances = { Instances(sweep.Instances) },
+            Diagnostics = { Diagnostics(sweep.Diagnostics) },
+            Engine = sweep.Standing.Engine,
+            Strength = sweep.Standing.Strength,
+            Bounds = { Bounds(sweep.Standing) },
+        };
+        foreach (var row in sweep.Rows)
+        {
+            rendered.Rows.Add(new Wire.SweepRow
+            {
+                Inputs = { Outputs(row.Inputs) },
+                Outputs = { Outputs(row.Outputs) },
+                Verdicts = { Verdicts(row.Verdicts) },
+                ElapsedMicros = row.ElapsedMicroseconds,
+                Error = row.Error,
+                FailureReason = Reason(row.FailureReason),
+                Evaluations = { Evaluations(row.Evaluations) },
+            });
+        }
+
+        return rendered;
+    }
+
+    /// <summary>One engine's listing.</summary>
+    internal static Wire.EngineInfo Engine(EngineInfo engine)
+    {
+        ArgumentNullException.ThrowIfNull(engine);
+        return new Wire.EngineInfo
+        {
+            Name = engine.Name,
+            Authority = engine.Authority,
+            Answers = { engine.Answers },
+            Bounds = { engine.Bounds },
+            Process = engine.Process,
+            ProcessFound = engine.ProcessFound,
+            Ready = engine.Ready,
+            Unavailable = engine.Unavailable,
+            Kind = engine.Kind,
+            Protocol = engine.Protocol,
+            Source = engine.Source,
+            Command = engine.Command,
+            Version = engine.Version,
+            Served = engine.Served,
+        };
+    }
+
     /// <summary>A run's trace, in the order the API reports it.</summary>
     internal static IEnumerable<Wire.DocumentEvent> Trace(IEnumerable<DocumentEvent> trace)
     {
@@ -509,6 +675,56 @@ internal static class Rendering
             Taken = record.Taken,
             Text = record.Text,
         };
+
+    private static IEnumerable<Wire.CaseEvaluation> Evaluations(IEnumerable<CaseEvaluation> evaluations)
+    {
+        foreach (var evaluation in evaluations)
+        {
+            var rendered = new Wire.CaseEvaluation
+            {
+                FunctionId = evaluation.FunctionId,
+                Arguments = { Values(evaluation.Arguments) },
+                Error = evaluation.Error,
+                Selected = evaluation.Selected,
+                Tied = evaluation.Tied,
+            };
+            if (evaluation.Result is { } result)
+            {
+                rendered.Result = Value(result);
+            }
+
+            yield return rendered;
+        }
+    }
+
+    private static Wire.ToolDryRun ToolDryRun(ToolDryRun preview)
+    {
+        var rendered = new Wire.ToolDryRun
+        {
+            Action = preview.Action,
+            Tool = preview.Tool,
+            Version = preview.Version,
+            Manifest = preview.Manifest,
+            Executable = preview.Executable,
+            Protocol = preview.Protocol,
+            Args = { preview.Args },
+            Env = { preview.Environment },
+            Cwd = preview.WorkingDirectory,
+            Stdin = preview.Stdin,
+            StdinData = preview.StdinData,
+            OutputDir = preview.OutputDirectory,
+            Inputs = { preview.Inputs.Select(input => new Wire.ToolDryRunInput { Variable = input.Variable, Parameter = input.Parameter, Value = input.Value, Unit = input.Unit }) },
+            Outputs = { preview.Outputs.Select(output => new Wire.ToolDryRunOutput { Variable = output.Variable, Parameter = output.Parameter }) },
+            ReplySource = preview.ReplySource,
+            Lines = { preview.Lines },
+        };
+        if (preview.InputFile is { } file)
+        {
+            rendered.InputFile = new Wire.ToolDryRunFile { Name = file.Name, Format = file.Format, Data = file.Data };
+        }
+
+        return rendered;
+    }
 
     private static Wire.CheckWitness? Witness(CheckWitness? witness) =>
         witness is null

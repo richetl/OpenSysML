@@ -25,6 +25,9 @@ internal static class FakeModels
         Capabilities.StateTrace,
         Capabilities.Check,
         Capabilities.Engines,
+        Capabilities.Verification,
+        Capabilities.VerificationQuestions,
+        Capabilities.VerificationArguments,
         .. Internal.ValueWire.SendGateOrder,
     ];
 

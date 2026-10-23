@@ -9,6 +9,9 @@ namespace OpenMBEE.OpenSysML;
 /// </summary>
 public sealed record Standing
 {
+    /// <summary>The standing of an answer no engine was named for: no engine, no strength, no bounds.</summary>
+    public static Standing None { get; } = new(string.Empty, string.Empty, []);
+
     /// <summary>Creates a standing, copying its bounds.</summary>
     /// <param name="engine">The engine that answered; empty when the service named none.</param>
     /// <param name="strength">The strength of its evidence; empty when the service reported none.</param>

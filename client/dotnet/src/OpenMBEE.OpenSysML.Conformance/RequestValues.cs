@@ -21,6 +21,10 @@ internal static class RequestValues
             ? null
             : values.ToDictionary(entry => entry.Key, entry => Read(entry.Value, $"{field}[\"{entry.Key}\"]"), StringComparer.Ordinal);
 
+    /// <summary>A request's list of values, in order.</summary>
+    /// <exception cref="UnexpressibleRequestException">A value cannot be held by the public types as spelled.</exception>
+    internal static List<Value> List(RepeatedField<Wire.Value> values, string field) => All(values, field);
+
     /// <summary>One value.</summary>
     /// <exception cref="UnexpressibleRequestException">The value cannot be held by the public types as spelled.</exception>
     internal static Value Read(Wire.Value value, string path)

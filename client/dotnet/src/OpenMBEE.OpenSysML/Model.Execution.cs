@@ -62,7 +62,7 @@ public sealed partial class Model
         CancellationToken cancellationToken = default)
     {
         var response = await ActionAsync(actionSymbolId, inputs, options, explore: true, cancellationToken).ConfigureAwait(false);
-        return ExecutionWire.Exploration(response.Outcomes, response.Exploration, ExecuteActionMethod);
+        return ExecutionWire.Exploration(response.Outcomes, response.Exploration, Standing.None, ExecuteActionMethod);
     }
 
     /// <summary>Runs a state machine once, under one schedule, as <c>sysml -state</c> does.</summary>
@@ -115,7 +115,7 @@ public sealed partial class Model
         CancellationToken cancellationToken = default)
     {
         var response = await StateAsync(stateMachineSymbolId, events, options, explore: true, cancellationToken).ConfigureAwait(false);
-        return ExecutionWire.Exploration(response.Outcomes, response.Exploration, ExecuteStateMethod);
+        return ExecutionWire.Exploration(response.Outcomes, response.Exploration, Standing.None, ExecuteStateMethod);
     }
 
     /// <summary>

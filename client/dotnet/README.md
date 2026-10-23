@@ -11,11 +11,14 @@ of this repository and consumed by `ProjectReference`. It is not published to Nu
 > expression evaluation and instantiation, with the immutable values those operations
 > exchange. It [runs and checks behavior](#running-and-checking-behavior): actions and state
 > machines once or over every order of their choice points, and a search of every schedule
-> for a violated property. Its [conformance runner](#conformance) runs the shared suite
-> through that API. It does not download a release of the service, and offers none of the
-> other typed operations (verification, conversion, queries, documents, editing). The
-> other clients ([Python](../python/), [Java](../java/), [Rust](../rust/), [Node](../node/))
-> are the ones to use for those today.
+> for a violated property. It [verifies and analyzes](#verifying-calculating-and-analyzing)
+> models: constraints, requirements, satisfactions and whole objects, calculations, analysis
+> cases, parameter sweeps and the engines that answer them. Its
+> [conformance runner](#conformance) runs the shared suite through that API. It does not
+> download a release of the service, and offers none of the other typed operations
+> (sampled runs, conversion, queries, documents, editing). The other clients
+> ([Python](../python/), [Java](../java/), [Rust](../rust/), [Node](../node/)) are the ones
+> to use for those today.
 
 ## Requirements
 
@@ -236,6 +239,8 @@ use after disposal, which are the standard exceptions:
 | The service answered, reporting a failure about the model: an expression that did not evaluate, a symbol that is not there, an object that could not be built | `ModelException`, with `Method` and the answer's `Diagnostics`; `SymbolNotFoundException`, with `Name` and `Suggestions`, for a symbol; `ModelErrorsException` from `RequireNoErrors` |
 | The service answered that a run failed: no initial node, no such behavior, a performer that could not be made, a run still waiting when its advance ran out | `ExecutionException`, a `ModelException` with the run's `FinalTime` and, for a traced state run, its `Trace` up to the failure and `TraceDropped` |
 | The service answered a check it refused before any search: the behavior, a property or the performer does not resolve | `CheckException`, a `ModelException` with the `Partial` result the answer carried, including its verdict when supplied |
+| The service answered that it could not verify, validate, calculate or sweep at all: an unknown symbol, a symbol of another kind, a subject or argument that does not read, a range no values follow from | `VerificationException`, a `ModelException` with the failure's `Reason` (`FailureReason.WrongKind` for a symbol of another kind) and the `Instances`, `Verifications` and engine `Standing` the answer carried |
+| The service answered that an analysis case could not run to its end | `AnalysisException`, a `VerificationException` with the `Partial` run: the outputs computed, the verdicts and evaluations made and the objects named before the failure |
 | No well-formed answer was read: the endpoint was unreachable or did not speak the protocol, a Connect refusal was not a Connect error, the answer was malformed or over a size limit, or the deadline passed | `TransportException`, with `StatusCode`, `Method` and the cause as `InnerException` |
 | The service answered a value of a kind this client does not know | `UnsupportedValueException`, with `Method`, `Path` and the value's `ValueBytes` |
 | The caller's token was cancelled | `OperationCanceledException` carrying that token |
@@ -387,14 +392,77 @@ A check answer containing neither a verdict nor an error is also malformed and r
 `TransportException` with `Internal`. An in-band error remains a `CheckException`, preserving
 the partial result even when the service omitted its verdict.
 
+## Verifying, calculating and analyzing
+
+```csharp
+var model = (await connection.LoadAsync("verification.sysml")).RequireNoErrors();
+var light = await model.VerifyConstraintAsync("Demo::Vehicle::massLight");          // Verdict.Violated, with its Condition
+var onSedan = await model.VerifyRequirementAsync("Demo::Vehicle::tiny", new VerifyOptions { SubjectSymbolId = "Demo::sedan" });
+var proved = await model.VerifyConstraintAsync("Demo::sq", new VerifyOptions { Question = VerifyOptions.Holds });
+var sedan = await model.ValidateInstanceAsync("Demo::sedan");                       // every assertion, and a Summary
+var sum = await model.CalcAsync("Demo::add", [new Value.IntegerValue(2), new Value.IntegerValue(3)]);
+var analysis = (await connection.LoadAsync("analysis.sysml")).RequireNoErrors();
+var sweep = (await connection.LoadAsync("sweep.sysml")).RequireNoErrors();
+var cost = await analysis.RunAnalysisAsync("An::CostAnalysis", new AnalysisOptions { SubjectSymbolId = "An::barge" });
+var table = await sweep.RunSweepAsync("Sw::Ratio", [new SweepRange("b", new Value.IntegerValue(-1), new Value.IntegerValue(1))],
+    new SweepOptions { Arguments = [new Value.RealValue(4)] });                       // the b = 0 row carries its error
+var engines = await connection.ListEnginesAsync();
+```
+
+| Method | Answers |
+| --- | --- |
+| `VerifyConstraintAsync` / `VerifyRequirementAsync` | A `Verification`: the `Verdict`, the objects it is about with its `Subject`, and, for a requirement, the `Verifications` its verification cases answered |
+| `VerifySatisfactionAsync` / `SatisfiedAsync` | A `Satisfaction`: one verdict per satisfaction assertion the model, or one element of it, states, each against an object of its own subject; `SatisfiedAsync` answers whether every one is decided and holds |
+| `ValidateInstanceAsync` | A `Validation`: one verdict per assertion about an object of a part and the objects it holds, each with its `InstancePath`, the `Summary` about the object as a whole, and whether nesting was left `Bounded` |
+| `CalcAsync` | A `Calculation`: the `Result` an invocation returned, or each output feature a calc usage named with no arguments computed, in declaration order |
+| `RunAnalysisAsync` | An `Analysis`: the case's `Outputs` in declaration order, the verdicts of its objective and assertions, a verification case's `Verifications`, the `Evaluations` a trade study made with the `Selected` one, the objects they name, and with `AnalysisOptions.ToolDryRun` the `ToolDryRun` preview of the external tool the run reached |
+| `ExploreAnalysisAsync` | An `Exploration` of the case's distinct outcomes, as for a behavior, with the `Standing` of the engine that answered |
+| `RunSweepAsync` | A `Sweep`: one `SweepRow` per run, each with the inputs it bound, its outputs, verdicts, evaluations and wall time, and the error of a run that failed; the swept `Parameters`, and whether the rows were `Sampled` with the `Seed` |
+| `Connection.ListEnginesAsync` | Each `EngineInfo`, in name order: what it answers, its authority, its bounds, whether it is ready and served, and where a manifest engine comes from; `ListEnginesOptions.Probe` starts each external engine once to check its handshake, which a listing alone never does |
+
+A verdict of false is an answer, never an exception: `Verdict.Decided` is true and `Violated`
+names it. A verdict that could not be evaluated, an unbound feature, a solver that decided
+nothing, or a symbol of another kind, is answered too, with its `Error` and `FailureReason`,
+and `Decided` false. Every verdict carries the `Standing` of the engine that answered, the
+`Question` it answers (`evaluate`, `holds`, `satisfiable`) with its `Status`, and the
+`Witness` assignment that replays a violated or satisfiable answer. Only a request the
+service could not answer at all raises `VerificationException`, whose `Reason` tells a wrong
+request (`FailureReason.WrongKind`) from one that could not be evaluated. A sweep's failed run
+is that row's `Error`, beside what it computed first, and never fails the table; an analysis
+case that failed raises `AnalysisException` keeping its `Partial` run.
+
+`VerifyOptions` carries the `Question`, the `SubjectSymbolId` the verdict is about, the
+`Arguments` and `NamedArguments` bound to the element's `in` parameters, and the `Engine`; a
+satisfaction is asked about an object of each assertion's own subject, so it takes neither a
+subject nor arguments. `CalcAsync` binds its arguments positionally, which is all the service
+reads. `AnalysisOptions` carries the subject, arguments, schedule and engine, and
+`SweepOptions` the subject, the arguments every row binds, `Samples` and `Seed`. A run and an
+exploration of a case answer differently, so `RunAnalysisAsync` refuses an exploring schedule
+and the `explore` engine, and `ExploreAnalysisAsync` a schedule that runs once and a tool dry
+run, with `InvalidRequestException` before anything is sent; an exploration naming neither
+explores under the service's default budget. A question, schedule or engine the service does
+not know, and arguments with a solver question, are the service's to refuse, with
+`InvalidArgument`; a negative sample count and a range no values follow from it refuses in its
+answer.
+
+Before anything is sent, a call is held to the capabilities its options need, in the order
+the service checks them: `verification`, then `verification_questions` for `holds` or
+`satisfiable`, `engines` for an engine and `schedule_explore` for the `explore` engine,
+`verification_arguments` for any argument, and the value capabilities of each argument and
+range endpoint; a case run checks `schedule` and `schedule_explore` for its schedule first.
+`ListEnginesAsync` needs `engines`. `verification_verdicts`, `case_evaluations` and the
+`engines` response fields only say whether the service fills them: they are read whatever it
+advertises, empty from a service without them. A failure reason this client does not name
+is kept as its number.
+
 ## Values
 
 `Value` is an immutable value the service evaluates, or one sent to it: one nested sealed
 class per arm of the schema's `Value`, `IntegerValue` to `InfinityValue`, which `Kind`, a
 `ValueKind`, names. No type outside the library can derive from it. A switch over the arms
 still needs a default case, since a release adds an arm whenever the service does. A
-model's evaluations, attributes and feature values are these values; no public method takes
-one as an argument yet.
+model's evaluations, attributes and feature values are these values, and so are the inputs,
+arguments and sweep ranges a call sends.
 
 ```csharp
 var speed = new Value.QuantityValue(new Quantity(
@@ -647,15 +715,17 @@ exits 1, including a JSON or JUnit destination that cannot be written: the diagn
 the report format, destination and filesystem error.
 
 Each RPC the API covers has an adapter, grouped by area beside the methods it calls
-(`ConnectionArea`, `ModelArea`, `ExecutionArea`). An adapter reads the decoded request as the
-arguments of the typed method, so the request the client sends is the one the scenario states,
-and renders what the method returned, with [`Rendering`](src/OpenMBEE.OpenSysML.Conformance/Rendering.cs)
-reading only public types, back into the response. The values a request sends are read into
-public `Value`s by public constructors, so the typed call writes them itself. ExecuteAction
-and ExecuteState call the explore method when the schedule explores, and the run method
-otherwise. A failure the service reported in band is rendered
-as the response's `error` and diagnostics, with what the exception kept of the answer: a run's
-clock and trace, a check's partial result; a refusal keeps the service's status and message; a
+(`ConnectionArea`, `ModelArea`, `ExecutionArea`, `VerificationArea`). An adapter reads the
+decoded request as the arguments of the typed method, so the request the client sends is the
+one the scenario states, and renders what the method returned, with
+[`Rendering`](src/OpenMBEE.OpenSysML.Conformance/Rendering.cs) reading only public types, back
+into the response. The values a request sends are read into public `Value`s by public
+constructors, so the typed call writes them itself. ExecuteAction and ExecuteState call the
+explore method when the schedule explores, and RunAnalysis when its schedule or engine does,
+and the run method otherwise. A failure the service reported in band is rendered as the
+response's `error`, failure reason and diagnostics, with what the exception kept of the answer:
+a run's clock and trace, a check's or an analysis's partial result, a verification's objects,
+verification verdicts and engine standing; a refusal keeps the service's status and message; a
 capability the client refuses for before sending is `UNIMPLEMENTED`, which the service would
 answer; a transport failure is its status. Nothing is sent raw: a test reads the runner's IL
 and fails on any call to `Connection.CallAsync` or the generated stub. A request setting a field
@@ -673,11 +743,13 @@ skip, the run says so. Per protocol, of 194 scenarios:
 
 | Configuration | ran | passed | skipped as uncovered | skipped as unexpressible |
 | --- | --: | --: | --: | --: |
-| default | 70 | 70 | 123 | 1 |
-| `strict_conformance` and `oslc_query` withheld | 69 | 69 | 123 | 1 |
+| default | 116 | 116 | 74 | 4 |
+| `strict_conformance` and `oslc_query` withheld | 115 | 115 | 74 | 4 |
 
-The one unexpressible request, `parse/naming_no_source_is_invalid`, names no source, which
-the API always does. Withheld, `strict_conformance`'s fallback runs and is refused before
+The unexpressible requests send what the public types refuse to hold or send:
+`parse/naming_no_source_is_invalid` names no source, which the API always does, and three
+EvaluateCalc scenarios send a measurement reference without its reduction, a vector with a
+string component, and a function closing over an object of another call. Withheld, `strict_conformance`'s fallback runs and is refused before
 sending; `oslc_query`'s is a `Query` scenario, an uncovered RPC, and is reported as a listed skip.
 
 `-mutate` shows the comparison catches what each corruption breaks, on every protocol, and a
@@ -685,17 +757,17 @@ test asserts it fails the run:
 
 | `-mutate` | What it does to every answer | Scenarios that fail, per protocol |
 | --- | --- | --: |
-| `perturb-reals` | Moves each real by a millionth | 16 |
-| `truncate-lists` | Drops the last entry of each list | 20 |
-| `rewrite-strings` | Replaces each non-empty string but no map key | 31 |
+| `perturb-reals` | Moves each real by a millionth | 26 |
+| `truncate-lists` | Drops the last entry of each list | 37 |
+| `rewrite-strings` | Replaces each non-empty string but no map key | 58 |
 
 `make conformance-dotnet-check` also runs the reference runner against the same binary, both
 with `-v`, and `dotnet-gates.py conformance-check` holds the two runs together: both reports
 have the reference's members in its order and totals that add up, the JUnit report states the
 same results, including each testcase's pass, failure, error or skip disposition, and every
 scenario the .NET run did not skip as reviewed has the reference's
-outcome, status, missing capabilities and normalized response. Only timing and what answered
-are not compared, and the service's capabilities compare as a set, which is how the client
+outcome, status, missing capabilities and normalized response. Only timing, including the
+wall time each row of a sweep reports, and what answered are not compared, and the service's capabilities compare as a set, which is how the client
 holds them.
 
 ## Build policy
