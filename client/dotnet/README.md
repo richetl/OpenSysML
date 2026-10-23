@@ -455,6 +455,49 @@ range endpoint; a case run checks `schedule` and `schedule_explore` for its sche
 advertises, empty from a service without them. A failure reason this client does not name
 is kept as its number.
 
+## Running repeatedly, self-checking and recording
+
+```csharp
+var mc = (await connection.LoadAsync("monte_carlo.sysml")).RequireNoErrors();
+var runs = await mc.RunActionRunsAsync("MC::Settle", 100, options: new ActionRunsOptions { Seed = 7, Observe = ["t"] });
+var t = runs.Distribution("t");                                                     // Min, Max, Mean, Percentiles, Histogram
+var sample = await mc.RunAnalysisRunsAsync("MC::Mc", 100, new AnalysisRunsOptions { SubjectSymbolId = "MC::probe", Seed = 7 });
+var check = await mc.SelfCheckAsync();                                              // check.Holds, check.Findings
+var recording = await mc.RecordRunAsync("MC::Cost", new RecordOptions { SubjectSymbolId = "MC::p" });
+var recorded = recording.Model;                                                     // a new model holding Records::Cost_run1
+```
+
+| Method | Answers |
+| --- | --- |
+| `RunActionRunsAsync` | `Runs`: one `SweepRow` per run, in run order, its `Inputs` the run's number as `run` and its `Outputs` what the run observed, a failed run's `Error` beside what it observed first; the `Observables` tabled and each one's `RunDistribution` over the completed runs, numeric (`Min`, `Max`, `Mean`, `Deviation`, `Percentiles`, `Histogram`) or counted by distinct `Values`; the `Lines` `sysml -runs` prints, the `Seed` echoed, and the engine's `Standing` |
+| `RunAnalysisRunsAsync` | The same for a `Simulation::MonteCarlo` case, whose runs report its `observed` value, with the case's conclusion over the sample in `Outputs` and `Verdicts`, which settle every row's, or why it has none in `Unconcluded` |
+| `SelfCheckAsync` | A `SelfCheck`: the `Status` (`holds`, `fails`, `unresolved`) of the `SysMLValidation` constraints, and those of any rule packages named, applied to every element, every `SelfCheckFinding`, the counts, and the elements each constraint was applied to |
+| `RecordRunAsync` | A `Recording`: the `Run`, `Sweep` or `Sample` made, the record `Package`, `Definition` and `Records`, the `Source` generated, the `Documents` they were merged into (with `Content` for a model of one document the records joined), the runs `Skipped` and why, and the recorded `Model` |
+
+The same `Seed` makes the same runs on every platform; random draws without one, unless
+`Draws` fixes them as `min`, `max` or `average`, are the service's to refuse with
+`InvalidArgument`, as are a run count that is not positive, an unknown draw policy, a feature
+observed twice, and, for a recording, both `Ranges` and `Runs`. An action runs with its inputs,
+a performer and the features to observe, a Monte Carlo case with its subject and arguments, so
+each has its own method and options. A run that fails is that row's error, never an exception;
+runs the service could not table, an unknown action or case, a case that is not a Monte Carlo
+one, or a feature no completed run produced, raise `RunsException`, a `VerificationException`
+keeping the `Partial` table. A violated self-check constraint is a finding; a rule package the
+model does not declare raises `ModelException`.
+
+A recording is a new model the service holds, named by `Recording.Model`, which borrows the
+connection; the model it was asked of keeps its hash and contents, and nothing is written to
+disk. With neither `RecordOptions.Ranges` nor `Runs` the case runs once, with `Ranges` once per
+row of the sweep, and with `Runs` and a `Seed` as a Monte Carlo sample; `RecordInto` names the
+package the records go into. The request always accepts the documents of a model of several,
+since every document the records went into is returned. A recording not made raises
+`RecordException` with its `FailureReason`, the run, sweep or sample made, whether that run
+itself reported the failure (`RunFailed`), and, when the records were generated but would not
+analyze cleanly, their `GeneratedSource`. Before anything is sent the calls need `runs`,
+`self_check` or `record_run`; then `performer` for a performer and the value capabilities of
+each input, `engines` and `schedule_explore` for an engine, and the value capabilities of each
+argument and range endpoint, in the order the service checks them.
+
 ## Values
 
 `Value` is an immutable value the service evaluates, or one sent to it: one nested sealed
@@ -715,17 +758,19 @@ exits 1, including a JSON or JUnit destination that cannot be written: the diagn
 the report format, destination and filesystem error.
 
 Each RPC the API covers has an adapter, grouped by area beside the methods it calls
-(`ConnectionArea`, `ModelArea`, `ExecutionArea`, `VerificationArea`). An adapter reads the
+(`ConnectionArea`, `ModelArea`, `ExecutionArea`, `VerificationArea`, `SamplingArea`). An adapter reads the
 decoded request as the arguments of the typed method, so the request the client sends is the
 one the scenario states, and renders what the method returned, with
 [`Rendering`](src/OpenMBEE.OpenSysML.Conformance/Rendering.cs) reading only public types, back
 into the response. The values a request sends are read into public `Value`s by public
 constructors, so the typed call writes them itself. ExecuteAction and ExecuteState call the
 explore method when the schedule explores, and RunAnalysis when its schedule or engine does,
-and the run method otherwise. A failure the service reported in band is rendered as the
+and the run method otherwise; RunRuns calls the action or the Monte Carlo case method by which
+the request names. A failure the service reported in band is rendered as the
 response's `error`, failure reason and diagnostics, with what the exception kept of the answer:
 a run's clock and trace, a check's or an analysis's partial result, a verification's objects,
-verification verdicts and engine standing; a refusal keeps the service's status and message; a
+verification verdicts and engine standing, the table runs made, and the run, sweep or sample a
+recording made, with its own failure where it reported one; a refusal keeps the service's status and message; a
 capability the client refuses for before sending is `UNIMPLEMENTED`, which the service would
 answer; a transport failure is its status. Nothing is sent raw: a test reads the runner's IL
 and fails on any call to `Connection.CallAsync` or the generated stub. A request setting a field
@@ -743,8 +788,8 @@ skip, the run says so. Per protocol, of 194 scenarios:
 
 | Configuration | ran | passed | skipped as uncovered | skipped as unexpressible |
 | --- | --: | --: | --: | --: |
-| default | 116 | 116 | 74 | 4 |
-| `strict_conformance` and `oslc_query` withheld | 115 | 115 | 74 | 4 |
+| default | 121 | 121 | 69 | 4 |
+| `strict_conformance` and `oslc_query` withheld | 120 | 120 | 69 | 4 |
 
 The unexpressible requests send what the public types refuse to hold or send:
 `parse/naming_no_source_is_invalid` names no source, which the API always does, and three
@@ -758,8 +803,8 @@ test asserts it fails the run:
 | `-mutate` | What it does to every answer | Scenarios that fail, per protocol |
 | --- | --- | --: |
 | `perturb-reals` | Moves each real by a millionth | 26 |
-| `truncate-lists` | Drops the last entry of each list | 37 |
-| `rewrite-strings` | Replaces each non-empty string but no map key | 58 |
+| `truncate-lists` | Drops the last entry of each list | 39 |
+| `rewrite-strings` | Replaces each non-empty string but no map key | 62 |
 
 `make conformance-dotnet-check` also runs the reference runner against the same binary, both
 with `-v`, and `dotnet-gates.py conformance-check` holds the two runs together: both reports
@@ -767,8 +812,10 @@ have the reference's members in its order and totals that add up, the JUnit repo
 same results, including each testcase's pass, failure, error or skip disposition, and every
 scenario the .NET run did not skip as reviewed has the reference's
 outcome, status, missing capabilities and normalized response. Only timing, including the
-wall time each row of a sweep reports, and what answered are not compared, and the service's capabilities compare as a set, which is how the client
-holds them.
+wall time each row of a sweep or of runs reports and the time a recording states in the
+records it generates, with the recorded model's hash that follows from it, which compares only
+as present, and what answered are not compared, and the service's capabilities compare as a
+set, which is how the client holds them.
 
 ## Build policy
 

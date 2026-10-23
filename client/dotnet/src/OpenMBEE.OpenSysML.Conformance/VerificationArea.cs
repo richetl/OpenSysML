@@ -252,8 +252,9 @@ internal static class VerificationArea
             NamedArguments = RequestValues.Map(named, "named_arguments") ?? [],
         };
 
-    // A range the public API holds states both endpoints, which a request may leave out.
-    private static SweepRange Range(Wire.SweepRange range, string path) =>
+    /// <summary>A request's sweep range, as the public API holds one: with both endpoints, which a request may leave out.</summary>
+    /// <exception cref="UnexpressibleRequestException">The range leaves out an endpoint, or a value cannot be held as spelled.</exception>
+    internal static SweepRange Range(Wire.SweepRange range, string path) =>
         range.Start is null || range.End is null
             ? throw new UnexpressibleRequestException($"the public API holds a sweep range with both endpoints, which {path} does not state")
             : new SweepRange(

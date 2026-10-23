@@ -397,7 +397,7 @@ internal static class Rendering
     internal static Wire.RunSweepResponse Sweep(Sweep sweep)
     {
         ArgumentNullException.ThrowIfNull(sweep);
-        var rendered = new Wire.RunSweepResponse
+        return new Wire.RunSweepResponse
         {
             Parameters = { sweep.Parameters },
             Sampled = sweep.Sampled,
@@ -407,23 +407,158 @@ internal static class Rendering
             Engine = sweep.Standing.Engine,
             Strength = sweep.Standing.Strength,
             Bounds = { Bounds(sweep.Standing) },
+            Rows = { Rows(sweep.Rows) },
         };
-        foreach (var row in sweep.Rows)
+    }
+
+    /// <summary>The runs' table, with every row, each observable's distribution and a case's conclusion.</summary>
+    internal static Wire.RunRunsResponse Runs(Runs runs)
+    {
+        ArgumentNullException.ThrowIfNull(runs);
+        var rendered = new Wire.RunRunsResponse
         {
-            rendered.Rows.Add(new Wire.SweepRow
-            {
-                Inputs = { Outputs(row.Inputs) },
-                Outputs = { Outputs(row.Outputs) },
-                Verdicts = { Verdicts(row.Verdicts) },
-                ElapsedMicros = row.ElapsedMicroseconds,
-                Error = row.Error,
-                FailureReason = Reason(row.FailureReason),
-                Evaluations = { Evaluations(row.Evaluations) },
-            });
+            Rows = { Rows(runs.Rows) },
+            Observables = { runs.Observables },
+            Distributions = { runs.Distributions.Select(Distribution) },
+            Lines = { runs.Lines },
+            Outputs = { Outputs(runs.Outputs) },
+            Verdicts = { Verdicts(runs.Verdicts) },
+            Unconcluded = runs.Unconcluded,
+            Diagnostics = { Diagnostics(runs.Diagnostics) },
+            Instances = { Instances(runs.Instances) },
+            Engine = runs.Standing.Engine,
+            Strength = runs.Standing.Strength,
+            Bounds = { Bounds(runs.Standing) },
+        };
+        if (runs.Seed is { } seed)
+        {
+            rendered.Seed = seed;
         }
 
         return rendered;
     }
+
+    /// <summary>What a self-check found, with every finding and count.</summary>
+    internal static Wire.SelfCheckResponse SelfCheck(SelfCheck check)
+    {
+        ArgumentNullException.ThrowIfNull(check);
+        return new Wire.SelfCheckResponse
+        {
+            Status = check.Status,
+            Findings =
+            {
+                check.Findings.Select(finding => new Wire.SelfCheckFinding
+                {
+                    Status = finding.Status,
+                    Subject = finding.Subject,
+                    Location = finding.Location,
+                    Constraint = finding.Constraint,
+                    Element = finding.Element,
+                    Message = finding.Message,
+                    Line = finding.Line,
+                }),
+            },
+            Elements = check.Elements,
+            Checks = check.Checks,
+            Violations = check.Violations,
+            Unevaluated = check.Unevaluated,
+            EvaluationErrors = check.EvaluationErrors,
+            Applications = { check.Applications.Select(application => new Wire.SelfCheckApplication { Constraint = application.Constraint, Count = application.Count }) },
+            Summary = check.Summary,
+            Diagnostics = { Diagnostics(check.Diagnostics) },
+        };
+    }
+
+    /// <summary>A recording, with the runs it made, the records it generated and the model it made.</summary>
+    internal static Wire.RecordRunResponse Recording(Recording recording)
+    {
+        ArgumentNullException.ThrowIfNull(recording);
+        var rendered = Ran(recording.Run, recording.Sweep, recording.Sample);
+        rendered.Package = recording.Package;
+        rendered.Definition = recording.Definition;
+        rendered.Records.Add(recording.Records);
+        rendered.Source = recording.Source;
+        rendered.Content = recording.Content;
+        rendered.Documents.Add(recording.Documents.Select(document => new Wire.EditedDocument { Name = document.Name, Content = document.Content }));
+        rendered.Skipped = recording.Skipped;
+        rendered.Reasons.Add(recording.SkipReasons);
+        rendered.Diagnostics.Add(Diagnostics(recording.Diagnostics));
+        rendered.ModelHash = recording.Model.Hash;
+        return rendered;
+    }
+
+    /// <summary>A recording the service did not make, with what it kept: the runs, and the failure where they reported it.</summary>
+    internal static Wire.RecordRunResponse Recording(RecordException failure)
+    {
+        ArgumentNullException.ThrowIfNull(failure);
+        var rendered = Ran(failure.Run, failure.Sweep, failure.Sample);
+        rendered.Package = failure.Package;
+        rendered.Definition = failure.Definition;
+        rendered.Records.Add(failure.Records);
+        rendered.Source = failure.GeneratedSource;
+        rendered.Skipped = failure.Skipped;
+        rendered.Reasons.Add(failure.SkipReasons);
+        rendered.Error = failure.Message;
+        rendered.FailureReason = Reason(failure.Reason);
+        rendered.Diagnostics.Add(Diagnostics(failure.Diagnostics));
+        if (failure.RunFailed)
+        {
+            switch (rendered)
+            {
+                case { Run: { } run }:
+                    (run.Error, run.FailureReason) = (failure.Message, rendered.FailureReason);
+                    break;
+                case { Sweep: { } sweep }:
+                    (sweep.Error, sweep.FailureReason) = (failure.Message, rendered.FailureReason);
+                    break;
+                case { Sample: { } sample }:
+                    (sample.Error, sample.FailureReason) = (failure.Message, rendered.FailureReason);
+                    break;
+            }
+        }
+
+        return rendered;
+    }
+
+    // The rows of a table, each with its inputs, outputs, verdicts, timing and failure.
+    private static IEnumerable<Wire.SweepRow> Rows(IEnumerable<SweepRow> rows) =>
+        rows.Select(row => new Wire.SweepRow
+        {
+            Inputs = { Outputs(row.Inputs) },
+            Outputs = { Outputs(row.Outputs) },
+            Verdicts = { Verdicts(row.Verdicts) },
+            ElapsedMicros = row.ElapsedMicroseconds,
+            Error = row.Error,
+            FailureReason = Reason(row.FailureReason),
+            Evaluations = { Evaluations(row.Evaluations) },
+        });
+
+    private static Wire.RunDistribution Distribution(RunDistribution distribution)
+    {
+        var rendered = new Wire.RunDistribution
+        {
+            Name = distribution.Name,
+            Unit = distribution.Unit,
+            Count = distribution.Count,
+            Numeric = distribution.Numeric,
+            Deviation = distribution.Deviation,
+            Percentiles = { distribution.Percentiles.Select(percentile => new Wire.RunPercentile { Percentile = percentile.Percentile, Value = Value(percentile.Value) }) },
+            Histogram = { distribution.Histogram.Select(bin => new Wire.RunHistogramBin { Low = Value(bin.Low), High = Value(bin.High), Count = bin.Count }) },
+            Values = { distribution.Values.Select(counted => new Wire.RunCountedValue { Value = Value(counted.Value), Count = counted.Count }) },
+        };
+        rendered.Min = distribution.Min is { } min ? Value(min) : null;
+        rendered.Max = distribution.Max is { } max ? Value(max) : null;
+        rendered.Mean = distribution.Mean is { } mean ? Value(mean) : null;
+        return rendered;
+    }
+
+    // A recording's answer holding the one run, sweep or sample it made, or none.
+    private static Wire.RecordRunResponse Ran(Analysis? run, Sweep? sweep, Runs? sample) => new()
+    {
+        Run = run is null ? null : Analysis(run),
+        Sweep = sweep is null ? null : Sweep(sweep),
+        Sample = sample is null ? null : Runs(sample),
+    };
 
     /// <summary>One engine's listing.</summary>
     internal static Wire.EngineInfo Engine(EngineInfo engine)

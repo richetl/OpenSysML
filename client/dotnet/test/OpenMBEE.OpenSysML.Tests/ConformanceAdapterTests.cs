@@ -66,7 +66,7 @@ public sealed class ConformanceAdapterTests
         { "ParseSources", """{"documents": [{"file_path": ""}]}""", "the public API names a file document by a path that is not empty" },
         { "GetSymbol", """{"model_hash": " ", "symbol_id": "Demo::Vehicle"}""", "the public API names a model by a hash that is not blank" },
         { "Evaluate", """{"expression": "2 + 2"}""", "the public API names a model by a hash that is not blank" },
-        { "SelfCheck", """{"model_hash": "h"}""", "the public API does not cover SelfCheck" },
+        { "Query", """{"model_hash": "h"}""", "the public API does not cover Query" },
         { "VerifyConstraint", """{"symbol_id": "C"}""", "the public API names a model by a hash that is not blank" },
         { "EvaluateCalc", """{"model_hash": "h", "arguments": [{"function": {"calc_id": "F::Scaler::scale", "self_id": 3}}]}""", "The value at arguments[0] is the function F::Scaler::scale closing over instance(3), which lives only within the response that held it." },
         { "EvaluateCalc", """{"model_hash": "h", "arguments": [{"measurement_ref": {"unit": "m"}}]}""", "the public API holds a measurement reference with its reduction, which arguments[0] has none of" },
@@ -83,6 +83,13 @@ public sealed class ConformanceAdapterTests
         { "ExecuteState", """{"model_hash": "h", "schedule": "explore", "trace": true}""", "RunOptions.Trace asks for one run's trace, which an exploration describes none of; leave it false." },
         { "CheckBehavior", """{"model_hash": "h", "action_symbol_id": "A", "state_machine_symbol_id": "S"}""", "the public API checks one behavior, so it cannot name both an action and a state machine" },
         { "CheckBehavior", """{"model_hash": "h", "state_machine_symbol_id": "S", "inputs": {"x": {"int_value": 1}}}""", "the public API binds inputs only to an action it checks, so it cannot send them with a state machine" },
+        { "RunRuns", """{"model_hash": "h", "action_symbol_id": "A", "analysis_symbol_id": "C"}""", "the public API runs one behavior, so it cannot name both an action and a Monte Carlo case" },
+        { "RunRuns", """{"model_hash": "h", "action_symbol_id": "A", "subject_symbol_id": "S"}""", "the public API binds a subject and arguments only to a Monte Carlo case it runs, so it cannot send them with an action" },
+        { "RunRuns", """{"model_hash": "h", "named_arguments": {"x": {"int_value": 1}}}""", "the public API binds a subject and arguments only to a Monte Carlo case it runs, so it cannot send them with an action" },
+        { "RunRuns", """{"model_hash": "h", "analysis_symbol_id": "C", "observe": ["t"]}""", "the public API binds inputs, a performer and observables only to an action it runs, so it cannot send them with a Monte Carlo case" },
+        { "RunRuns", """{"model_hash": "h", "analysis_symbol_id": "C", "performer_symbol_id": "P"}""", "the public API binds inputs, a performer and observables only to an action it runs, so it cannot send them with a Monte Carlo case" },
+        { "RecordRun", """{"model_hash": "h", "analysis_symbol_id": "C"}""", "the public API reads every document a recording answers, so it always accepts them" },
+        { "RecordRun", """{"model_hash": "h", "analysis_symbol_id": "C", "accept_documents": true, "ranges": [{"parameter": "b", "start": {"int_value": 0}}]}""", "the public API holds a sweep range with both endpoints, which ranges[0] does not state" },
     };
 
     private static Dictionary<string, (IMessage Request, IMessage Response)> Complete => new(StringComparer.Ordinal)
@@ -266,6 +273,68 @@ public sealed class ConformanceAdapterTests
         ["CheckBehavior of no behavior"] = (
             new Wire.CheckBehaviorRequest { ModelHash = Hash },
             new Wire.CheckBehaviorResponse { Verdict = "undecided" }),
+        ["RunRuns"] = (
+            new Wire.RunRunsRequest
+            {
+                ModelHash = Hash,
+                ActionSymbolId = "MC::Settle",
+                Inputs = { SendableValues },
+                PerformerSymbolId = "MC::probe",
+                Runs = 3,
+                Seed = ulong.MaxValue,
+                Draws = "min",
+                ClockStep = 0.25,
+                Observe = { "t", "mode" },
+                Engine = "sweep",
+            },
+            CompleteSamplingWire.ActionRuns),
+        ["RunRuns of a Monte Carlo case"] = (
+            new Wire.RunRunsRequest
+            {
+                ModelHash = Hash,
+                AnalysisSymbolId = "MC::Mc",
+                SubjectSymbolId = "MC::probe",
+                Arguments = { SendableValues.Values },
+                NamedArguments = { SendableValues },
+                Runs = 1,
+                Seed = 0,
+                Draws = "average",
+                ClockStep = 2,
+                Engine = "explore",
+            },
+            CompleteSamplingWire.CaseRuns),
+        ["RunRuns of no behavior"] = (
+            new Wire.RunRunsRequest { ModelHash = Hash, Runs = -2 },
+            CompleteSamplingWire.Unconcluded),
+        ["SelfCheck"] = (
+            new Wire.SelfCheckRequest { ModelHash = Hash, SelfCheckPackage = { "Rules", "More::Rules" } },
+            CompleteSamplingWire.SelfCheck),
+        ["RecordRun"] = (
+            new Wire.RecordRunRequest
+            {
+                ModelHash = Hash,
+                AnalysisSymbolId = "Sw::CostAnalysis",
+                SubjectSymbolId = "Sw::barge",
+                Arguments = { SendableValues.Values },
+                NamedArguments = { SendableValues },
+                Engine = "sweep",
+                RecordInto = "Sw::Records",
+                Ranges =
+                {
+                    new Wire.SweepRange { Parameter = "limit", Start = new Wire.Value { RealValue = 0 }, End = new Wire.Value { RealValue = 40 }, Step = new Wire.Value { RealValue = 20 } },
+                    new Wire.SweepRange { Start = new Wire.Value { IntValue = -1 }, End = new Wire.Value { Quantity = new Wire.Quantity { IntMagnitude = 1 } } },
+                },
+                Runs = 3,
+                Seed = ulong.MaxValue,
+                AcceptDocuments = true,
+            },
+            CompleteSamplingWire.SweepRecording),
+        ["RecordRun once"] = (
+            new Wire.RecordRunRequest { ModelHash = Hash, AnalysisSymbolId = "Sw::CostAnalysis", SubjectSymbolId = "Sw::barge", AcceptDocuments = true },
+            CompleteSamplingWire.Recording),
+        ["RecordRun of a sample"] = (
+            new Wire.RecordRunRequest { ModelHash = Hash, AnalysisSymbolId = "MC::Mc", Runs = 2, Seed = 0, AcceptDocuments = true },
+            CompleteSamplingWire.SampleRecording),
     };
 
     // Every value a request can send, one of each arm the API writes as given, by name.
@@ -364,6 +433,15 @@ public sealed class ConformanceAdapterTests
                 Strength = "observed",
                 Bounds = { CompleteVerificationWire.Bounds },
             }),
+        ["RunRuns"] = (
+            new Wire.RunRunsRequest { ModelHash = Hash, ActionSymbolId = "MC::Settle", Runs = 1, Seed = 7, Observe = { "nope" } },
+            CompleteSamplingWire.Unobserved),
+        ["SelfCheck"] = (
+            new Wire.SelfCheckRequest { ModelHash = Hash, SelfCheckPackage = { "Nope" } },
+            new Wire.SelfCheckResponse { Error = "-self-check-package Nope names no package", Diagnostics = { CompleteWire.Diagnostic } }),
+        ["RecordRun"] = (
+            new Wire.RecordRunRequest { ModelHash = Hash, AnalysisSymbolId = "Sw::CostAnalysis", AcceptDocuments = true },
+            CompleteSamplingWire.FailedRunRecording),
     };
 
     [Theory]

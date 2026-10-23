@@ -28,6 +28,9 @@ internal static class FakeModels
         Capabilities.Verification,
         Capabilities.VerificationQuestions,
         Capabilities.VerificationArguments,
+        Capabilities.Runs,
+        Capabilities.SelfCheck,
+        Capabilities.RecordRun,
         .. Internal.ValueWire.SendGateOrder,
     ];
 

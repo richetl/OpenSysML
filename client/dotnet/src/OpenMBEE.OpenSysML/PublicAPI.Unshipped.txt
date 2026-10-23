@@ -1572,3 +1572,234 @@ static OpenMBEE.OpenSysML.VerificationVerdict.operator ==(OpenMBEE.OpenSysML.Ver
 static OpenMBEE.OpenSysML.VerifyOptions.Default.get -> OpenMBEE.OpenSysML.VerifyOptions!
 static OpenMBEE.OpenSysML.WitnessAssignment.operator !=(OpenMBEE.OpenSysML.WitnessAssignment? left, OpenMBEE.OpenSysML.WitnessAssignment? right) -> bool
 static OpenMBEE.OpenSysML.WitnessAssignment.operator ==(OpenMBEE.OpenSysML.WitnessAssignment? left, OpenMBEE.OpenSysML.WitnessAssignment? right) -> bool
+OpenMBEE.OpenSysML.ActionRunsOptions
+OpenMBEE.OpenSysML.ActionRunsOptions.ActionRunsOptions() -> void
+OpenMBEE.OpenSysML.ActionRunsOptions.ClockStep.get -> double
+OpenMBEE.OpenSysML.ActionRunsOptions.ClockStep.init -> void
+OpenMBEE.OpenSysML.ActionRunsOptions.Draws.get -> string?
+OpenMBEE.OpenSysML.ActionRunsOptions.Draws.init -> void
+OpenMBEE.OpenSysML.ActionRunsOptions.Engine.get -> string?
+OpenMBEE.OpenSysML.ActionRunsOptions.Engine.init -> void
+OpenMBEE.OpenSysML.ActionRunsOptions.Observe.get -> System.Collections.Generic.IReadOnlyList<string!>!
+OpenMBEE.OpenSysML.ActionRunsOptions.Observe.init -> void
+OpenMBEE.OpenSysML.ActionRunsOptions.PerformerSymbolId.get -> string?
+OpenMBEE.OpenSysML.ActionRunsOptions.PerformerSymbolId.init -> void
+OpenMBEE.OpenSysML.ActionRunsOptions.Seed.get -> ulong?
+OpenMBEE.OpenSysML.ActionRunsOptions.Seed.init -> void
+OpenMBEE.OpenSysML.AnalysisRunsOptions
+OpenMBEE.OpenSysML.AnalysisRunsOptions.AnalysisRunsOptions() -> void
+OpenMBEE.OpenSysML.AnalysisRunsOptions.Arguments.get -> System.Collections.Generic.IReadOnlyList<OpenMBEE.OpenSysML.Value!>!
+OpenMBEE.OpenSysML.AnalysisRunsOptions.Arguments.init -> void
+OpenMBEE.OpenSysML.AnalysisRunsOptions.ClockStep.get -> double
+OpenMBEE.OpenSysML.AnalysisRunsOptions.ClockStep.init -> void
+OpenMBEE.OpenSysML.AnalysisRunsOptions.Draws.get -> string?
+OpenMBEE.OpenSysML.AnalysisRunsOptions.Draws.init -> void
+OpenMBEE.OpenSysML.AnalysisRunsOptions.Engine.get -> string?
+OpenMBEE.OpenSysML.AnalysisRunsOptions.Engine.init -> void
+OpenMBEE.OpenSysML.AnalysisRunsOptions.NamedArguments.get -> System.Collections.Generic.IReadOnlyDictionary<string!, OpenMBEE.OpenSysML.Value!>!
+OpenMBEE.OpenSysML.AnalysisRunsOptions.NamedArguments.init -> void
+OpenMBEE.OpenSysML.AnalysisRunsOptions.Seed.get -> ulong?
+OpenMBEE.OpenSysML.AnalysisRunsOptions.Seed.init -> void
+OpenMBEE.OpenSysML.AnalysisRunsOptions.SubjectSymbolId.get -> string?
+OpenMBEE.OpenSysML.AnalysisRunsOptions.SubjectSymbolId.init -> void
+OpenMBEE.OpenSysML.EditedDocument
+OpenMBEE.OpenSysML.EditedDocument.<Clone>$() -> OpenMBEE.OpenSysML.EditedDocument!
+OpenMBEE.OpenSysML.EditedDocument.Content.get -> string!
+OpenMBEE.OpenSysML.EditedDocument.EditedDocument(string! name, string! content) -> void
+OpenMBEE.OpenSysML.EditedDocument.Equals(OpenMBEE.OpenSysML.EditedDocument? other) -> bool
+OpenMBEE.OpenSysML.EditedDocument.Name.get -> string!
+OpenMBEE.OpenSysML.Model.RecordRunAsync(string! analysisSymbolId, OpenMBEE.OpenSysML.RecordOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<OpenMBEE.OpenSysML.Recording!>!
+OpenMBEE.OpenSysML.Model.RunActionRunsAsync(string! actionSymbolId, long runs, System.Collections.Generic.IReadOnlyDictionary<string!, OpenMBEE.OpenSysML.Value!>? inputs = null, OpenMBEE.OpenSysML.ActionRunsOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<OpenMBEE.OpenSysML.Runs!>!
+OpenMBEE.OpenSysML.Model.RunAnalysisRunsAsync(string! analysisSymbolId, long runs, OpenMBEE.OpenSysML.AnalysisRunsOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<OpenMBEE.OpenSysML.Runs!>!
+OpenMBEE.OpenSysML.Model.SelfCheckAsync(System.Collections.Generic.IEnumerable<string!>? rulePackages = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<OpenMBEE.OpenSysML.SelfCheck!>!
+OpenMBEE.OpenSysML.RecordException
+OpenMBEE.OpenSysML.RecordException.Definition.get -> string!
+OpenMBEE.OpenSysML.RecordException.GeneratedSource.get -> string!
+OpenMBEE.OpenSysML.RecordException.Package.get -> string!
+OpenMBEE.OpenSysML.RecordException.RecordException(string! message, string! method, OpenMBEE.OpenSysML.FailureReason reason, System.Collections.Generic.IEnumerable<OpenMBEE.OpenSysML.Diagnostic!>! diagnostics, OpenMBEE.OpenSysML.Analysis? run, OpenMBEE.OpenSysML.Sweep? sweep, OpenMBEE.OpenSysML.Runs? sample, bool runFailed, string! package, string! definition, System.Collections.Generic.IEnumerable<string!>! records, string! generatedSource, long skipped, System.Collections.Generic.IEnumerable<string!>! skipReasons) -> void
+OpenMBEE.OpenSysML.RecordException.Records.get -> OpenMBEE.OpenSysML.ValueList<string!>
+OpenMBEE.OpenSysML.RecordException.Run.get -> OpenMBEE.OpenSysML.Analysis?
+OpenMBEE.OpenSysML.RecordException.RunFailed.get -> bool
+OpenMBEE.OpenSysML.RecordException.Sample.get -> OpenMBEE.OpenSysML.Runs?
+OpenMBEE.OpenSysML.RecordException.SkipReasons.get -> OpenMBEE.OpenSysML.ValueList<string!>
+OpenMBEE.OpenSysML.RecordException.Skipped.get -> long
+OpenMBEE.OpenSysML.RecordException.Sweep.get -> OpenMBEE.OpenSysML.Sweep?
+OpenMBEE.OpenSysML.RecordOptions
+OpenMBEE.OpenSysML.RecordOptions.Arguments.get -> System.Collections.Generic.IReadOnlyList<OpenMBEE.OpenSysML.Value!>!
+OpenMBEE.OpenSysML.RecordOptions.Arguments.init -> void
+OpenMBEE.OpenSysML.RecordOptions.Engine.get -> string?
+OpenMBEE.OpenSysML.RecordOptions.Engine.init -> void
+OpenMBEE.OpenSysML.RecordOptions.NamedArguments.get -> System.Collections.Generic.IReadOnlyDictionary<string!, OpenMBEE.OpenSysML.Value!>!
+OpenMBEE.OpenSysML.RecordOptions.NamedArguments.init -> void
+OpenMBEE.OpenSysML.RecordOptions.Ranges.get -> System.Collections.Generic.IReadOnlyList<OpenMBEE.OpenSysML.SweepRange!>!
+OpenMBEE.OpenSysML.RecordOptions.Ranges.init -> void
+OpenMBEE.OpenSysML.RecordOptions.RecordInto.get -> string?
+OpenMBEE.OpenSysML.RecordOptions.RecordInto.init -> void
+OpenMBEE.OpenSysML.RecordOptions.RecordOptions() -> void
+OpenMBEE.OpenSysML.RecordOptions.Runs.get -> long
+OpenMBEE.OpenSysML.RecordOptions.Runs.init -> void
+OpenMBEE.OpenSysML.RecordOptions.Seed.get -> ulong?
+OpenMBEE.OpenSysML.RecordOptions.Seed.init -> void
+OpenMBEE.OpenSysML.RecordOptions.SubjectSymbolId.get -> string?
+OpenMBEE.OpenSysML.RecordOptions.SubjectSymbolId.init -> void
+OpenMBEE.OpenSysML.Recording
+OpenMBEE.OpenSysML.Recording.<Clone>$() -> OpenMBEE.OpenSysML.Recording!
+OpenMBEE.OpenSysML.Recording.Content.get -> string!
+OpenMBEE.OpenSysML.Recording.Definition.get -> string!
+OpenMBEE.OpenSysML.Recording.Diagnostics.get -> OpenMBEE.OpenSysML.ValueList<OpenMBEE.OpenSysML.Diagnostic!>
+OpenMBEE.OpenSysML.Recording.Documents.get -> OpenMBEE.OpenSysML.ValueList<OpenMBEE.OpenSysML.EditedDocument!>
+OpenMBEE.OpenSysML.Recording.Equals(OpenMBEE.OpenSysML.Recording? other) -> bool
+OpenMBEE.OpenSysML.Recording.Model.get -> OpenMBEE.OpenSysML.Model!
+OpenMBEE.OpenSysML.Recording.Package.get -> string!
+OpenMBEE.OpenSysML.Recording.Recording(OpenMBEE.OpenSysML.Analysis? run, OpenMBEE.OpenSysML.Sweep? sweep, OpenMBEE.OpenSysML.Runs? sample, string! package, string! definition, System.Collections.Generic.IEnumerable<string!>! records, string! source, string! content, System.Collections.Generic.IEnumerable<OpenMBEE.OpenSysML.EditedDocument!>! documents, long skipped, System.Collections.Generic.IEnumerable<string!>! skipReasons, System.Collections.Generic.IEnumerable<OpenMBEE.OpenSysML.Diagnostic!>! diagnostics, OpenMBEE.OpenSysML.Model! model) -> void
+OpenMBEE.OpenSysML.Recording.Records.get -> OpenMBEE.OpenSysML.ValueList<string!>
+OpenMBEE.OpenSysML.Recording.Run.get -> OpenMBEE.OpenSysML.Analysis?
+OpenMBEE.OpenSysML.Recording.Sample.get -> OpenMBEE.OpenSysML.Runs?
+OpenMBEE.OpenSysML.Recording.SkipReasons.get -> OpenMBEE.OpenSysML.ValueList<string!>
+OpenMBEE.OpenSysML.Recording.Skipped.get -> long
+OpenMBEE.OpenSysML.Recording.Source.get -> string!
+OpenMBEE.OpenSysML.Recording.Sweep.get -> OpenMBEE.OpenSysML.Sweep?
+OpenMBEE.OpenSysML.RunCountedValue
+OpenMBEE.OpenSysML.RunCountedValue.<Clone>$() -> OpenMBEE.OpenSysML.RunCountedValue!
+OpenMBEE.OpenSysML.RunCountedValue.Count.get -> long
+OpenMBEE.OpenSysML.RunCountedValue.Equals(OpenMBEE.OpenSysML.RunCountedValue? other) -> bool
+OpenMBEE.OpenSysML.RunCountedValue.RunCountedValue(OpenMBEE.OpenSysML.Value! value, long count) -> void
+OpenMBEE.OpenSysML.RunCountedValue.Value.get -> OpenMBEE.OpenSysML.Value!
+OpenMBEE.OpenSysML.RunDistribution
+OpenMBEE.OpenSysML.RunDistribution.<Clone>$() -> OpenMBEE.OpenSysML.RunDistribution!
+OpenMBEE.OpenSysML.RunDistribution.Count.get -> long
+OpenMBEE.OpenSysML.RunDistribution.Deviation.get -> double
+OpenMBEE.OpenSysML.RunDistribution.Equals(OpenMBEE.OpenSysML.RunDistribution? other) -> bool
+OpenMBEE.OpenSysML.RunDistribution.Histogram.get -> OpenMBEE.OpenSysML.ValueList<OpenMBEE.OpenSysML.RunHistogramBin!>
+OpenMBEE.OpenSysML.RunDistribution.Max.get -> OpenMBEE.OpenSysML.Value?
+OpenMBEE.OpenSysML.RunDistribution.Mean.get -> OpenMBEE.OpenSysML.Value?
+OpenMBEE.OpenSysML.RunDistribution.Min.get -> OpenMBEE.OpenSysML.Value?
+OpenMBEE.OpenSysML.RunDistribution.Name.get -> string!
+OpenMBEE.OpenSysML.RunDistribution.Numeric.get -> bool
+OpenMBEE.OpenSysML.RunDistribution.Percentiles.get -> OpenMBEE.OpenSysML.ValueList<OpenMBEE.OpenSysML.RunPercentile!>
+OpenMBEE.OpenSysML.RunDistribution.RunDistribution(string! name, string! unit, long count, bool numeric, OpenMBEE.OpenSysML.Value? min, OpenMBEE.OpenSysML.Value? max, OpenMBEE.OpenSysML.Value? mean, double deviation, System.Collections.Generic.IEnumerable<OpenMBEE.OpenSysML.RunPercentile!>! percentiles, System.Collections.Generic.IEnumerable<OpenMBEE.OpenSysML.RunHistogramBin!>! histogram, System.Collections.Generic.IEnumerable<OpenMBEE.OpenSysML.RunCountedValue!>! values) -> void
+OpenMBEE.OpenSysML.RunDistribution.Unit.get -> string!
+OpenMBEE.OpenSysML.RunDistribution.Values.get -> OpenMBEE.OpenSysML.ValueList<OpenMBEE.OpenSysML.RunCountedValue!>
+OpenMBEE.OpenSysML.RunHistogramBin
+OpenMBEE.OpenSysML.RunHistogramBin.<Clone>$() -> OpenMBEE.OpenSysML.RunHistogramBin!
+OpenMBEE.OpenSysML.RunHistogramBin.Count.get -> long
+OpenMBEE.OpenSysML.RunHistogramBin.Equals(OpenMBEE.OpenSysML.RunHistogramBin? other) -> bool
+OpenMBEE.OpenSysML.RunHistogramBin.High.get -> OpenMBEE.OpenSysML.Value!
+OpenMBEE.OpenSysML.RunHistogramBin.Low.get -> OpenMBEE.OpenSysML.Value!
+OpenMBEE.OpenSysML.RunHistogramBin.RunHistogramBin(OpenMBEE.OpenSysML.Value! low, OpenMBEE.OpenSysML.Value! high, long count) -> void
+OpenMBEE.OpenSysML.RunPercentile
+OpenMBEE.OpenSysML.RunPercentile.<Clone>$() -> OpenMBEE.OpenSysML.RunPercentile!
+OpenMBEE.OpenSysML.RunPercentile.Equals(OpenMBEE.OpenSysML.RunPercentile? other) -> bool
+OpenMBEE.OpenSysML.RunPercentile.Percentile.get -> double
+OpenMBEE.OpenSysML.RunPercentile.RunPercentile(double percentile, OpenMBEE.OpenSysML.Value! value) -> void
+OpenMBEE.OpenSysML.RunPercentile.Value.get -> OpenMBEE.OpenSysML.Value!
+OpenMBEE.OpenSysML.Runs
+OpenMBEE.OpenSysML.Runs.<Clone>$() -> OpenMBEE.OpenSysML.Runs!
+OpenMBEE.OpenSysML.Runs.Diagnostics.get -> OpenMBEE.OpenSysML.ValueList<OpenMBEE.OpenSysML.Diagnostic!>
+OpenMBEE.OpenSysML.Runs.Distribution(string! observable) -> OpenMBEE.OpenSysML.RunDistribution?
+OpenMBEE.OpenSysML.Runs.Distributions.get -> OpenMBEE.OpenSysML.ValueList<OpenMBEE.OpenSysML.RunDistribution!>
+OpenMBEE.OpenSysML.Runs.Equals(OpenMBEE.OpenSysML.Runs? other) -> bool
+OpenMBEE.OpenSysML.Runs.Failures.get -> OpenMBEE.OpenSysML.ValueList<OpenMBEE.OpenSysML.SweepRow!>
+OpenMBEE.OpenSysML.Runs.FindInstance(long instanceId) -> OpenMBEE.OpenSysML.Instance?
+OpenMBEE.OpenSysML.Runs.Instances.get -> OpenMBEE.OpenSysML.ValueList<OpenMBEE.OpenSysML.Instance!>
+OpenMBEE.OpenSysML.Runs.Lines.get -> OpenMBEE.OpenSysML.ValueList<string!>
+OpenMBEE.OpenSysML.Runs.Observables.get -> OpenMBEE.OpenSysML.ValueList<string!>
+OpenMBEE.OpenSysML.Runs.Outputs.get -> OpenMBEE.OpenSysML.ValueList<OpenMBEE.OpenSysML.CalcOutput!>
+OpenMBEE.OpenSysML.Runs.Resolve(OpenMBEE.OpenSysML.Value.InstanceRefValue! reference) -> OpenMBEE.OpenSysML.Instance?
+OpenMBEE.OpenSysML.Runs.Rows.get -> OpenMBEE.OpenSysML.ValueList<OpenMBEE.OpenSysML.SweepRow!>
+OpenMBEE.OpenSysML.Runs.Runs(System.Collections.Generic.IEnumerable<OpenMBEE.OpenSysML.SweepRow!>! rows, System.Collections.Generic.IEnumerable<string!>! observables, System.Collections.Generic.IEnumerable<OpenMBEE.OpenSysML.RunDistribution!>! distributions, System.Collections.Generic.IEnumerable<string!>! lines, System.Collections.Generic.IEnumerable<OpenMBEE.OpenSysML.CalcOutput!>! outputs, System.Collections.Generic.IEnumerable<OpenMBEE.OpenSysML.Verdict!>! verdicts, string! unconcluded, ulong? seed, System.Collections.Generic.IEnumerable<OpenMBEE.OpenSysML.Instance!>! instances, System.Collections.Generic.IEnumerable<OpenMBEE.OpenSysML.Diagnostic!>! diagnostics, OpenMBEE.OpenSysML.Standing! standing) -> void
+OpenMBEE.OpenSysML.Runs.Seed.get -> ulong?
+OpenMBEE.OpenSysML.Runs.Standing.get -> OpenMBEE.OpenSysML.Standing!
+OpenMBEE.OpenSysML.Runs.Unconcluded.get -> string!
+OpenMBEE.OpenSysML.Runs.Verdicts.get -> OpenMBEE.OpenSysML.ValueList<OpenMBEE.OpenSysML.Verdict!>
+OpenMBEE.OpenSysML.RunsException
+OpenMBEE.OpenSysML.RunsException.Partial.get -> OpenMBEE.OpenSysML.Runs!
+OpenMBEE.OpenSysML.RunsException.RunsException(string! message, string! method, OpenMBEE.OpenSysML.FailureReason reason, OpenMBEE.OpenSysML.Runs! partial) -> void
+OpenMBEE.OpenSysML.SelfCheck
+OpenMBEE.OpenSysML.SelfCheck.<Clone>$() -> OpenMBEE.OpenSysML.SelfCheck!
+OpenMBEE.OpenSysML.SelfCheck.Applications.get -> OpenMBEE.OpenSysML.ValueList<OpenMBEE.OpenSysML.SelfCheckApplication!>
+OpenMBEE.OpenSysML.SelfCheck.Checks.get -> long
+OpenMBEE.OpenSysML.SelfCheck.Diagnostics.get -> OpenMBEE.OpenSysML.ValueList<OpenMBEE.OpenSysML.Diagnostic!>
+OpenMBEE.OpenSysML.SelfCheck.Elements.get -> long
+OpenMBEE.OpenSysML.SelfCheck.Equals(OpenMBEE.OpenSysML.SelfCheck? other) -> bool
+OpenMBEE.OpenSysML.SelfCheck.EvaluationErrors.get -> long
+OpenMBEE.OpenSysML.SelfCheck.Findings.get -> OpenMBEE.OpenSysML.ValueList<OpenMBEE.OpenSysML.SelfCheckFinding!>
+OpenMBEE.OpenSysML.SelfCheck.Holds.get -> bool
+OpenMBEE.OpenSysML.SelfCheck.SelfCheck(string! status, System.Collections.Generic.IEnumerable<OpenMBEE.OpenSysML.SelfCheckFinding!>! findings, long elements, long checks, long violations, long unevaluated, long evaluationErrors, System.Collections.Generic.IEnumerable<OpenMBEE.OpenSysML.SelfCheckApplication!>! applications, string! summary, System.Collections.Generic.IEnumerable<OpenMBEE.OpenSysML.Diagnostic!>! diagnostics) -> void
+OpenMBEE.OpenSysML.SelfCheck.Status.get -> string!
+OpenMBEE.OpenSysML.SelfCheck.Summary.get -> string!
+OpenMBEE.OpenSysML.SelfCheck.Unevaluated.get -> long
+OpenMBEE.OpenSysML.SelfCheck.Violations.get -> long
+OpenMBEE.OpenSysML.SelfCheckApplication
+OpenMBEE.OpenSysML.SelfCheckApplication.<Clone>$() -> OpenMBEE.OpenSysML.SelfCheckApplication!
+OpenMBEE.OpenSysML.SelfCheckApplication.Constraint.get -> string!
+OpenMBEE.OpenSysML.SelfCheckApplication.Count.get -> long
+OpenMBEE.OpenSysML.SelfCheckApplication.Equals(OpenMBEE.OpenSysML.SelfCheckApplication? other) -> bool
+OpenMBEE.OpenSysML.SelfCheckApplication.SelfCheckApplication(string! constraint, long count) -> void
+OpenMBEE.OpenSysML.SelfCheckFinding
+OpenMBEE.OpenSysML.SelfCheckFinding.<Clone>$() -> OpenMBEE.OpenSysML.SelfCheckFinding!
+OpenMBEE.OpenSysML.SelfCheckFinding.Constraint.get -> string!
+OpenMBEE.OpenSysML.SelfCheckFinding.Element.get -> string!
+OpenMBEE.OpenSysML.SelfCheckFinding.Equals(OpenMBEE.OpenSysML.SelfCheckFinding? other) -> bool
+OpenMBEE.OpenSysML.SelfCheckFinding.Line.get -> string!
+OpenMBEE.OpenSysML.SelfCheckFinding.Location.get -> string!
+OpenMBEE.OpenSysML.SelfCheckFinding.Message.get -> string!
+OpenMBEE.OpenSysML.SelfCheckFinding.SelfCheckFinding(string! status, string! subject, string! location, string! constraint, string! element, string! message, string! line) -> void
+OpenMBEE.OpenSysML.SelfCheckFinding.Status.get -> string!
+OpenMBEE.OpenSysML.SelfCheckFinding.Subject.get -> string!
+const OpenMBEE.OpenSysML.SelfCheck.FailsStatus = "fails" -> string!
+const OpenMBEE.OpenSysML.SelfCheck.HoldsStatus = "holds" -> string!
+const OpenMBEE.OpenSysML.SelfCheck.UnresolvedStatus = "unresolved" -> string!
+override OpenMBEE.OpenSysML.EditedDocument.Equals(object? obj) -> bool
+override OpenMBEE.OpenSysML.EditedDocument.GetHashCode() -> int
+override OpenMBEE.OpenSysML.EditedDocument.ToString() -> string!
+override OpenMBEE.OpenSysML.Recording.Equals(object? obj) -> bool
+override OpenMBEE.OpenSysML.Recording.GetHashCode() -> int
+override OpenMBEE.OpenSysML.Recording.ToString() -> string!
+override OpenMBEE.OpenSysML.RunCountedValue.Equals(object? obj) -> bool
+override OpenMBEE.OpenSysML.RunCountedValue.GetHashCode() -> int
+override OpenMBEE.OpenSysML.RunCountedValue.ToString() -> string!
+override OpenMBEE.OpenSysML.RunDistribution.Equals(object? obj) -> bool
+override OpenMBEE.OpenSysML.RunDistribution.GetHashCode() -> int
+override OpenMBEE.OpenSysML.RunDistribution.ToString() -> string!
+override OpenMBEE.OpenSysML.RunHistogramBin.Equals(object? obj) -> bool
+override OpenMBEE.OpenSysML.RunHistogramBin.GetHashCode() -> int
+override OpenMBEE.OpenSysML.RunHistogramBin.ToString() -> string!
+override OpenMBEE.OpenSysML.RunPercentile.Equals(object? obj) -> bool
+override OpenMBEE.OpenSysML.RunPercentile.GetHashCode() -> int
+override OpenMBEE.OpenSysML.RunPercentile.ToString() -> string!
+override OpenMBEE.OpenSysML.Runs.Equals(object? obj) -> bool
+override OpenMBEE.OpenSysML.Runs.GetHashCode() -> int
+override OpenMBEE.OpenSysML.Runs.ToString() -> string!
+override OpenMBEE.OpenSysML.SelfCheck.Equals(object? obj) -> bool
+override OpenMBEE.OpenSysML.SelfCheck.GetHashCode() -> int
+override OpenMBEE.OpenSysML.SelfCheck.ToString() -> string!
+override OpenMBEE.OpenSysML.SelfCheckApplication.Equals(object? obj) -> bool
+override OpenMBEE.OpenSysML.SelfCheckApplication.GetHashCode() -> int
+override OpenMBEE.OpenSysML.SelfCheckApplication.ToString() -> string!
+override OpenMBEE.OpenSysML.SelfCheckFinding.Equals(object? obj) -> bool
+override OpenMBEE.OpenSysML.SelfCheckFinding.GetHashCode() -> int
+override OpenMBEE.OpenSysML.SelfCheckFinding.ToString() -> string!
+static OpenMBEE.OpenSysML.ActionRunsOptions.Default.get -> OpenMBEE.OpenSysML.ActionRunsOptions!
+static OpenMBEE.OpenSysML.AnalysisRunsOptions.Default.get -> OpenMBEE.OpenSysML.AnalysisRunsOptions!
+static OpenMBEE.OpenSysML.EditedDocument.operator !=(OpenMBEE.OpenSysML.EditedDocument? left, OpenMBEE.OpenSysML.EditedDocument? right) -> bool
+static OpenMBEE.OpenSysML.EditedDocument.operator ==(OpenMBEE.OpenSysML.EditedDocument? left, OpenMBEE.OpenSysML.EditedDocument? right) -> bool
+static OpenMBEE.OpenSysML.RecordOptions.Default.get -> OpenMBEE.OpenSysML.RecordOptions!
+static OpenMBEE.OpenSysML.Recording.operator !=(OpenMBEE.OpenSysML.Recording? left, OpenMBEE.OpenSysML.Recording? right) -> bool
+static OpenMBEE.OpenSysML.Recording.operator ==(OpenMBEE.OpenSysML.Recording? left, OpenMBEE.OpenSysML.Recording? right) -> bool
+static OpenMBEE.OpenSysML.RunCountedValue.operator !=(OpenMBEE.OpenSysML.RunCountedValue? left, OpenMBEE.OpenSysML.RunCountedValue? right) -> bool
+static OpenMBEE.OpenSysML.RunCountedValue.operator ==(OpenMBEE.OpenSysML.RunCountedValue? left, OpenMBEE.OpenSysML.RunCountedValue? right) -> bool
+static OpenMBEE.OpenSysML.RunDistribution.operator !=(OpenMBEE.OpenSysML.RunDistribution? left, OpenMBEE.OpenSysML.RunDistribution? right) -> bool
+static OpenMBEE.OpenSysML.RunDistribution.operator ==(OpenMBEE.OpenSysML.RunDistribution? left, OpenMBEE.OpenSysML.RunDistribution? right) -> bool
+static OpenMBEE.OpenSysML.RunHistogramBin.operator !=(OpenMBEE.OpenSysML.RunHistogramBin? left, OpenMBEE.OpenSysML.RunHistogramBin? right) -> bool
+static OpenMBEE.OpenSysML.RunHistogramBin.operator ==(OpenMBEE.OpenSysML.RunHistogramBin? left, OpenMBEE.OpenSysML.RunHistogramBin? right) -> bool
+static OpenMBEE.OpenSysML.RunPercentile.operator !=(OpenMBEE.OpenSysML.RunPercentile? left, OpenMBEE.OpenSysML.RunPercentile? right) -> bool
+static OpenMBEE.OpenSysML.RunPercentile.operator ==(OpenMBEE.OpenSysML.RunPercentile? left, OpenMBEE.OpenSysML.RunPercentile? right) -> bool
+static OpenMBEE.OpenSysML.Runs.operator !=(OpenMBEE.OpenSysML.Runs? left, OpenMBEE.OpenSysML.Runs? right) -> bool
+static OpenMBEE.OpenSysML.Runs.operator ==(OpenMBEE.OpenSysML.Runs? left, OpenMBEE.OpenSysML.Runs? right) -> bool
+static OpenMBEE.OpenSysML.SelfCheck.operator !=(OpenMBEE.OpenSysML.SelfCheck? left, OpenMBEE.OpenSysML.SelfCheck? right) -> bool
+static OpenMBEE.OpenSysML.SelfCheck.operator ==(OpenMBEE.OpenSysML.SelfCheck? left, OpenMBEE.OpenSysML.SelfCheck? right) -> bool
+static OpenMBEE.OpenSysML.SelfCheckApplication.operator !=(OpenMBEE.OpenSysML.SelfCheckApplication? left, OpenMBEE.OpenSysML.SelfCheckApplication? right) -> bool
+static OpenMBEE.OpenSysML.SelfCheckApplication.operator ==(OpenMBEE.OpenSysML.SelfCheckApplication? left, OpenMBEE.OpenSysML.SelfCheckApplication? right) -> bool
+static OpenMBEE.OpenSysML.SelfCheckFinding.operator !=(OpenMBEE.OpenSysML.SelfCheckFinding? left, OpenMBEE.OpenSysML.SelfCheckFinding? right) -> bool
+static OpenMBEE.OpenSysML.SelfCheckFinding.operator ==(OpenMBEE.OpenSysML.SelfCheckFinding? left, OpenMBEE.OpenSysML.SelfCheckFinding? right) -> bool

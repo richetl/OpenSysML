@@ -7,12 +7,9 @@
     "ImportData",
     "Migrate",
     "Query",
-    "RecordRun",
     "RenderDocument",
     "RenderView",
-    "RunDocumentQuery",
-    "RunRuns",
-    "SelfCheck"
+    "RunDocumentQuery"
   ],
   "unexpressible": {
     "evaluate_calc/a_function_argument_naming_no_object_is_refused": "The value at arguments[0] is the function F::Scaler::scale closing over instance(3), which lives only within the response that held it.",

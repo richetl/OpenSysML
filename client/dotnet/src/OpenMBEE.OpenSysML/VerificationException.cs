@@ -4,10 +4,10 @@ using System.Collections.Generic;
 namespace OpenMBEE.OpenSysML;
 
 /// <summary>
-/// A verification, validation, calculation, analysis or sweep the service could not answer at all, reported in its
-/// answer: an unknown symbol, a symbol of another kind, a subject that could not be built, an argument that does
-/// not read, a range no values follow from. A verdict of false, or an undecided verdict, is never this exception;
-/// nor is one failed row of a sweep. It keeps what the answer reported beside the failure.
+/// A verification, validation, calculation, analysis, sweep, set of runs or recording the service could not answer at
+/// all, reported in its answer: an unknown symbol, a symbol of another kind, a subject that could not be built, an
+/// argument that does not read, a range no values follow from. A verdict of false, or an undecided verdict, is never
+/// this exception; nor is one failed row of a sweep or of runs. It keeps what the answer reported beside the failure.
 /// </summary>
 public class VerificationException : ModelException
 {

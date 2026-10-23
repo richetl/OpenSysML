@@ -69,7 +69,7 @@ DOTNET ?= dotnet
 DOTNET_DIR := client/dotnet
 DOTNET_SLN := $(DOTNET_DIR)/OpenSysML.slnx
 DOTNET_REPORTS := $(BIN_DIR)/dotnet
-DOTNET_MIN_TESTS := 1777
+DOTNET_MIN_TESTS := 1871
 DOTNET_CLIENT_VERSION = $(shell sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' $(DOTNET_DIR)/Directory.Build.props)
 # The committed buf output, excluded from coverage by path and refused by its check.
 DOTNET_GENERATED := src/OpenMBEE.OpenSysML/Wire/Sysml.cs src/OpenMBEE.OpenSysML/Wire/SysmlGrpc.cs

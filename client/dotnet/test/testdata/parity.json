@@ -921,12 +921,13 @@
       "request": "sysml.RunRunsRequest",
       "response": "sysml.RunRunsResponse",
       "methods": [
-        "Model.RunRunsAsync"
+        "Model.RunActionRunsAsync",
+        "Model.RunAnalysisRunsAsync"
       ],
-      "input": "RunsOptions",
+      "input": "action ID, run count, inputs, ActionRunsOptions (performer, observe, seed, draws, clock step, engine); or Monte Carlo case ID, run count, AnalysisRunsOptions (subject, arguments, seed, draws, clock step, engine)",
       "result": "Runs",
       "area": "sampling",
-      "status": "deferred",
+      "status": "implemented",
       "gates": [
         {
           "capability": "runs",
@@ -956,6 +957,16 @@
       "scenarios": [
         "run_runs/a_seeded_action_is_run_repeatedly_and_its_observable_distributed",
         "run_runs/an_unseeded_random_run_is_refused"
+      ],
+      "tests": [
+        "ModelRunsTests.ActionRunsSendEveryOptionAndReadEveryFieldOfTheTable",
+        "ModelRunsTests.MonteCarloRunsSendTheCasesOptionsAndReadItsConclusion",
+        "ModelRunsTests.RunsTheServiceCouldNotTableAreARunsExceptionKeepingTheTableAndAMalformedAnswerIsRefused",
+        "ModelRunsTests.RunsGatesAreCheckedInTheServicesOrderBeforeAnythingIsSent",
+        "ServiceSamplingTests.SeededActionRunsReplayAlikeAndTableEachObservablesDistribution",
+        "ServiceSamplingTests.AMonteCarloCaseIsConcludedOverItsSampleAndDrawsAsTheActionItPerforms",
+        "ServiceSamplingTests.RunsNoRunFollowsFromAreRefusedOrRaisedWithTheTableMade",
+        "ServiceSamplingTests.AWithheldCapabilityIsRefusedBeforeAnythingIsSent"
       ]
     },
     {
@@ -968,7 +979,7 @@
       "input": "rule package names",
       "result": "SelfCheck",
       "area": "sampling",
-      "status": "deferred",
+      "status": "implemented",
       "gates": [
         {
           "capability": "self_check",
@@ -979,6 +990,12 @@
       "scenarios": [
         "self_check/a_well_formed_model_holds",
         "self_check/an_unknown_rule_package_is_answered_in_band"
+      ],
+      "tests": [
+        "ModelRunsTests.SelfCheckSendsTheRulePackagesAndReadsEveryFindingAndCount",
+        "ModelRunsTests.ASelfCheckThatCannotStartIsAModelExceptionAndAMalformedAnswerIsRefused",
+        "ServiceSamplingTests.ASelfCheckHoldsOverAWellFormedModelAndAnUnknownRulePackageIsInBand",
+        "ServiceSamplingTests.AWithheldCapabilityIsRefusedBeforeAnythingIsSent"
       ]
     },
     {
@@ -988,10 +1005,10 @@
       "methods": [
         "Model.RecordRunAsync"
       ],
-      "input": "analysis ID, RecordOptions",
-      "result": "Recording",
+      "input": "analysis ID, RecordOptions (subject, arguments, engine, package, sweep ranges or sample runs and seed); documents always accepted",
+      "result": "Recording, with the recorded Model as a new handle",
       "area": "sampling",
-      "status": "deferred",
+      "status": "implemented",
       "gates": [
         {
           "capability": "record_run",
@@ -1017,6 +1034,15 @@
       ],
       "scenarios": [
         "record_run/a_run_is_recorded_into_the_default_package"
+      ],
+      "tests": [
+        "ModelRunsTests.RecordRunSendsEveryOptionAndAnswersANewModelLeavingTheOldOneAsItWas",
+        "ModelRunsTests.ARecordingNotMadeIsARecordExceptionKeepingTheRunsAndWhetherTheyFailed",
+        "ModelRunsTests.ARecordingAnsweredInAShapeTheRequestDoesNotMakeIsMalformed",
+        "ModelRunsTests.RecordGatesAreCheckedInTheServicesOrderBeforeAnythingIsSent",
+        "ServiceSamplingTests.ARecordedRunIsANewModelHoldingTheRecordsAndTheOriginalIsUntouched",
+        "ServiceSamplingTests.ARecordingNotMadeIsInBandAndARequestNoRunFollowsFromIsRefused",
+        "ServiceSamplingTests.AWithheldCapabilityIsRefusedBeforeAnythingIsSent"
       ]
     },
     {
@@ -2623,8 +2649,14 @@
       "add_note": "deferred"
     },
     "sysml.EditedDocument": {
-      "name": "deferred",
-      "content": "deferred"
+      "name": {
+        "status": "typed",
+        "test": "ModelRunsTests.RecordRunSendsEveryOptionAndAnswersANewModelLeavingTheOldOneAsItWas"
+      },
+      "content": {
+        "status": "typed",
+        "test": "ModelRunsTests.RecordRunSendsEveryOptionAndAnswersANewModelLeavingTheOldOneAsItWas"
+      }
     },
     "sysml.EngineInfo": {
       "name": {
@@ -3406,34 +3438,112 @@
       }
     },
     "sysml.RecordRunRequest": {
-      "model_hash": "deferred",
-      "analysis_symbol_id": "deferred",
-      "subject_symbol_id": "deferred",
-      "arguments": "deferred",
-      "named_arguments": "deferred",
-      "engine": "deferred",
-      "record_into": "deferred",
-      "ranges": "deferred",
-      "runs": "deferred",
-      "seed": "deferred",
-      "accept_documents": "deferred"
+      "model_hash": {
+        "status": "typed",
+        "test": "ModelRunsTests.RecordRunSendsEveryOptionAndAnswersANewModelLeavingTheOldOneAsItWas"
+      },
+      "analysis_symbol_id": {
+        "status": "typed",
+        "test": "ModelRunsTests.RecordRunSendsEveryOptionAndAnswersANewModelLeavingTheOldOneAsItWas"
+      },
+      "subject_symbol_id": {
+        "status": "typed",
+        "test": "ModelRunsTests.RecordRunSendsEveryOptionAndAnswersANewModelLeavingTheOldOneAsItWas"
+      },
+      "arguments": {
+        "status": "typed",
+        "test": "ModelRunsTests.RecordRunSendsEveryOptionAndAnswersANewModelLeavingTheOldOneAsItWas"
+      },
+      "named_arguments": {
+        "status": "typed",
+        "test": "ModelRunsTests.RecordRunSendsEveryOptionAndAnswersANewModelLeavingTheOldOneAsItWas"
+      },
+      "engine": {
+        "status": "typed",
+        "test": "ModelRunsTests.RecordRunSendsEveryOptionAndAnswersANewModelLeavingTheOldOneAsItWas"
+      },
+      "record_into": {
+        "status": "typed",
+        "test": "ModelRunsTests.RecordRunSendsEveryOptionAndAnswersANewModelLeavingTheOldOneAsItWas"
+      },
+      "ranges": {
+        "status": "typed",
+        "test": "ModelRunsTests.RecordRunSendsEveryOptionAndAnswersANewModelLeavingTheOldOneAsItWas"
+      },
+      "runs": {
+        "status": "typed",
+        "test": "ModelRunsTests.RecordRunSendsEveryOptionAndAnswersANewModelLeavingTheOldOneAsItWas"
+      },
+      "seed": {
+        "status": "typed",
+        "test": "ModelRunsTests.RecordRunSendsEveryOptionAndAnswersANewModelLeavingTheOldOneAsItWas"
+      },
+      "accept_documents": {
+        "status": "typed",
+        "test": "ModelRunsTests.RecordRunSendsEveryOptionAndAnswersANewModelLeavingTheOldOneAsItWas"
+      }
     },
     "sysml.RecordRunResponse": {
-      "run": "deferred",
-      "sweep": "deferred",
-      "sample": "deferred",
-      "package": "deferred",
-      "definition": "deferred",
-      "records": "deferred",
-      "source": "deferred",
-      "content": "deferred",
-      "documents": "deferred",
-      "skipped": "deferred",
-      "reasons": "deferred",
-      "error": "deferred",
-      "failure_reason": "deferred",
-      "diagnostics": "deferred",
-      "model_hash": "deferred"
+      "run": {
+        "status": "typed",
+        "test": "ModelRunsTests.RecordRunSendsEveryOptionAndAnswersANewModelLeavingTheOldOneAsItWas"
+      },
+      "sweep": {
+        "status": "typed",
+        "test": "ModelRunsTests.RecordRunSendsEveryOptionAndAnswersANewModelLeavingTheOldOneAsItWas"
+      },
+      "sample": {
+        "status": "typed",
+        "test": "ModelRunsTests.RecordRunSendsEveryOptionAndAnswersANewModelLeavingTheOldOneAsItWas"
+      },
+      "package": {
+        "status": "typed",
+        "test": "ModelRunsTests.RecordRunSendsEveryOptionAndAnswersANewModelLeavingTheOldOneAsItWas"
+      },
+      "definition": {
+        "status": "typed",
+        "test": "ModelRunsTests.RecordRunSendsEveryOptionAndAnswersANewModelLeavingTheOldOneAsItWas"
+      },
+      "records": {
+        "status": "typed",
+        "test": "ModelRunsTests.RecordRunSendsEveryOptionAndAnswersANewModelLeavingTheOldOneAsItWas"
+      },
+      "source": {
+        "status": "typed",
+        "test": "ModelRunsTests.RecordRunSendsEveryOptionAndAnswersANewModelLeavingTheOldOneAsItWas"
+      },
+      "content": {
+        "status": "typed",
+        "test": "ModelRunsTests.RecordRunSendsEveryOptionAndAnswersANewModelLeavingTheOldOneAsItWas"
+      },
+      "documents": {
+        "status": "typed",
+        "test": "ModelRunsTests.RecordRunSendsEveryOptionAndAnswersANewModelLeavingTheOldOneAsItWas"
+      },
+      "skipped": {
+        "status": "typed",
+        "test": "ModelRunsTests.RecordRunSendsEveryOptionAndAnswersANewModelLeavingTheOldOneAsItWas"
+      },
+      "reasons": {
+        "status": "typed",
+        "test": "ModelRunsTests.RecordRunSendsEveryOptionAndAnswersANewModelLeavingTheOldOneAsItWas"
+      },
+      "error": {
+        "status": "typed",
+        "test": "ModelRunsTests.ARecordingNotMadeIsARecordExceptionKeepingTheRunsAndWhetherTheyFailed"
+      },
+      "failure_reason": {
+        "status": "typed",
+        "test": "ModelRunsTests.ARecordingNotMadeIsARecordExceptionKeepingTheRunsAndWhetherTheyFailed"
+      },
+      "diagnostics": {
+        "status": "typed",
+        "test": "ModelRunsTests.RecordRunSendsEveryOptionAndAnswersANewModelLeavingTheOldOneAsItWas"
+      },
+      "model_hash": {
+        "status": "typed",
+        "test": "ModelRunsTests.RecordRunSendsEveryOptionAndAnswersANewModelLeavingTheOldOneAsItWas"
+      }
     },
     "sysml.Referrer": {
       "name": "deferred",
@@ -3643,21 +3753,60 @@
       }
     },
     "sysml.RunCountedValue": {
-      "value": "deferred",
-      "count": "deferred"
+      "value": {
+        "status": "typed",
+        "test": "ModelRunsTests.ActionRunsSendEveryOptionAndReadEveryFieldOfTheTable"
+      },
+      "count": {
+        "status": "typed",
+        "test": "ModelRunsTests.ActionRunsSendEveryOptionAndReadEveryFieldOfTheTable"
+      }
     },
     "sysml.RunDistribution": {
-      "name": "deferred",
-      "unit": "deferred",
-      "count": "deferred",
-      "numeric": "deferred",
-      "min": "deferred",
-      "max": "deferred",
-      "mean": "deferred",
-      "deviation": "deferred",
-      "percentiles": "deferred",
-      "histogram": "deferred",
-      "values": "deferred"
+      "name": {
+        "status": "typed",
+        "test": "ModelRunsTests.ActionRunsSendEveryOptionAndReadEveryFieldOfTheTable"
+      },
+      "unit": {
+        "status": "typed",
+        "test": "ModelRunsTests.ActionRunsSendEveryOptionAndReadEveryFieldOfTheTable"
+      },
+      "count": {
+        "status": "typed",
+        "test": "ModelRunsTests.ActionRunsSendEveryOptionAndReadEveryFieldOfTheTable"
+      },
+      "numeric": {
+        "status": "typed",
+        "test": "ModelRunsTests.ActionRunsSendEveryOptionAndReadEveryFieldOfTheTable"
+      },
+      "min": {
+        "status": "typed",
+        "test": "ModelRunsTests.ActionRunsSendEveryOptionAndReadEveryFieldOfTheTable"
+      },
+      "max": {
+        "status": "typed",
+        "test": "ModelRunsTests.ActionRunsSendEveryOptionAndReadEveryFieldOfTheTable"
+      },
+      "mean": {
+        "status": "typed",
+        "test": "ModelRunsTests.ActionRunsSendEveryOptionAndReadEveryFieldOfTheTable"
+      },
+      "deviation": {
+        "status": "typed",
+        "test": "ModelRunsTests.ActionRunsSendEveryOptionAndReadEveryFieldOfTheTable"
+      },
+      "percentiles": {
+        "status": "typed",
+        "test": "ModelRunsTests.ActionRunsSendEveryOptionAndReadEveryFieldOfTheTable"
+      },
+      "histogram": {
+        "status": "typed",
+        "test": "ModelRunsTests.ActionRunsSendEveryOptionAndReadEveryFieldOfTheTable"
+      },
+      "values": {
+        "status": "typed",
+        "test": "ModelRunsTests.ActionRunsSendEveryOptionAndReadEveryFieldOfTheTable"
+      }
     },
     "sysml.RunDocumentQueryRequest": {
       "model_hash": "deferred",
@@ -3669,46 +3818,148 @@
       "rows": "deferred"
     },
     "sysml.RunHistogramBin": {
-      "low": "deferred",
-      "high": "deferred",
-      "count": "deferred"
+      "low": {
+        "status": "typed",
+        "test": "ModelRunsTests.ActionRunsSendEveryOptionAndReadEveryFieldOfTheTable"
+      },
+      "high": {
+        "status": "typed",
+        "test": "ModelRunsTests.ActionRunsSendEveryOptionAndReadEveryFieldOfTheTable"
+      },
+      "count": {
+        "status": "typed",
+        "test": "ModelRunsTests.ActionRunsSendEveryOptionAndReadEveryFieldOfTheTable"
+      }
     },
     "sysml.RunPercentile": {
-      "percentile": "deferred",
-      "value": "deferred"
+      "percentile": {
+        "status": "typed",
+        "test": "ModelRunsTests.ActionRunsSendEveryOptionAndReadEveryFieldOfTheTable"
+      },
+      "value": {
+        "status": "typed",
+        "test": "ModelRunsTests.ActionRunsSendEveryOptionAndReadEveryFieldOfTheTable"
+      }
     },
     "sysml.RunRunsRequest": {
-      "model_hash": "deferred",
-      "action_symbol_id": "deferred",
-      "analysis_symbol_id": "deferred",
-      "inputs": "deferred",
-      "performer_symbol_id": "deferred",
-      "subject_symbol_id": "deferred",
-      "arguments": "deferred",
-      "named_arguments": "deferred",
-      "runs": "deferred",
-      "seed": "deferred",
-      "draws": "deferred",
-      "clock_step": "deferred",
-      "observe": "deferred",
-      "engine": "deferred"
+      "model_hash": {
+        "status": "typed",
+        "test": "ModelRunsTests.ActionRunsSendEveryOptionAndReadEveryFieldOfTheTable"
+      },
+      "action_symbol_id": {
+        "status": "typed",
+        "test": "ModelRunsTests.ActionRunsSendEveryOptionAndReadEveryFieldOfTheTable"
+      },
+      "analysis_symbol_id": {
+        "status": "typed",
+        "test": "ModelRunsTests.MonteCarloRunsSendTheCasesOptionsAndReadItsConclusion"
+      },
+      "inputs": {
+        "status": "typed",
+        "test": "ModelRunsTests.ActionRunsSendEveryOptionAndReadEveryFieldOfTheTable"
+      },
+      "performer_symbol_id": {
+        "status": "typed",
+        "test": "ModelRunsTests.ActionRunsSendEveryOptionAndReadEveryFieldOfTheTable"
+      },
+      "subject_symbol_id": {
+        "status": "typed",
+        "test": "ModelRunsTests.MonteCarloRunsSendTheCasesOptionsAndReadItsConclusion"
+      },
+      "arguments": {
+        "status": "typed",
+        "test": "ModelRunsTests.MonteCarloRunsSendTheCasesOptionsAndReadItsConclusion"
+      },
+      "named_arguments": {
+        "status": "typed",
+        "test": "ModelRunsTests.MonteCarloRunsSendTheCasesOptionsAndReadItsConclusion"
+      },
+      "runs": {
+        "status": "typed",
+        "test": "ModelRunsTests.ActionRunsSendEveryOptionAndReadEveryFieldOfTheTable"
+      },
+      "seed": {
+        "status": "typed",
+        "test": "ModelRunsTests.ActionRunsSendEveryOptionAndReadEveryFieldOfTheTable"
+      },
+      "draws": {
+        "status": "typed",
+        "test": "ModelRunsTests.ActionRunsSendEveryOptionAndReadEveryFieldOfTheTable"
+      },
+      "clock_step": {
+        "status": "typed",
+        "test": "ModelRunsTests.ActionRunsSendEveryOptionAndReadEveryFieldOfTheTable"
+      },
+      "observe": {
+        "status": "typed",
+        "test": "ModelRunsTests.ActionRunsSendEveryOptionAndReadEveryFieldOfTheTable"
+      },
+      "engine": {
+        "status": "typed",
+        "test": "ModelRunsTests.ActionRunsSendEveryOptionAndReadEveryFieldOfTheTable"
+      }
     },
     "sysml.RunRunsResponse": {
-      "rows": "deferred",
-      "observables": "deferred",
-      "distributions": "deferred",
-      "lines": "deferred",
-      "outputs": "deferred",
-      "verdicts": "deferred",
-      "unconcluded": "deferred",
-      "error": "deferred",
-      "diagnostics": "deferred",
-      "failure_reason": "deferred",
-      "instances": "deferred",
-      "engine": "deferred",
-      "strength": "deferred",
-      "bounds": "deferred",
-      "seed": "deferred"
+      "rows": {
+        "status": "typed",
+        "test": "ModelRunsTests.ActionRunsSendEveryOptionAndReadEveryFieldOfTheTable"
+      },
+      "observables": {
+        "status": "typed",
+        "test": "ModelRunsTests.ActionRunsSendEveryOptionAndReadEveryFieldOfTheTable"
+      },
+      "distributions": {
+        "status": "typed",
+        "test": "ModelRunsTests.ActionRunsSendEveryOptionAndReadEveryFieldOfTheTable"
+      },
+      "lines": {
+        "status": "typed",
+        "test": "ModelRunsTests.ActionRunsSendEveryOptionAndReadEveryFieldOfTheTable"
+      },
+      "outputs": {
+        "status": "typed",
+        "test": "ModelRunsTests.MonteCarloRunsSendTheCasesOptionsAndReadItsConclusion"
+      },
+      "verdicts": {
+        "status": "typed",
+        "test": "ModelRunsTests.MonteCarloRunsSendTheCasesOptionsAndReadItsConclusion"
+      },
+      "unconcluded": {
+        "status": "typed",
+        "test": "ModelRunsTests.MonteCarloRunsSendTheCasesOptionsAndReadItsConclusion"
+      },
+      "error": {
+        "status": "typed",
+        "test": "ModelRunsTests.RunsTheServiceCouldNotTableAreARunsExceptionKeepingTheTableAndAMalformedAnswerIsRefused"
+      },
+      "diagnostics": {
+        "status": "typed",
+        "test": "ModelRunsTests.ActionRunsSendEveryOptionAndReadEveryFieldOfTheTable"
+      },
+      "failure_reason": {
+        "status": "typed",
+        "test": "ModelRunsTests.RunsTheServiceCouldNotTableAreARunsExceptionKeepingTheTableAndAMalformedAnswerIsRefused"
+      },
+      "instances": {
+        "status": "typed",
+        "test": "ModelRunsTests.ActionRunsSendEveryOptionAndReadEveryFieldOfTheTable"
+      },
+      "engine": {
+        "status": "typed",
+        "test": "ModelRunsTests.ActionRunsSendEveryOptionAndReadEveryFieldOfTheTable"
+      },
+      "strength": {
+        "status": "typed",
+        "test": "ModelRunsTests.ActionRunsSendEveryOptionAndReadEveryFieldOfTheTable"
+      },
+      "bounds": {
+        "status": "typed",
+        "test": "ModelRunsTests.ActionRunsSendEveryOptionAndReadEveryFieldOfTheTable"
+      },
+      "seed": {
+        "status": "typed",
+        "test": "ModelRunsTests.ActionRunsSendEveryOptionAndReadEveryFieldOfTheTable"
+      }
     },
     "sysml.RunSweepRequest": {
       "model_hash": {
@@ -3795,34 +4046,100 @@
       }
     },
     "sysml.SelfCheckApplication": {
-      "constraint": "deferred",
-      "count": "deferred"
+      "constraint": {
+        "status": "typed",
+        "test": "ModelRunsTests.SelfCheckSendsTheRulePackagesAndReadsEveryFindingAndCount"
+      },
+      "count": {
+        "status": "typed",
+        "test": "ModelRunsTests.SelfCheckSendsTheRulePackagesAndReadsEveryFindingAndCount"
+      }
     },
     "sysml.SelfCheckFinding": {
-      "status": "deferred",
-      "subject": "deferred",
-      "location": "deferred",
-      "constraint": "deferred",
-      "element": "deferred",
-      "message": "deferred",
-      "line": "deferred"
+      "status": {
+        "status": "typed",
+        "test": "ModelRunsTests.SelfCheckSendsTheRulePackagesAndReadsEveryFindingAndCount"
+      },
+      "subject": {
+        "status": "typed",
+        "test": "ModelRunsTests.SelfCheckSendsTheRulePackagesAndReadsEveryFindingAndCount"
+      },
+      "location": {
+        "status": "typed",
+        "test": "ModelRunsTests.SelfCheckSendsTheRulePackagesAndReadsEveryFindingAndCount"
+      },
+      "constraint": {
+        "status": "typed",
+        "test": "ModelRunsTests.SelfCheckSendsTheRulePackagesAndReadsEveryFindingAndCount"
+      },
+      "element": {
+        "status": "typed",
+        "test": "ModelRunsTests.SelfCheckSendsTheRulePackagesAndReadsEveryFindingAndCount"
+      },
+      "message": {
+        "status": "typed",
+        "test": "ModelRunsTests.SelfCheckSendsTheRulePackagesAndReadsEveryFindingAndCount"
+      },
+      "line": {
+        "status": "typed",
+        "test": "ModelRunsTests.SelfCheckSendsTheRulePackagesAndReadsEveryFindingAndCount"
+      }
     },
     "sysml.SelfCheckRequest": {
-      "model_hash": "deferred",
-      "self_check_package": "deferred"
+      "model_hash": {
+        "status": "typed",
+        "test": "ModelRunsTests.SelfCheckSendsTheRulePackagesAndReadsEveryFindingAndCount"
+      },
+      "self_check_package": {
+        "status": "typed",
+        "test": "ModelRunsTests.SelfCheckSendsTheRulePackagesAndReadsEveryFindingAndCount"
+      }
     },
     "sysml.SelfCheckResponse": {
-      "status": "deferred",
-      "findings": "deferred",
-      "elements": "deferred",
-      "checks": "deferred",
-      "violations": "deferred",
-      "unevaluated": "deferred",
-      "evaluation_errors": "deferred",
-      "applications": "deferred",
-      "summary": "deferred",
-      "error": "deferred",
-      "diagnostics": "deferred"
+      "status": {
+        "status": "typed",
+        "test": "ModelRunsTests.SelfCheckSendsTheRulePackagesAndReadsEveryFindingAndCount"
+      },
+      "findings": {
+        "status": "typed",
+        "test": "ModelRunsTests.SelfCheckSendsTheRulePackagesAndReadsEveryFindingAndCount"
+      },
+      "elements": {
+        "status": "typed",
+        "test": "ModelRunsTests.SelfCheckSendsTheRulePackagesAndReadsEveryFindingAndCount"
+      },
+      "checks": {
+        "status": "typed",
+        "test": "ModelRunsTests.SelfCheckSendsTheRulePackagesAndReadsEveryFindingAndCount"
+      },
+      "violations": {
+        "status": "typed",
+        "test": "ModelRunsTests.SelfCheckSendsTheRulePackagesAndReadsEveryFindingAndCount"
+      },
+      "unevaluated": {
+        "status": "typed",
+        "test": "ModelRunsTests.SelfCheckSendsTheRulePackagesAndReadsEveryFindingAndCount"
+      },
+      "evaluation_errors": {
+        "status": "typed",
+        "test": "ModelRunsTests.SelfCheckSendsTheRulePackagesAndReadsEveryFindingAndCount"
+      },
+      "applications": {
+        "status": "typed",
+        "test": "ModelRunsTests.SelfCheckSendsTheRulePackagesAndReadsEveryFindingAndCount"
+      },
+      "summary": {
+        "status": "typed",
+        "test": "ModelRunsTests.SelfCheckSendsTheRulePackagesAndReadsEveryFindingAndCount"
+      },
+      "error": {
+        "status": "typed",
+        "test": "ModelRunsTests.ASelfCheckThatCannotStartIsAModelExceptionAndAMalformedAnswerIsRefused"
+      },
+      "diagnostics": {
+        "status": "typed",
+        "test": "ModelRunsTests.SelfCheckSendsTheRulePackagesAndReadsEveryFindingAndCount"
+      }
     },
     "sysml.ServerInfoRequest": {},
     "sysml.ServerInfoResponse": {

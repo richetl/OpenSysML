@@ -31,7 +31,9 @@ its order and totals that add up, and the .NET JUnit report the same totals, one
 configuration and protocol and one case per scenario with its matching outcome. Then, scenario by
 scenario, both runs must agree on the outcome, the status, the capabilities missing and whether the without-capability
 expectation applied, and their -v logs on the normalized response. Timing and what answered are
-not compared, the wall time each row of a sweep reports included. A .NET skip the expected skips list is excluded, as reviewed; nothing else is. The
+not compared, the wall time each row of a sweep or of runs reports included, nor the time a recording
+states in the records it generates and the hash of the recorded model that follows from it, which is
+compared only as present or not. A .NET skip the expected skips list is excluded, as reviewed; nothing else is. The
 service's capabilities are compared as a set, since the client holds them as one.
 """
 
@@ -501,24 +503,56 @@ def _sorted_capabilities(rpc, response):
 # one, "*" standing for every entry of a list. Every other response field is compared.
 TIMING_FIELDS = {
     "RunSweep": (("rows", "*", "elapsed_micros"),),
+    "RunRuns": (("rows", "*", "elapsed_micros"),),
+    "RecordRun": (("sweep", "rows", "*", "elapsed_micros"), ("sample", "rows", "*", "elapsed_micros")),
 }
+
+# The time a recording was made, which every record it generates states as `runAt = "<UTC, to the
+# second>"`, and the hash of the model holding the records, which follows from that text: by RPC, the
+# paths to text stating the time, whose time alone is replaced, and to the hash, which is compared as
+# present, absent or the scenario model's own. The rest of the text is compared.
+RECORDED_TIME = re.compile(r'(runAt = )"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z"')
+RECORDED_TIME_FIELDS = {
+    "RecordRun": (("source",), ("content",), ("documents", "*", "content")),
+}
+RECORDED_HASH_FIELDS = {
+    "RecordRun": (("model_hash",),),
+}
+RECORDED_TIME_PLACEHOLDER = '"${run_at}"'
+RECORDED_HASH_PLACEHOLDER = "${recorded_model_hash}"
+MODEL_HASH_PLACEHOLDER = "${model_hash}"
 
 
 def _without_timing(rpc, response):
     for path in TIMING_FIELDS.get(rpc, ()):
-        response = _dropped(response, path)
+        response = _mapped(response, path, None)
+    for path in RECORDED_TIME_FIELDS.get(rpc, ()):
+        response = _mapped(response, path, _without_recorded_time)
+    for path in RECORDED_HASH_FIELDS.get(rpc, ()):
+        response = _mapped(response, path, _without_recorded_hash)
     return response
 
 
-def _dropped(value, path):
+def _without_recorded_time(text):
+    return RECORDED_TIME.sub(lambda m: m.group(1) + RECORDED_TIME_PLACEHOLDER, text) if isinstance(text, str) else text
+
+
+def _without_recorded_hash(value):
+    return RECORDED_HASH_PLACEHOLDER if isinstance(value, str) and value not in ("", MODEL_HASH_PLACEHOLDER) else value
+
+
+def _mapped(value, path, change):
+    """value with the entry at path dropped, when change is None, or replaced by change(entry)."""
     head, rest = path[0], path[1:]
     if head == "*":
-        return [_dropped(entry, rest) for entry in value] if isinstance(value, list) else value
+        return [_mapped(entry, rest, change) for entry in value] if isinstance(value, list) else value
     if not isinstance(value, dict) or head not in value:
         return value
     if not rest:
-        return {key: entry for key, entry in value.items() if key != head}
-    return dict(value, **{head: _dropped(value[head], rest)})
+        if change is None:
+            return {key: entry for key, entry in value.items() if key != head}
+        return dict(value, **{head: change(value[head])})
+    return dict(value, **{head: _mapped(value[head], rest, change)})
 
 
 def _difference(got, want, path=""):

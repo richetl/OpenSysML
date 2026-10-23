@@ -68,34 +68,47 @@ internal static class VerificationWire
             evaluation.Tied))];
 
     /// <summary>Reads one run of an analysis case: everything the answer reports beside its error.</summary>
-    internal static Analysis Analysis(Wire.RunAnalysisResponse response, string method) =>
+    /// <param name="response">The answer.</param>
+    /// <param name="method">The method that answered it.</param>
+    /// <param name="path">Where in the method's answer it is: empty for the answer itself, <c>run</c> for a recording's.</param>
+    internal static Analysis Analysis(Wire.RunAnalysisResponse response, string method, string path = "") =>
         new(
-            Outputs(response.Outputs, method, "outputs"),
-            Verdicts(response.Verdicts, method, "verdicts"),
+            Outputs(response.Outputs, method, At(path, "outputs")),
+            Verdicts(response.Verdicts, method, At(path, "verdicts")),
             Verifications(response.VerificationVerdicts),
-            Evaluations(response.Evaluations, method, "evaluations"),
-            Instances(response.Instances, method, "instances"),
+            Evaluations(response.Evaluations, method, At(path, "evaluations")),
+            Instances(response.Instances, method, At(path, "instances")),
             ModelWire.Diagnostics(response.Diagnostics),
             ExecutionWire.StandingOf(response.Engine, response.Strength, response.Bounds),
             response.ToolDryRun is { } preview ? ToolDryRun(preview) : null);
 
     /// <summary>Reads a sweep's table.</summary>
-    internal static Sweep Sweep(Wire.RunSweepResponse response, string method) =>
+    /// <param name="response">The answer.</param>
+    /// <param name="method">The method that answered it.</param>
+    /// <param name="path">Where in the method's answer it is: empty for the answer itself, <c>sweep</c> for a recording's.</param>
+    internal static Sweep Sweep(Wire.RunSweepResponse response, string method, string path = "") =>
         new(
-            response.Rows.Select((row, i) => new SweepRow(
-                Outputs(row.Inputs, method, $"rows[{i}].inputs"),
-                Outputs(row.Outputs, method, $"rows[{i}].outputs"),
-                Verdicts(row.Verdicts, method, $"rows[{i}].verdicts"),
-                Evaluations(row.Evaluations, method, $"rows[{i}].evaluations"),
-                row.ElapsedMicros,
-                row.Error,
-                Reason(row.FailureReason))),
+            Rows(response.Rows, method, At(path, "rows")),
             response.Parameters,
             response.Sampled,
             response.Seed,
-            Instances(response.Instances, method, "instances"),
+            Instances(response.Instances, method, At(path, "instances")),
             ModelWire.Diagnostics(response.Diagnostics),
             ExecutionWire.StandingOf(response.Engine, response.Strength, response.Bounds));
+
+    /// <summary>Reads the rows of a table, one per run, in order, a failed run's beside what it computed first.</summary>
+    internal static List<SweepRow> Rows(RepeatedField<Wire.SweepRow> rows, string method, string path) =>
+        [.. rows.Select((row, i) => new SweepRow(
+            Outputs(row.Inputs, method, $"{path}[{i}].inputs"),
+            Outputs(row.Outputs, method, $"{path}[{i}].outputs"),
+            Verdicts(row.Verdicts, method, $"{path}[{i}].verdicts"),
+            Evaluations(row.Evaluations, method, $"{path}[{i}].evaluations"),
+            row.ElapsedMicros,
+            row.Error,
+            Reason(row.FailureReason)))];
+
+    /// <summary>A field's path within a part of an answer, the part's own path empty for the answer itself.</summary>
+    internal static string At(string path, string field) => path.Length == 0 ? field : $"{path}.{field}";
 
     /// <summary>Reads one engine's listing.</summary>
     internal static EngineInfo Engine(Wire.EngineInfo engine) =>

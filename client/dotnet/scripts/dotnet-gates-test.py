@@ -491,6 +491,44 @@ class ConformanceCheckTest(unittest.TestCase):
         with self.assertRaisesRegex(gates.GateError, r"run_sweep/rows: response rows.0.inputs.0.value.real_value: 2.0, the reference 0.0"):
             self.check(ours=ours, theirs=self.sweeping({"rows": [row]}))
 
+    def test_the_wall_time_a_row_of_runs_or_of_a_recording_reports_is_not_compared(self):
+        row = {"inputs": [{"name": "run", "value": {"int_value": 1}}], "elapsed_micros": "220"}
+        ours = self.sweeping({"rows": [row]}, rpc="RunRuns")
+        theirs = self.sweeping({"rows": [dict(row, elapsed_micros="9")]}, rpc="RunRuns")
+        self.assertEqual(self.check(ours=ours, theirs=theirs), (4, 2))
+        for part in ("sweep", "sample"):
+            ours = self.sweeping({part: {"rows": [row]}, "package": "Records"}, rpc="RecordRun")
+            theirs = self.sweeping({part: {"rows": [dict(row, elapsed_micros="9")]}, "package": "Records"}, rpc="RecordRun")
+            self.assertEqual(self.check(ours=ours, theirs=theirs), (4, 2))
+
+    def recording(self, at, model_hash="9f2c", extra=""):
+        source = f'package Records {{\n    @AnalysisRecords::RecordedRun {{\n        runAt = "{at}";\n    }}\n{extra}}}\n'
+        return {"source": source, "documents": [{"name": "Records.sysml", "content": source}], "content": source, "model_hash": model_hash}
+
+    def test_the_time_a_recording_states_and_the_hash_following_from_it_are_not_compared(self):
+        ours = self.sweeping(self.recording("2026-10-23T20:34:15Z", "9f2c"), rpc="RecordRun")
+        theirs = self.sweeping(self.recording("2026-10-23T20:34:16Z", "41aa"), rpc="RecordRun")
+        self.assertEqual(self.check(ours=ours, theirs=theirs), (4, 2))
+
+    def test_the_rest_of_a_recordings_text_and_the_hashs_presence_are_compared(self):
+        theirs = self.sweeping(self.recording("2026-10-23T20:34:16Z"), rpc="RecordRun")
+        ours = self.sweeping(self.recording("2026-10-23T20:34:15Z", extra="    part extra;\n"), rpc="RecordRun")
+        with self.assertRaisesRegex(gates.GateError, r"run_sweep/rows: response content: "):
+            self.check(ours=ours, theirs=theirs)
+        for model_hash in ("", "${model_hash}"):
+            ours = self.sweeping(self.recording("2026-10-23T20:34:16Z", model_hash), rpc="RecordRun")
+            with self.assertRaisesRegex(gates.GateError, r"run_sweep/rows: response model_hash: "):
+                self.check(ours=ours, theirs=theirs)
+        ours = self.sweeping(dict(self.recording("2026-10-23T20:34:16Z"), source='runAt = "2026-10-23";'), rpc="RecordRun")
+        with self.assertRaisesRegex(gates.GateError, r"run_sweep/rows: response source: "):
+            self.check(ours=ours, theirs=theirs)
+
+    def test_a_recorded_time_is_compared_outside_a_recording(self):
+        ours = self.sweeping({"source": 'runAt = "2026-10-23T20:34:15Z";'}, rpc="Evaluate")
+        theirs = self.sweeping({"source": 'runAt = "2026-10-23T20:34:16Z";'}, rpc="Evaluate")
+        with self.assertRaisesRegex(gates.GateError, r"run_sweep/rows: response source: "):
+            self.check(ours=ours, theirs=theirs)
+
     def test_a_field_named_for_a_wall_time_is_compared_outside_a_sweep(self):
         ours = self.sweeping({"rows": [{"elapsed_micros": "1"}]}, rpc="Evaluate")
         theirs = self.sweeping({"rows": [{"elapsed_micros": "2"}]}, rpc="Evaluate")
