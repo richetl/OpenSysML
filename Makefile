@@ -1,4 +1,4 @@
-.PHONY: all build docker extension-libraries-check extension-libraries-sync build-sysml build-re build-wasm-re build-lsp build-grpc build-mcp build-engine build-core build-syntax build-sysml-wasm build-release-wasm build-wasm build-wasm-wasip1 build-wasm-js wasm-check static-check windows-versioninfo-check man man-check install-tree pgo-profile conformance conformance-pkg conformance-mcp conformance-rust conformance-julia conformance-matlab test test-shard coverage coverage-shard coverage-merge lint clean install help ontology-table ontology-table-check metaclass-graph metaclass-graph-check python-metamodel python-metamodel-check fuml-expected python-test python-coverage scripts-coverage node-coverage dotnet-preflight dotnet-build dotnet-test dotnet-coverage python-install jupyter-kernel-install jupyter-kernel-test proto proto-buf python-proto proto-ts proto-rust proto-csharp proto-lint proto-breaking jupyterlab-build jupyterlab-test jupyterlab-install vscode-grammar vscode-build vscode-package docs docs-install docs-serve docs-engine-assets docs-landing-assets docs-counts diagnostics-catalogue diagnostics-check docs-check changelog-check changelog-render self-model mcp-registry-check
+.PHONY: all build docker extension-libraries-check extension-libraries-sync build-sysml build-re build-wasm-re build-lsp build-grpc build-mcp build-engine build-core build-syntax build-sysml-wasm build-release-wasm build-wasm build-wasm-wasip1 build-wasm-js wasm-check static-check windows-versioninfo-check man man-check install-tree pgo-profile conformance conformance-pkg conformance-mcp conformance-rust conformance-julia conformance-matlab conformance-dotnet conformance-dotnet-check test test-shard coverage coverage-shard coverage-merge lint clean install help ontology-table ontology-table-check metaclass-graph metaclass-graph-check python-metamodel python-metamodel-check fuml-expected python-test python-coverage scripts-coverage node-coverage dotnet-preflight dotnet-build dotnet-test dotnet-coverage python-install jupyter-kernel-install jupyter-kernel-test proto proto-buf python-proto proto-ts proto-rust proto-csharp proto-lint proto-breaking jupyterlab-build jupyterlab-test jupyterlab-install vscode-grammar vscode-build vscode-package docs docs-install docs-serve docs-engine-assets docs-landing-assets docs-counts diagnostics-catalogue diagnostics-check docs-check changelog-check changelog-render self-model mcp-registry-check
 
 # Version information
 # Only release tags describe a build; the moving `nightly` tag is not a version.
@@ -69,10 +69,17 @@ DOTNET ?= dotnet
 DOTNET_DIR := client/dotnet
 DOTNET_SLN := $(DOTNET_DIR)/OpenSysML.slnx
 DOTNET_REPORTS := $(BIN_DIR)/dotnet
-DOTNET_MIN_TESTS := 1333
+DOTNET_MIN_TESTS := 1498
 DOTNET_CLIENT_VERSION = $(shell sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' $(DOTNET_DIR)/Directory.Build.props)
 # The committed buf output, excluded from coverage by path and refused by its check.
 DOTNET_GENERATED := src/OpenMBEE.OpenSysML/Wire/Sysml.cs src/OpenMBEE.OpenSysML/Wire/SysmlGrpc.cs
+# The .NET conformance runner, run from its Release build, and the service it tests, which
+# neither conformance target builds: CI hands them the build job's binary.
+DOTNET_CONFORMANCE = $(DOTNET) run --project $(DOTNET_DIR)/src/OpenMBEE.OpenSysML.Conformance -c Release --no-build --
+DOTNET_CONFORMANCE_SERVICE ?= $(CURDIR)/$(BIN_DIR)/sysml-grpc
+DOTNET_CONFORMANCE_CHECK := $(BIN_DIR)/conformance-dotnet-check
+# What every conformance run withholds in its second configuration, so all execute the same fallbacks.
+CONFORMANCE_WITHHELD := strict_conformance,oslc_query
 SITE_DIR := site
 # Where make self-model writes the architecture self-model's rendered views.
 SELF_MODEL_DIR := examples/self-model
@@ -280,7 +287,7 @@ pgo-profile: ## Regenerate cmd/*/default.pgo, the CPU profile go build optimizes
 conformance: ## Run the language-independent conformance suite against sysml-grpc
 	@echo "Running the conformance suite..."
 	@mkdir -p $(BIN_DIR)
-	go run -C $(TOOLS_DIR) ./cmd/conformance -withhold-capabilities strict_conformance,oslc_query -report $(CURDIR)/$(BIN_DIR)/conformance-report.json -junit $(CURDIR)/$(BIN_DIR)/conformance-report.xml
+	go run -C $(TOOLS_DIR) ./cmd/conformance -withhold-capabilities $(CONFORMANCE_WITHHELD) -report $(CURDIR)/$(BIN_DIR)/conformance-report.json -junit $(CURDIR)/$(BIN_DIR)/conformance-report.xml
 	@echo "✓ Conformance suite passed ($(BIN_DIR)/conformance-report.json, $(BIN_DIR)/conformance-report.xml)"
 
 conformance-rust: ## Run the conformance suite with the blocking Rust client
@@ -310,6 +317,33 @@ conformance-matlab: ## Run the conformance suite with the MATLAB/Octave client (
 	fi; \
 	kill $$svc_pid 2>/dev/null; wait $$svc_pid 2>/dev/null; rm -f "$$addr_file"; exit $$rc
 
+# Fails, rather than skipping, for a scenario that fails, any skip expected-skips.json does not
+# list for that reason, a listed skip that ran, and a withheld capability whose fallback did not run.
+conformance-dotnet: dotnet-build ## Run the conformance suite through the .NET client's public API over grpc, connect and connect-json
+	@test -x "$(DOTNET_CONFORMANCE_SERVICE)" || { echo "$(DOTNET_CONFORMANCE_SERVICE) is not built; run make build-grpc"; exit 1; }
+	@mkdir -p $(BIN_DIR)
+	$(DOTNET_CONFORMANCE) -binary "$(DOTNET_CONFORMANCE_SERVICE)" -withhold-capabilities $(CONFORMANCE_WITHHELD) \
+		-report $(CURDIR)/$(BIN_DIR)/conformance-report-dotnet.json -junit $(CURDIR)/$(BIN_DIR)/conformance-report-dotnet.xml
+	@echo "✓ Conformance suite passed through the .NET client ($(BIN_DIR)/conformance-report-dotnet.json, $(BIN_DIR)/conformance-report-dotnet.xml)"
+
+# Runs the reference runner and the .NET runner against the same binary, each verbose, and holds
+# the .NET reports to the reference's shape and every matched scenario to its outcome, status and
+# normalized response; only the reviewed skips of expected-skips.json are left out.
+conformance-dotnet-check: dotnet-build ## Compare the .NET client's conformance run with the reference runner's, scenario by scenario
+	@test -x "$(DOTNET_CONFORMANCE_SERVICE)" || { echo "$(DOTNET_CONFORMANCE_SERVICE) is not built; run make build-grpc"; exit 1; }
+	@rm -rf $(DOTNET_CONFORMANCE_CHECK) && mkdir -p $(DOTNET_CONFORMANCE_CHECK)
+	go run -C $(TOOLS_DIR) ./cmd/conformance -binary "$(DOTNET_CONFORMANCE_SERVICE)" -withhold-capabilities $(CONFORMANCE_WITHHELD) -v \
+		-report $(CURDIR)/$(DOTNET_CONFORMANCE_CHECK)/reference.json > $(DOTNET_CONFORMANCE_CHECK)/reference.log \
+		|| { echo "the reference run failed; see $(DOTNET_CONFORMANCE_CHECK)/reference.log"; exit 1; }
+	$(DOTNET_CONFORMANCE) -binary "$(DOTNET_CONFORMANCE_SERVICE)" -withhold-capabilities $(CONFORMANCE_WITHHELD) -v \
+		-report $(CURDIR)/$(DOTNET_CONFORMANCE_CHECK)/dotnet.json -junit $(CURDIR)/$(DOTNET_CONFORMANCE_CHECK)/dotnet.xml > $(DOTNET_CONFORMANCE_CHECK)/dotnet.log \
+		|| { echo "the .NET run failed; see $(DOTNET_CONFORMANCE_CHECK)/dotnet.log"; exit 1; }
+	$(PYTHON) $(DOTNET_DIR)/scripts/dotnet-gates.py conformance-check \
+		--report $(DOTNET_CONFORMANCE_CHECK)/dotnet.json --log $(DOTNET_CONFORMANCE_CHECK)/dotnet.log --junit $(DOTNET_CONFORMANCE_CHECK)/dotnet.xml \
+		--reference-report $(DOTNET_CONFORMANCE_CHECK)/reference.json --reference-log $(DOTNET_CONFORMANCE_CHECK)/reference.log \
+		--expected-skips $(DOTNET_DIR)/test/testdata/expected-skips.json
+	@echo "✓ The .NET conformance run agrees with the reference runner ($(DOTNET_CONFORMANCE_CHECK))"
+
 conformance-pkg: ## Run the conformance suite through the public Go API (client/opensysml)
 	@echo "Running the conformance suite through client/opensysml..."
 	@mkdir -p $(BIN_DIR)
@@ -319,7 +353,7 @@ conformance-pkg: ## Run the conformance suite through the public Go API (client/
 conformance-mcp: ## Run the conformance suite through sysml-mcp's runtime tools
 	@echo "Running the conformance suite through sysml-mcp..."
 	@mkdir -p $(BIN_DIR)
-	go run -C $(TOOLS_DIR) ./cmd/conformance -protocols mcp -allow-skips -withhold-capabilities strict_conformance,oslc_query -report $(CURDIR)/$(BIN_DIR)/conformance-mcp-report.json -junit $(CURDIR)/$(BIN_DIR)/conformance-mcp-report.xml
+	go run -C $(TOOLS_DIR) ./cmd/conformance -protocols mcp -allow-skips -withhold-capabilities $(CONFORMANCE_WITHHELD) -report $(CURDIR)/$(BIN_DIR)/conformance-mcp-report.json -junit $(CURDIR)/$(BIN_DIR)/conformance-mcp-report.xml
 	@echo "✓ Conformance suite passed through sysml-mcp ($(BIN_DIR)/conformance-mcp-report.json, $(BIN_DIR)/conformance-mcp-report.xml)"
 
 test: ## Run Go tests with race detection and coverage

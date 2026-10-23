@@ -1,0 +1,31 @@
+{
+  "uncovered_rpcs": [
+    "ApplyEdits",
+    "CheckBehavior",
+    "CompareResults",
+    "Convert",
+    "EvaluateCalc",
+    "ExecuteAction",
+    "ExecuteState",
+    "ExportGraphs",
+    "ImportData",
+    "ListEngines",
+    "Migrate",
+    "Query",
+    "RecordRun",
+    "RenderDocument",
+    "RenderView",
+    "RunAnalysis",
+    "RunDocumentQuery",
+    "RunRuns",
+    "RunSweep",
+    "SelfCheck",
+    "ValidateInstance",
+    "VerifyConstraint",
+    "VerifyRequirement",
+    "VerifySatisfaction"
+  ],
+  "unexpressible": {
+    "parse/naming_no_source_is_invalid": "the public API always names a source, so it cannot send a request naming none"
+  }
+}

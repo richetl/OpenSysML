@@ -8,6 +8,7 @@ using System.Net.Http;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using OpenMBEE.OpenSysML.Conformance;
 using Xunit;
 
 namespace OpenMBEE.OpenSysML.Tests;

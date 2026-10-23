@@ -4,6 +4,8 @@
     python3 client/dotnet/scripts/dotnet-gates.py preflight [--dotnet DOTNET]
     python3 client/dotnet/scripts/dotnet-gates.py coverage RESULTS_DIR [--generated PATH ...]
     python3 client/dotnet/scripts/dotnet-gates.py sample --expect LINE [--dotnet DOTNET] [--binary PATH]
+    python3 client/dotnet/scripts/dotnet-gates.py conformance-check --report R --log L --junit J \
+        --reference-report RR --reference-log RL --expected-skips E
 
 `preflight` fails unless `dotnet`, invoked from the repository root, is exactly the
 SDK root global.json pins and a .NET 10 runtime is installed beside it: global.json's
@@ -22,6 +24,15 @@ binary, which the sample starts as its private service. Each of the last two mus
 the version that binary reports and its capability count, then the vehicle it parsed, looked up
 and evaluated. The binary is --binary or $OPENSYSML_GRPC_BINARY; without one the last two runs
 are skipped, unless $OPENSYSML_REQUIRE_SERVICE is set, which makes it a failure.
+
+`conformance-check` holds a run of the .NET conformance runner to the reference runner's run of
+the same suite against the same service. Both reports must have the reference report's members in
+its order and totals that add up, and the .NET JUnit report the same totals, one suite per
+configuration and protocol and one case per scenario with its matching outcome. Then, scenario by
+scenario, both runs must agree on the outcome, the status, the capabilities missing and whether the without-capability
+expectation applied, and their -v logs on the normalized response. Timing and what answered are
+not compared. A .NET skip the expected skips list is excluded, as reviewed; nothing else is. The
+service's capabilities are compared as a set, since the client holds them as one.
 """
 
 import argparse
@@ -300,6 +311,307 @@ def sample(expect, dotnet="dotnet", binary=None, project=SAMPLE_PROJECT, environ
     return lines[1]
 
 
+TOTALS = ("total", "passed", "failed", "skipped", "errored", "without_capability")
+OUTCOME_TOTALS = {"pass": "passed", "fail": "failed", "skip": "skipped", "error": "errored"}
+# Each object of a report, its members in the reference runner's order; True marks a member it may omit.
+REPORT_MEMBERS = [("service", False), ("mcp_server", True)] + [(t, False) for t in TOTALS] + [("configurations", False)]
+CONFIGURATION_MEMBERS = (
+    [("name", False), ("unavailable_capabilities", True)] + [(t, False) for t in TOTALS] + [("protocols", False)]
+)
+PROTOCOL_MEMBERS = (
+    [("protocol", False), ("service", False), ("capabilities", False)] + [(t, False) for t in TOTALS] + [("results", False)]
+)
+RESULT_MEMBERS = [
+    ("id", False),
+    ("outcome", False),
+    ("rpc", False),
+    ("reason", True),
+    ("failures", True),
+    ("status", False),
+    ("without_capability", True),
+    ("missing_capabilities", True),
+    ("duration_ms", False),
+]
+LOG_MARK = re.compile(r"^(PASS|FAIL|SKIP|ERR) +(\S+) +(\S+)$")
+LOG_SUMMARY = re.compile(r"^\[(\S+)\] \d+ scenarios: ")
+LOG_INDENT = " " * 7
+
+
+def _object(value, where, members):
+    """Check an object has only the members named, in their order, and every one not optional."""
+    if not isinstance(value, dict):
+        raise GateError(f"{where} is not an object")
+    names = [name for name, _ in members]
+    unknown = [key for key in value if key not in names]
+    if unknown:
+        raise GateError(f"{where} has unknown member {unknown[0]!r}")
+    missing = [name for name, optional in members if not optional and name not in value]
+    if missing:
+        raise GateError(f"{where} has no {missing[0]!r}")
+    order = [name for name in names if name in value]
+    if list(value) != order:
+        raise GateError(f"{where} orders its members {list(value)}, want {order}")
+    return value
+
+
+def _totals(value, where, counted):
+    for name in TOTALS:
+        if value[name] != counted[name]:
+            raise GateError(f"{where}: {name} is {value[name]}, but its parts add up to {counted[name]}")
+
+
+def check_conformance_report(path):
+    """Check a conformance report has the reference runner's shape and that its totals add up.
+
+    Args:
+        path (str): The report
+
+    Returns:
+        dict: The report
+
+    Raises:
+        GateError: If it is not JSON, has another shape, or a total disagrees with its parts
+    """
+    try:
+        with open(path, encoding="utf-8") as f:
+            report = json.load(f)
+    except (OSError, ValueError) as e:
+        raise GateError(f"{path} is not a readable JSON report: {e}") from e
+    _object(report, path, REPORT_MEMBERS)
+    report_counted = dict.fromkeys(TOTALS, 0)
+    for c, configuration in enumerate(report["configurations"]):
+        where = f"{path}: configuration {c}"
+        _object(configuration, where, CONFIGURATION_MEMBERS)
+        configuration_counted = dict.fromkeys(TOTALS, 0)
+        for p, protocol in enumerate(configuration["protocols"]):
+            at = f"{where} protocol {p}"
+            _object(protocol, at, PROTOCOL_MEMBERS)
+            counted = dict.fromkeys(TOTALS, 0)
+            for r, result in enumerate(protocol["results"]):
+                _object(result, f"{at} result {r}", RESULT_MEMBERS)
+                if result["outcome"] not in OUTCOME_TOTALS:
+                    raise GateError(f"{at} result {r} ends {result['outcome']!r}")
+                counted["total"] += 1
+                counted[OUTCOME_TOTALS[result["outcome"]]] += 1
+                counted["without_capability"] += 1 if result.get("without_capability") else 0
+            _totals(protocol, at, counted)
+            for name in TOTALS:
+                configuration_counted[name] += counted[name]
+        _totals(configuration, where, configuration_counted)
+        for name in TOTALS:
+            report_counted[name] += configuration_counted[name]
+    _totals(report, path, report_counted)
+    return report
+
+
+def check_conformance_junit(path, report):
+    """Check a JUnit report states a JSON report's results: its totals, a suite per configuration
+    and protocol, and a case per scenario, in order, with its matching outcome.
+
+    Raises:
+        GateError: If it is not JUnit XML or disagrees with the report
+    """
+    try:
+        root = ET.parse(path).getroot()
+    except (OSError, ET.ParseError) as e:
+        raise GateError(f"{path} is not readable XML: {e}") from e
+    if root.tag != "testsuites":
+        raise GateError(f"{path} is not a JUnit report")
+
+    def counts(element, totals, where):
+        for attribute, total in (("tests", "total"), ("failures", "failed"), ("errors", "errored"), ("skipped", "skipped")):
+            if element.get(attribute) != str(totals[total]):
+                raise GateError(f"{where}: {attribute}={element.get(attribute)!r}, but the report counts {totals[total]}")
+
+    counts(root, report, path)
+    protocols = [(c, p) for c in report["configurations"] for p in c["protocols"]]
+    suites = root.findall("testsuite")
+    if len(suites) != len(protocols):
+        raise GateError(f"{path} has {len(suites)} suites, but the report runs {len(protocols)} protocols")
+    for suite, (configuration, protocol) in zip(suites, protocols):
+        name = f"{configuration['name']}/{protocol['protocol']}"
+        if suite.get("name") != name:
+            raise GateError(f"{path}: suite {suite.get('name')!r}, want {name!r}")
+        counts(suite, protocol, f"{path} suite {name}")
+        cases = suite.findall("testcase")
+        ids = [result["id"] for result in protocol["results"]]
+        if [case.get("name") for case in cases] != ids:
+            raise GateError(f"{path} suite {name}: its cases are not the report's scenarios, in order")
+        dispositions = {"pass": [], "fail": ["failure"], "skip": ["skipped"], "error": ["error"]}
+        for case, result in zip(cases, protocol["results"]):
+            actual = [child.tag for child in case if child.tag in ("failure", "skipped", "error")]
+            want = dispositions[result["outcome"]]
+            if actual != want:
+                raise GateError(f"{path} suite {name} case {result['id']}: outcome elements {actual}, want {want}")
+
+
+def read_conformance_log(path):
+    """Read a runner's -v output: per configuration and protocol, each scenario's mark, status and
+    normalized response, the response None where none was printed.
+
+    Returns:
+        dict: (configuration, protocol) -> {id: (mark, status, response)}
+
+    Raises:
+        GateError: If a response is not JSON or a scenario line comes before any configuration
+    """
+    try:
+        with open(path, encoding="utf-8") as f:
+            lines = f.read().split("\n")
+    except OSError as e:
+        raise GateError(f"{path} cannot be read: {e}") from e
+    runs = {}
+    configuration = None
+    current = {}
+    response = None
+    collecting = None
+    for number, line in enumerate(lines, 1):
+        if collecting is not None:
+            collecting.append(line)
+            if line == LOG_INDENT + "}":
+                try:
+                    response = json.loads("\n".join(entry[len(LOG_INDENT):] for entry in collecting))
+                except ValueError as e:
+                    raise GateError(f"{path}:{number}: a response that is not JSON: {e}") from e
+                collecting = None
+            continue
+        if line.startswith("Configuration "):
+            configuration = line[len("Configuration "):]
+            current = {}
+        elif line == LOG_INDENT + "{":
+            collecting = [line]
+        elif (mark := LOG_MARK.match(line)) is not None:
+            if configuration is None:
+                raise GateError(f"{path}:{number}: a scenario before any configuration")
+            current[mark.group(2)] = (mark.group(1), mark.group(3), response)
+            response = None
+        elif (summary := LOG_SUMMARY.match(line)) is not None:
+            runs[(configuration, summary.group(1))] = current
+            current = {}
+    return runs
+
+
+def _sorted_capabilities(rpc, response):
+    if rpc == "GetServerInfo" and isinstance(response, dict) and isinstance(response.get("capabilities"), list):
+        response = dict(response, capabilities=sorted(response["capabilities"]))
+    return response
+
+
+def _difference(got, want, path=""):
+    """The first path at which two normalized responses differ, or None."""
+    if isinstance(got, dict) and isinstance(want, dict):
+        for key in sorted(set(got) | set(want)):
+            if key not in got or key not in want:
+                return f"{path}{key}: only the {'.NET' if key in got else 'reference'} run has it"
+            found = _difference(got[key], want[key], f"{path}{key}.")
+            if found:
+                return found
+        return None
+    if isinstance(got, list) and isinstance(want, list):
+        if len(got) != len(want):
+            return f"{path.rstrip('.')}: {len(got)} entries, the reference {len(want)}"
+        for i, (g, w) in enumerate(zip(got, want)):
+            found = _difference(g, w, f"{path}{i}.")
+            if found:
+                return found
+        return None
+    if got != want or type(got) is not type(want):
+        return f"{path.rstrip('.')}: {got!r}, the reference {want!r}"
+    return None
+
+
+def conformance_check(report, log, junit, reference_report, reference_log, expected_skips):
+    """Compare a .NET conformance run with the reference runner's, scenario by scenario.
+
+    Args:
+        report (str): The .NET runner's -report
+        log (str): Its -v output
+        junit (str): Its -junit
+        reference_report (str): The reference runner's -report
+        reference_log (str): Its -v output
+        expected_skips (str): The .NET client's expected-skips.json
+
+    Returns:
+        tuple[int, int]: Results that agree, and reviewed skips excluded
+
+    Raises:
+        GateError: Naming every disagreement, if there is any
+    """
+    ours = check_conformance_report(report)
+    check_conformance_junit(junit, ours)
+    theirs = check_conformance_report(reference_report)
+    our_log = read_conformance_log(log)
+    their_log = read_conformance_log(reference_log)
+    try:
+        with open(expected_skips, encoding="utf-8") as f:
+            skips = json.load(f)
+    except (OSError, ValueError) as e:
+        raise GateError(f"{expected_skips} is not a readable list: {e}") from e
+    uncovered = set(skips.get("uncovered_rpcs", []))
+    unexpressible = skips.get("unexpressible", {})
+
+    problems = []
+    agreed = excluded = 0
+    our_configurations = [(c["name"], c.get("unavailable_capabilities", [])) for c in ours["configurations"]]
+    their_configurations = [(c["name"], c.get("unavailable_capabilities", [])) for c in theirs["configurations"]]
+    if our_configurations != their_configurations:
+        raise GateError(f"the runs test configurations {our_configurations} and {their_configurations}")
+    for our_configuration, their_configuration in zip(ours["configurations"], theirs["configurations"]):
+        name = our_configuration["name"]
+        our_protocols = [p["protocol"] for p in our_configuration["protocols"]]
+        their_protocols = [p["protocol"] for p in their_configuration["protocols"]]
+        if our_protocols != their_protocols:
+            problems.append(f"{name}: the runs test protocols {our_protocols} and {their_protocols}")
+            continue
+        for our_protocol, their_protocol in zip(our_configuration["protocols"], their_configuration["protocols"]):
+            where = f"{name} {our_protocol['protocol']}"
+            if set(our_protocol["capabilities"]) != set(their_protocol["capabilities"]):
+                problems.append(f"{where}: the services advertised different capabilities")
+            our_results = {r["id"]: r for r in our_protocol["results"]}
+            their_results = {r["id"]: r for r in their_protocol["results"]}
+            if list(our_results) != list(their_results):
+                problems.append(f"{where}: the runs judged different scenarios")
+                continue
+            our_responses = our_log.get((name, our_protocol["protocol"]))
+            their_responses = their_log.get((name, their_protocol["protocol"]))
+            if our_responses is None or their_responses is None:
+                problems.append(f"{where}: a log has no run of it")
+                continue
+            for scenario, our in our_results.items():
+                their = their_results[scenario]
+                if our["outcome"] == "skip" and (
+                    our["rpc"] in uncovered or unexpressible.get(scenario) == our.get("reason")
+                ):
+                    excluded += 1
+                    continue
+                if scenario not in our_responses or scenario not in their_responses:
+                    problems.append(f"{where}: {scenario}: a log has no line for it")
+                    continue
+                differences = [
+                    f"{field} {our.get(field, default)!r}, the reference {their.get(field, default)!r}"
+                    for field, default in (
+                        ("outcome", None),
+                        ("status", None),
+                        ("without_capability", False),
+                        ("missing_capabilities", []),
+                    )
+                    if our.get(field, default) != their.get(field, default)
+                ]
+                difference = _difference(
+                    _sorted_capabilities(our["rpc"], our_responses[scenario][2]),
+                    _sorted_capabilities(their["rpc"], their_responses[scenario][2]),
+                )
+                if difference:
+                    differences.append(f"response {difference}")
+                if differences:
+                    problems.append(f"{where}: {scenario}: " + "; ".join(differences))
+                else:
+                    agreed += 1
+    if problems:
+        raise GateError("the .NET run disagrees with the reference runner:\n  " + "\n  ".join(problems))
+    return agreed, excluded
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     commands = parser.add_subparsers(dest="command", required=True)
@@ -312,6 +624,13 @@ def main(argv=None):
     smp.add_argument("--expect", required=True, help="the identity line the sample prints first")
     smp.add_argument("--dotnet", default="dotnet", help="the dotnet host (default: dotnet on PATH)")
     smp.add_argument("--binary", help=f"the sysml-grpc binary (default: ${BINARY_VARIABLE})")
+    chk = commands.add_parser("conformance-check", help="compare a .NET conformance run with the reference runner's")
+    chk.add_argument("--report", required=True, help="the .NET runner's -report")
+    chk.add_argument("--log", required=True, help="the .NET runner's -v output")
+    chk.add_argument("--junit", required=True, help="the .NET runner's -junit")
+    chk.add_argument("--reference-report", required=True, help="the reference runner's -report")
+    chk.add_argument("--reference-log", required=True, help="the reference runner's -v output")
+    chk.add_argument("--expected-skips", required=True, help="the .NET client's expected-skips.json")
     args = parser.parse_args(argv)
 
     try:
@@ -322,6 +641,11 @@ def main(argv=None):
             served = sample(args.expect, args.dotnet, args.binary)
             print(f"OK {args.expect}")
             print(f"OK {served}" if served else f"- no sysml-grpc configured (${BINARY_VARIABLE}); skipped the service run")
+        elif args.command == "conformance-check":
+            agreed, excluded = conformance_check(
+                args.report, args.log, args.junit, args.reference_report, args.reference_log, args.expected_skips
+            )
+            print(f"OK {agreed} results agree with the reference runner; {excluded} reviewed skips excluded")
         else:
             for report, covered, valid in coverage(args.results_dir, args.generated):
                 print(f"OK {report}: {covered} of {valid} lines covered")

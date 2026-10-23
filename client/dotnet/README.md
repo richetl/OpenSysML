@@ -9,7 +9,8 @@ of this repository and consumed by `ProjectReference`. It is not published to Nu
 > through a raw, schema-checked escape hatch. It loads models from a file, from inline
 > notation or from several documents, and reads them: symbols and name lookup, diagnostics,
 > expression evaluation and instantiation, with the immutable values those operations
-> exchange. It does not download a release of the service, and offers none of the other
+> exchange. Its [conformance runner](#conformance) runs the shared suite through that API.
+> It does not download a release of the service, and offers none of the other
 > typed operations (execution, verification, conversion, queries, documents, editing). The
 > other clients ([Python](../python/), [Java](../java/), [Rust](../rust/), [Node](../node/))
 > are the ones to use for those today.
@@ -291,7 +292,7 @@ into a model; `HasErrors` says so, and `RequireNoErrors` turns it into a
 
 | Method | Answers |
 | --- | --- |
-| `SymbolAsync` / `FindSymbolAsync` | The `Symbol` of a qualified name as the service resolves it, through imports and aliases; not found raises `SymbolNotFoundException` or answers null |
+| `SymbolAsync` / `FindSymbolAsync` | The `Symbol` of a qualified name as the service resolves it, through imports and aliases; not found raises `SymbolNotFoundException`, its message the service's own, or answers null |
 | `FindAsync` / `LookupAsync` | The symbol of a short name or of its own id, the outermost first; not found answers null or raises `SymbolNotFoundException` naming at most three near names |
 | `GetDiagnosticsAsync` | The diagnostics again, under a `DiagnosticsOptions` lint selection |
 | `EvalAsync` / `EvaluateAsync` | The `Value` of an expression, in `EvalOptions.ContextSymbolId`'s scope or against an object of `SubjectSymbolId`; `EvaluateAsync` keeps the diagnostics with it |
@@ -390,6 +391,7 @@ To a service without `rational_values`, a Rational a `double` holds exactly is s
 ```bash
 make dotnet-test       # preflight, locked restore, build, format check, tests, sample
 make dotnet-coverage   # the tests under coverlet: Cobertura and JUnit in bin/dotnet/coverage
+make conformance-dotnet conformance-dotnet-check   # the conformance suite; see Conformance
 ```
 
 `make dotnet-test` runs these commands, which also work on their own:
@@ -447,9 +449,9 @@ failed assertion still releases successful connections, and a ten-second cleanup
 falls back to killing and awaiting only the scope's owned processes while reporting the
 timeout as a failure.
 
-CI runs the whole suite on Linux against the service its build job makes, and, in the full
-tier, natively on macOS and Windows against a `sysml-grpc` built on that runner, with the
-same minimum test count.
+CI runs the whole suite on Linux against the service its build job makes, then both
+conformance targets, and, in the full tier, natively on macOS and Windows against a
+`sysml-grpc` built on that runner, with the same minimum test count.
 The Python gates use ASCII success markers so preflight, sample and coverage reports
 also work with legacy Windows console encodings.
 
@@ -534,8 +536,8 @@ reports, by the rules of the suite's README and as the reference runner,
 
 How a scenario reaches the service is an adapter's: an `IScenarioClient` answers through the
 client's public API and renders the result as the RPC's response message, or reports that the
-API cannot express the request, which is a skip with that reason. No adapter exists yet, so
-nothing here runs the suite against a service, and there is no command-line runner.
+API cannot express the request, which is a skip with that reason. The next section describes
+the one that runs the suite.
 
 [`test/OpenMBEE.OpenSysML.Conformance.Tests`](test/OpenMBEE.OpenSysML.Conformance.Tests/)
 holds every comparison rule to a case that must hold and one that must not, ports the
@@ -547,6 +549,88 @@ the goldens and review the difference:
 ```bash
 OPENSYSML_UPDATE_GOLDENS=1 dotnet test --project client/dotnet/test/OpenMBEE.OpenSysML.Conformance.Tests -c Release
 ```
+
+## Conformance
+
+The same project is the runner: it runs the suite **through the public API**, so a report says
+what the client gave its caller, not only what the service put on the wire.
+
+```bash
+make build-grpc
+make conformance-dotnet        # every protocol, then strict_conformance and oslc_query withheld;
+                               # bin/conformance-report-dotnet.json and .xml
+make conformance-dotnet-check  # the same run beside the reference runner's, compared scenario by scenario
+dotnet run --project client/dotnet/src/OpenMBEE.OpenSysML.Conformance -c Release -- \
+  -binary bin/sysml-grpc -run '^evaluate/' -protocols connect-json -v
+```
+
+| Flag | Meaning |
+| --- | --- |
+| `-binary <path>` | The `sysml-grpc` to start, once per configuration, on ports the kernel chooses |
+| `-service <host:port>` | A service already running, instead; it cannot withhold capabilities or choose a transport |
+| `-dir <path>`, `-expected-skips <path>` | The suite and the reviewed skips; by default the checkout's `conformance/` and [`test/testdata/expected-skips.json`](test/testdata/expected-skips.json) |
+| `-run <regexp>` | Only the scenarios whose id matches |
+| `-protocols <list>` | Of `grpc`, `connect`, `connect-json`; all three by default |
+| `-transport <name>` | What a started service serves: `connect` (default) or `grpc`, which only `-protocols grpc` can reach |
+| `-withhold-capabilities <list>` | Also run a configuration whose service withholds these, through its test-only switch |
+| `-report <path>`, `-junit <path>` | The reference runner's JSON (`-` for stdout) and JUnit reports |
+| `-allow-skips` | Accept every skip, not only the reviewed ones |
+| `-mutate <name>` | Corrupt every answer, to show the comparison is not vacuous |
+| `-v` | Print each normalized response, as the reference runner does |
+
+A flag the runner does not know, one given twice, a value missing, and a contradictory line
+are usage errors (exit 2). A following option is never consumed as a value. Value-taking flags
+also accept `-flag=value`; use this form for a literal value starting with `-`, such as
+`-run=-v`, while `-report -` still selects stdout. A run that passes exits 0, and any other
+exits 1, including a JSON or JUnit destination that cannot be written: the diagnostic names
+the report format, destination and filesystem error.
+
+Each RPC the API covers has an adapter, grouped by area beside the methods it calls
+(`ConnectionArea`, `ModelArea`). An adapter reads the decoded request as the arguments of the
+typed method, so the request the client sends is the one the scenario states, and renders what
+the method returned, with [`Rendering`](src/OpenMBEE.OpenSysML.Conformance/Rendering.cs) reading
+only public types, back into the response. A failure the service reported in band is rendered
+as the response's `error` and diagnostics; a refusal keeps the service's status and message; a
+capability the client refuses for before sending is `UNIMPLEMENTED`, which the service would
+answer; a transport failure is its status. Nothing is sent raw: a test reads the runner's IL
+and fails on any call to `Connection.CallAsync` or the generated stub. A request setting a field
+the adapter cannot send, or one the API has no way to express, is skipped for a stated reason.
+
+Skips are accounted exactly. `expected-skips.json` lists the RPCs no adapter covers yet,
+which must be the inventory's `deferred` rows, and the scenarios whose request the API cannot
+express, each with the reason its adapter gives. The run fails for any other skip, a listed
+skip given another reason, and a listed skip that ran, whether or not `-allow-skips` is
+passed; in a configuration withholding capabilities, a skip is accounted only by a withheld
+capability, the service must advertise exactly the default set without them, and each must
+have its without-capability expectation executed, or, when every such scenario is a listed
+skip, the run says so. Per protocol, of 194 scenarios:
+
+| Configuration | ran | passed | skipped as uncovered | skipped as unexpressible |
+| --- | --: | --: | --: | --: |
+| default | 51 | 51 | 142 | 1 |
+| `strict_conformance` and `oslc_query` withheld | 50 | 50 | 142 | 1 |
+
+The one unexpressible request, `parse/naming_no_source_is_invalid`, names no source, which
+the API always does. Withheld, `strict_conformance`'s fallback runs and is refused before
+sending; `oslc_query`'s is a `Query` scenario, an uncovered RPC, and is reported as a listed skip.
+
+`-mutate` shows the comparison catches what each corruption breaks, on every protocol, and a
+test asserts it fails the run:
+
+| `-mutate` | What it does to every answer | Scenarios that fail, per protocol |
+| --- | --- | --: |
+| `perturb-reals` | Moves each real by a millionth | 13 |
+| `truncate-lists` | Drops the last entry of each list | 16 |
+| `rewrite-strings` | Replaces each non-empty string but no map key | 24 |
+
+`make conformance-dotnet-check` also runs the reference runner against the same binary, both
+with `-v`, and `dotnet-gates.py conformance-check` holds the two runs together: both reports
+have the reference's members in its order and totals that add up, the JUnit report states the
+same results, including each testcase's pass, failure, error or skip disposition, and every
+scenario the .NET run did not skip as reviewed has the reference's
+outcome, status, missing capabilities and normalized response. Only timing and what answered
+are not compared, and the service's capabilities compare as a set, which is how the client
+holds them.
 
 ## Build policy
 

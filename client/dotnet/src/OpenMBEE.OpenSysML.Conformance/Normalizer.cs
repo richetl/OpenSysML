@@ -80,7 +80,12 @@ internal sealed class Normalizer
         return tree;
     }
 
-    private static bool IsSet(FieldDescriptor field, IMessage message, object value)
+    /// <summary>Whether a field is set as the wire would carry it: a non-empty list or map, a present field, or a scalar off its default.</summary>
+    /// <param name="field">The field.</param>
+    /// <param name="message">The message holding it.</param>
+    /// <param name="value">Its value in the message.</param>
+    /// <returns>Whether it is set.</returns>
+    internal static bool IsSet(FieldDescriptor field, IMessage message, object value)
     {
         if (field.IsMap || field.IsRepeated)
         {

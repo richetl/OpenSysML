@@ -44,7 +44,8 @@ internal static class ScenarioSuite
         "counts",
         "min_counts");
 
-    private static readonly JsonDocumentOptions Strict = new()
+    /// <summary>How the suite's JSON is read: no comments, no trailing commas.</summary>
+    internal static readonly JsonDocumentOptions Strict = new()
     {
         AllowTrailingCommas = false,
         CommentHandling = JsonCommentHandling.Disallow,
@@ -218,7 +219,7 @@ internal static class ScenarioSuite
     /// The members of an object, refusing anything but an object, a member <paramref name="allowed"/>
     /// does not name when it names some, and a member stated twice.
     /// </summary>
-    private static Dictionary<string, JsonElement> Members(
+    internal static Dictionary<string, JsonElement> Members(
         JsonElement element, string where, FrozenSet<string>? allowed, string file)
     {
         if (element.ValueKind != JsonValueKind.Object)
@@ -331,7 +332,8 @@ internal static class ScenarioSuite
 
     private static InvalidDataException Malformed(string file, string problem) => new($"{file}: {problem}");
 
-    private static string Kind(JsonElement element) => element.ValueKind switch
+    /// <summary>A JSON value's kind, as a message names it: <c>an object</c>, <c>a list</c>, <c>text</c>, ….</summary>
+    internal static string Kind(JsonElement element) => element.ValueKind switch
     {
         JsonValueKind.Object => "an object",
         JsonValueKind.Array => "a list",

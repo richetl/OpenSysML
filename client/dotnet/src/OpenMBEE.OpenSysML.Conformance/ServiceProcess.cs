@@ -1,17 +1,18 @@
 using System;
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace OpenMBEE.OpenSysML.Tests;
+namespace OpenMBEE.OpenSysML.Conformance;
 
 /// <summary>
-/// A sysml-grpc the tests start and stop themselves, so a connection reaches it at an explicit
-/// address as it would any external service. This is a test harness, not the client's own
-/// lifecycle: it reads the address the service reports, drains its output, and on disposal closes
-/// its stdin, which -exit-with-parent makes it exit on, killing it only if it does not.
+/// A sysml-grpc the conformance runner and the tests start and stop themselves, so a connection
+/// reaches it at an explicit address as it would any external service. This is a test harness, not
+/// the client's own lifecycle: it reads the address the service reports, drains its output, and on
+/// disposal closes its stdin, which -exit-with-parent makes it exit on, killing it only if it does not.
 /// </summary>
 internal sealed class ServiceProcess : IAsyncDisposable
 {
@@ -20,6 +21,9 @@ internal sealed class ServiceProcess : IAsyncDisposable
 
     private static readonly TimeSpan StartupTimeout = TimeSpan.FromSeconds(30);
     private static readonly TimeSpan ShutdownGrace = TimeSpan.FromSeconds(10);
+
+    // The output kept for a message; a long run's earlier lines are dropped.
+    private const int OutputLines = 256;
 
     private readonly Process process;
     private readonly Task draining;
@@ -47,7 +51,8 @@ internal sealed class ServiceProcess : IAsyncDisposable
     /// <param name="transport">connect or grpc.</param>
     /// <param name="cancellationToken">Cancels the start.</param>
     /// <param name="withheld">Capabilities the service is to withhold, comma-separated, through its test-only switch; null for none.</param>
-    internal static async Task<ServiceProcess> StartAsync(string binary, string transport, CancellationToken cancellationToken, string? withheld = null)
+    /// <param name="cacheSize">How many parsed models the service is to hold; null for its default.</param>
+    internal static async Task<ServiceProcess> StartAsync(string binary, string transport, CancellationToken cancellationToken, string? withheld = null, int? cacheSize = null)
     {
         var start = new ProcessStartInfo(binary)
         {
@@ -62,15 +67,21 @@ internal sealed class ServiceProcess : IAsyncDisposable
             start.ArgumentList.Add(argument);
         }
 
+        if (cacheSize is { } size)
+        {
+            start.ArgumentList.Add("-cache-size");
+            start.ArgumentList.Add(size.ToString(CultureInfo.InvariantCulture));
+        }
+
         var process = Process.Start(start) ?? throw new InvalidOperationException($"{binary} did not start.");
         try
         {
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             timeout.CancelAfter(StartupTimeout);
-            var address = await process.StandardOutput.ReadLineAsync(timeout.Token);
+            var address = await process.StandardOutput.ReadLineAsync(timeout.Token).ConfigureAwait(false);
             if (string.IsNullOrWhiteSpace(address))
             {
-                var errors = await process.StandardError.ReadToEndAsync(timeout.Token);
+                var errors = await process.StandardError.ReadToEndAsync(timeout.Token).ConfigureAwait(false);
                 throw new InvalidOperationException($"{binary} reported no address: {errors}");
             }
 
@@ -78,7 +89,7 @@ internal sealed class ServiceProcess : IAsyncDisposable
         }
         catch
         {
-            await StopAsync(process);
+            await StopAsync(process).ConfigureAwait(false);
             process.Dispose();
             throw;
         }
@@ -87,8 +98,8 @@ internal sealed class ServiceProcess : IAsyncDisposable
     /// <summary>Closes the service's stdin and waits for it to exit, killing it if it does not.</summary>
     public async ValueTask DisposeAsync()
     {
-        await StopAsync(process);
-        await draining;
+        await StopAsync(process).ConfigureAwait(false);
+        await draining.ConfigureAwait(false);
         process.Dispose();
     }
 
@@ -113,20 +124,24 @@ internal sealed class ServiceProcess : IAsyncDisposable
         using var grace = new CancellationTokenSource(ShutdownGrace);
         try
         {
-            await process.WaitForExitAsync(grace.Token);
+            await process.WaitForExitAsync(grace.Token).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
             process.Kill(entireProcessTree: true);
-            await process.WaitForExitAsync(CancellationToken.None);
+            await process.WaitForExitAsync(CancellationToken.None).ConfigureAwait(false);
         }
     }
 
     private async Task DrainAsync(StreamReader reader)
     {
-        while (await reader.ReadLineAsync(CancellationToken.None) is { } line)
+        while (await reader.ReadLineAsync(CancellationToken.None).ConfigureAwait(false) is { } line)
         {
             output.Enqueue(line);
+            while (output.Count > OutputLines)
+            {
+                output.TryDequeue(out _);
+            }
         }
     }
 }

@@ -2,7 +2,9 @@
   <PropertyGroup>
     <AssemblyName>OpenMBEE.OpenSysML.Conformance</AssemblyName>
     <RootNamespace>OpenMBEE.OpenSysML.Conformance</RootNamespace>
-    <Description>Reads the language-independent conformance scenarios and judges what a client answered to them.</Description>
+    <!-- The runner: make conformance-dotnet runs it, and the tests reference it for its reader and adapters. -->
+    <OutputType>Exe</OutputType>
+    <Description>Runs the language-independent conformance scenarios through the client's public API and judges what it answered.</Description>
   </PropertyGroup>
 
   <ItemGroup>

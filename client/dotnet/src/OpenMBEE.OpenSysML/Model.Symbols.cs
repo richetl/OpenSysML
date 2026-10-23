@@ -25,13 +25,15 @@ public sealed partial class Model
     /// <param name="cancellationToken">Cancels the call.</param>
     /// <returns>The symbol.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="symbolId"/> is null.</exception>
-    /// <exception cref="SymbolNotFoundException">The model declares no such symbol; no suggestion is sought.</exception>
+    /// <exception cref="SymbolNotFoundException">The model declares no such symbol, as the service worded it; no suggestion is sought.</exception>
     /// <exception cref="ModelNotFoundException">The service no longer holds the model.</exception>
     /// <exception cref="ServiceException">The service refused the call.</exception>
     /// <exception cref="TransportException">The call failed in transport, or the answer was malformed.</exception>
-    public async Task<Symbol> SymbolAsync(string symbolId, CancellationToken cancellationToken = default) =>
-        await FindSymbolAsync(symbolId, cancellationToken).ConfigureAwait(false)
-            ?? throw new SymbolNotFoundException(symbolId, [], GetSymbolMethod);
+    public async Task<Symbol> SymbolAsync(string symbolId, CancellationToken cancellationToken = default)
+    {
+        var (symbol, error) = await ReadSymbolAsync(symbolId, cancellationToken).ConfigureAwait(false);
+        return symbol ?? throw new SymbolNotFoundException(symbolId, error, GetSymbolMethod);
+    }
 
     /// <summary>A symbol by qualified name, as the service resolves it, or null when the model declares no such symbol.</summary>
     /// <param name="symbolId">A qualified name, such as <c>Demo::Vehicle</c>.</param>
@@ -41,23 +43,8 @@ public sealed partial class Model
     /// <exception cref="ModelNotFoundException">The service no longer holds the model.</exception>
     /// <exception cref="ServiceException">The service refused the call.</exception>
     /// <exception cref="TransportException">The call failed in transport, or the answer was malformed.</exception>
-    public async Task<Symbol?> FindSymbolAsync(string symbolId, CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(symbolId);
-        Connection.ThrowIfDisposed();
-        var request = new Wire.GetSymbolRequest { ModelHash = Hash, SymbolId = symbolId };
-        var response = await Connection.ModelCallAsync<Wire.GetSymbolRequest, Wire.SymbolResponse>(GetSymbolMethod, request, cancellationToken).ConfigureAwait(false);
-
-        // The service reports one failure in band, a name that resolves to no symbol.
-        if (response.Error.Length > 0)
-        {
-            return null;
-        }
-
-        return response.Symbol is { } symbol
-            ? ModelWire.Symbol(symbol, GetSymbolMethod, "symbol")
-            : throw new TransportException(StatusCode.Internal, $"{GetSymbolMethod} answered neither a symbol nor a failure for {symbolId}.", GetSymbolMethod);
-    }
+    public async Task<Symbol?> FindSymbolAsync(string symbolId, CancellationToken cancellationToken = default) =>
+        (await ReadSymbolAsync(symbolId, cancellationToken).ConfigureAwait(false)).Symbol;
 
     /// <summary>
     /// A symbol by short name (<c>Vehicle</c>) or by its own <see cref="Symbol.Id"/> (<c>Demo::Vehicle</c>),
@@ -118,6 +105,23 @@ public sealed partial class Model
     public async Task<Symbol> LookupAsync(string name, CancellationToken cancellationToken = default) =>
         await FindAsync(name, cancellationToken).ConfigureAwait(false)
             ?? throw new SymbolNotFoundException(name, await NearNamesAsync(name, cancellationToken).ConfigureAwait(false), GetSymbolMethod);
+
+    // The symbol, or the one failure the service reports in band: a name that resolves to no symbol.
+    private async Task<(Symbol? Symbol, string Error)> ReadSymbolAsync(string symbolId, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(symbolId);
+        Connection.ThrowIfDisposed();
+        var request = new Wire.GetSymbolRequest { ModelHash = Hash, SymbolId = symbolId };
+        var response = await Connection.ModelCallAsync<Wire.GetSymbolRequest, Wire.SymbolResponse>(GetSymbolMethod, request, cancellationToken).ConfigureAwait(false);
+        if (response.Error.Length > 0)
+        {
+            return (null, response.Error);
+        }
+
+        return response.Symbol is { } symbol
+            ? (ModelWire.Symbol(symbol, GetSymbolMethod, "symbol"), string.Empty)
+            : throw new TransportException(StatusCode.Internal, $"{GetSymbolMethod} answered neither a symbol nor a failure for {symbolId}.", GetSymbolMethod);
+    }
 
     private static Wire.Query Selecting(string select, string? property = null, IEnumerable<string>? values = null)
     {

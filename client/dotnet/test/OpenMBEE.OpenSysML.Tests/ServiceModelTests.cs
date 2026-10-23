@@ -122,6 +122,7 @@ public sealed class ServiceModelTests(ServiceFixture services) : IClassFixture<S
         Assert.Contains("Vehicle", typo.Suggestions);
         Assert.Null(await model.FindSymbolAsync("Demo::Nope", Token));
         Assert.Equal("Demo::Nope", missing.Name);
+        Assert.Contains("symbol not found", missing.Message, StringComparison.Ordinal);
     }
 
     [Theory]

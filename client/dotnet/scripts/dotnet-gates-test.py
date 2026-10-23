@@ -11,6 +11,7 @@ import sys
 import tempfile
 import textwrap
 import unittest
+import xml.etree.ElementTree as ET
 from unittest import mock
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -320,6 +321,317 @@ class GatesTest(unittest.TestCase):
         with contextlib.redirect_stderr(stderr):
             self.assertEqual(gates.main(["coverage", os.path.join(self.tmp.name, "run")]), 1)
         self.assertIn("holds no Cobertura report", stderr.getvalue())
+
+
+def result(scenario, rpc, outcome="pass", status="OK", **extra):
+    """One result of a conformance report, its members in the reference runner's order."""
+    entry = {"id": scenario, "outcome": outcome, "rpc": rpc}
+    if "reason" in extra:
+        entry["reason"] = extra["reason"]
+    entry["status"] = status
+    if extra.get("without_capability"):
+        entry["without_capability"] = True
+    if extra.get("missing_capabilities"):
+        entry["missing_capabilities"] = extra["missing_capabilities"]
+    entry["duration_ms"] = extra.get("duration_ms", 1.5)
+    return entry
+
+
+def totals(results):
+    counted = {"total": len(results), "passed": 0, "failed": 0, "skipped": 0, "errored": 0, "without_capability": 0}
+    for entry in results:
+        counted[{"pass": "passed", "fail": "failed", "skip": "skipped", "error": "errored"}[entry["outcome"]]] += 1
+        counted["without_capability"] += 1 if entry.get("without_capability") else 0
+    return counted
+
+
+def conformance_report(service, runs):
+    """A report of runs: [(configuration, unavailable, [(protocol, capabilities, results)])]."""
+    configurations = []
+    for name, unavailable, protocols in runs:
+        configuration = {"name": name}
+        if unavailable:
+            configuration["unavailable_capabilities"] = unavailable
+        rendered = []
+        for protocol, capabilities, results in protocols:
+            rendered.append({"protocol": protocol, "service": service, "capabilities": capabilities, **totals(results), "results": results})
+        configuration.update(totals([r for _, _, results in protocols for r in results]))
+        configuration["protocols"] = rendered
+        configurations.append(configuration)
+    every = [r for _, _, protocols in runs for _, _, results in protocols for r in results]
+    return {"service": service, **totals(every), "configurations": configurations}
+
+
+def conformance_log(runs, responses):
+    """A runner's -v output of runs, printing responses[(configuration, protocol, id)] before its line."""
+    lines = []
+    for name, _, protocols in runs:
+        lines += ["", f"Configuration {name}"]
+        for protocol, _, results in protocols:
+            for entry in results:
+                response = responses.get((name, protocol, entry["id"]))
+                if response is not None:
+                    rendered = json.dumps(response, indent=2, sort_keys=True).split("\n")
+                    lines += ["       " + line for line in rendered]
+                mark = {"pass": "PASS", "fail": "FAIL", "skip": "SKIP", "error": "ERR "}[entry["outcome"]]
+                lines.append(f"{mark} {entry['id']:<46} {entry['status']}")
+                if "reason" in entry:
+                    lines.append(f"       {entry['reason']}")
+            counted = totals(results)
+            lines += ["", f"[{protocol}] {counted['total']} scenarios: {counted['passed']} passed, {counted['failed']} failed, "
+                      f"{counted['skipped']} skipped, {counted['errored']} in error"]
+    return "\n".join(lines) + "\n"
+
+
+def conformance_junit(report):
+    suites = []
+    dispositions = {"pass": "", "fail": "<failure/>", "skip": "<skipped/>", "error": "<error/>"}
+    for configuration in report["configurations"]:
+        for protocol in configuration["protocols"]:
+            cases = "".join(
+                f'<testcase name="{r["id"]}" classname="x" time="0">{dispositions[r["outcome"]]}</testcase>'
+                for r in protocol["results"]
+            )
+            suites.append(
+                f'<testsuite name="{configuration["name"]}/{protocol["protocol"]}" tests="{protocol["total"]}" '
+                f'failures="{protocol["failed"]}" errors="{protocol["errored"]}" skipped="{protocol["skipped"]}">{cases}</testsuite>'
+            )
+    return (
+        f'<?xml version="1.0" encoding="UTF-8"?>\n<testsuites name="conformance" tests="{report["total"]}" '
+        f'failures="{report["failed"]}" errors="{report["errored"]}" skipped="{report["skipped"]}">{"".join(suites)}</testsuites>\n'
+    )
+
+
+SKIPS = {"uncovered_rpcs": ["Query"], "unexpressible": {"parse/no_source": "the public API always names a source"}}
+
+
+class ConformanceCheckTest(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+
+    def runs(self, **change):
+        """A default and a withholding configuration over one protocol, as both runners judged them."""
+        default = [
+            result("server_info/caps", "GetServerInfo"),
+            result("evaluate/real", "Evaluate"),
+            result("parse/no_source", "ParseFile", "skip", "-", reason="the public API always names a source"),
+            result("query/oslc", "Query", "skip", "-", reason="the public API does not cover Query"),
+        ]
+        withheld = [
+            result("parse/strict", "ParseFile", status="UNIMPLEMENTED", reason="fallback", without_capability=True,
+                   missing_capabilities=["strict_conformance"]),
+        ]
+        runs = [("default", [], [("grpc", ["b", "a"], default)]), ("without-strict", ["strict_conformance"], [("grpc", ["b"], withheld)])]
+        responses = {
+            ("default", "grpc", "server_info/caps"): {"capabilities": ["b", "a"], "version": "${version}"},
+            ("default", "grpc", "evaluate/real"): {"result": {"real_value": 1500.5}},
+        }
+        for key, value in change.items():
+            if key == "responses":
+                responses = value
+            elif key == "runs":
+                runs = value
+        return runs, responses
+
+    def write(self, name, text):
+        path = os.path.join(self.tmp.name, name)
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(text)
+        return path
+
+    def check(self, ours=None, theirs=None, report=None, junit=None, skips=SKIPS):
+        ours = ours or self.runs()
+        theirs = theirs or self.runs()
+        our_report = report or conformance_report("dotnet", ours[0])
+        return gates.conformance_check(
+            self.write("dotnet.json", json.dumps(our_report)),
+            self.write("dotnet.log", conformance_log(*ours)),
+            self.write("dotnet.xml", junit or conformance_junit(our_report)),
+            self.write("reference.json", json.dumps(conformance_report("reference", theirs[0]))),
+            self.write("reference.log", conformance_log(*theirs)),
+            self.write("skips.json", json.dumps(skips)),
+        )
+
+    def reference_answering(self, scenario, response, **fields):
+        """The reference run, with one default-configuration scenario answered otherwise."""
+        runs, responses = self.runs()
+        default = runs[0][2][0][2]
+        default[[r["id"] for r in default].index(scenario)] = result(scenario, fields.pop("rpc", "ParseFile"), **fields)
+        responses = dict(responses)
+        if response is not None:
+            responses[("default", "grpc", scenario)] = response
+        return runs, responses
+
+    def test_agreeing_runs_pass_and_exclude_only_the_reviewed_skips(self):
+        self.assertEqual(self.check(), (3, 2))
+
+    def test_timing_and_what_answered_are_not_compared(self):
+        runs, responses = self.runs()
+        runs[0][2][0][2][1]["duration_ms"] = 99.0
+        self.assertEqual(self.check(theirs=(runs, responses)), (3, 2))
+
+    def test_capabilities_compare_as_a_set(self):
+        runs, responses = self.runs()
+        responses = dict(responses)
+        responses[("default", "grpc", "server_info/caps")] = {"capabilities": ["a", "b"], "version": "${version}"}
+        self.assertEqual(self.check(ours=(runs, responses)), (3, 2))
+        responses[("default", "grpc", "server_info/caps")] = {"capabilities": ["a"], "version": "${version}"}
+        with self.assertRaisesRegex(gates.GateError, r"server_info/caps: response capabilities: 1 entries, the reference 2"):
+            self.check(ours=(runs, responses))
+
+    def test_a_different_response_fails(self):
+        runs, responses = self.runs()
+        responses = dict(responses)
+        responses[("default", "grpc", "evaluate/real")] = {"result": {"real_value": 1500.0}}
+        with self.assertRaisesRegex(gates.GateError, r"evaluate/real: response result.real_value: 1500.0, the reference 1500.5"):
+            self.check(ours=(runs, responses))
+
+    def test_a_response_only_one_run_printed_fails(self):
+        runs, responses = self.runs()
+        responses = {key: value for key, value in responses.items() if key[2] != "evaluate/real"}
+        with self.assertRaisesRegex(gates.GateError, r"evaluate/real: response : None, the reference"):
+            self.check(ours=(runs, responses))
+
+    def test_a_different_outcome_or_status_fails(self):
+        with self.assertRaisesRegex(gates.GateError, r"evaluate/real: outcome 'pass', the reference 'fail'"):
+            self.check(theirs=self.reference_answering("evaluate/real", {"result": {"real_value": 1500.5}}, rpc="Evaluate", outcome="fail"))
+        with self.assertRaisesRegex(gates.GateError, r"evaluate/real: status 'OK', the reference 'NOT_FOUND'"):
+            self.check(theirs=self.reference_answering("evaluate/real", None, rpc="Evaluate", status="NOT_FOUND"))
+
+    def test_a_different_capability_verdict_fails(self):
+        runs, responses = self.runs()
+        runs[1][2][0][2][0]["missing_capabilities"] = ["oslc_query"]
+        with self.assertRaisesRegex(gates.GateError, r"parse/strict: missing_capabilities"):
+            self.check(theirs=(runs, responses))
+
+    def test_an_unlisted_skip_is_compared_not_excluded(self):
+        runs, responses = self.runs()
+        runs[0][2][0][2][1] = result("evaluate/real", "Evaluate", "skip", "-", reason="something else")
+        with self.assertRaisesRegex(gates.GateError, r"evaluate/real: outcome 'skip', the reference 'pass'"):
+            self.check(ours=(runs, {k: v for k, v in responses.items() if k[2] != "evaluate/real"}))
+
+    def test_a_listed_skip_for_another_reason_is_compared(self):
+        skips = {"uncovered_rpcs": ["Query"], "unexpressible": {"parse/no_source": "another reason"}}
+        with self.assertRaisesRegex(gates.GateError, r"parse/no_source: status '-', the reference 'INVALID_ARGUMENT'"):
+            self.check(theirs=self.reference_answering("parse/no_source", {"error": "x"}, status="INVALID_ARGUMENT", outcome="skip", reason="r"), skips=skips)
+
+    def test_a_report_whose_totals_do_not_add_up_fails(self):
+        report = conformance_report("dotnet", self.runs()[0])
+        report["passed"] += 1
+        with self.assertRaisesRegex(gates.GateError, r"passed is \d+, but its parts add up to"):
+            self.check(report=report)
+        report = conformance_report("dotnet", self.runs()[0])
+        report["configurations"][0]["protocols"][0]["skipped"] = 0
+        with self.assertRaisesRegex(gates.GateError, r"protocol 0: skipped is 0, but its parts add up to 2"):
+            self.check(report=report)
+
+    def test_a_report_of_another_shape_fails(self):
+        report = conformance_report("dotnet", self.runs()[0])
+        report["configurations"][0]["protocols"][0]["results"][0]["observed"] = {}
+        with self.assertRaisesRegex(gates.GateError, r"unknown member 'observed'"):
+            self.check(report=report)
+        report = conformance_report("dotnet", self.runs()[0])
+        report = {"total": report["total"], **report}
+        with self.assertRaisesRegex(gates.GateError, r"orders its members"):
+            self.check(report=report)
+        report = conformance_report("dotnet", self.runs()[0])
+        del report["configurations"][1]["protocols"][0]["results"][0]["status"]
+        with self.assertRaisesRegex(gates.GateError, r"has no 'status'"):
+            self.check(report=report)
+
+    def test_a_junit_report_disagreeing_with_the_json_fails(self):
+        report = conformance_report("dotnet", self.runs()[0])
+        junit = conformance_junit(report)
+        with self.assertRaisesRegex(gates.GateError, r"skipped='0', but the report counts 2"):
+            self.check(junit=junit.replace('skipped="2"', 'skipped="0"', 1))
+        with self.assertRaisesRegex(gates.GateError, r"cases are not the report's scenarios"):
+            self.check(junit=junit.replace("evaluate/real", "evaluate/other"))
+        start = junit.index('<testsuite name="without-strict/grpc"')
+        end = junit.index("</testsuite>", start) + len("</testsuite>")
+        with self.assertRaisesRegex(gates.GateError, r"has 1 suites, but the report runs 2"):
+            self.check(junit=junit[:start] + junit[end:])
+
+    def test_junit_case_outcomes_agree_for_all_results(self):
+        results = [result(f"evaluate/{outcome}", "Evaluate", outcome=outcome) for outcome in ("pass", "fail", "skip", "error")]
+        report = conformance_report("dotnet", [("default", [], [("grpc", [], results)])])
+
+        gates.check_conformance_junit(self.write("outcomes.xml", conformance_junit(report)), report)
+
+    def test_junit_missing_wrong_or_duplicate_outcomes_fail(self):
+        expected = {"pass": [], "fail": ["failure"], "skip": ["skipped"], "error": ["error"]}
+        corruptions = [
+            [], ["failure"], ["skipped"], ["error"],
+            ["failure", "failure"], ["skipped", "skipped"], ["error", "error"],
+            ["failure", "error"], ["skipped", "failure"], ["error", "skipped"],
+        ]
+        for outcome, want in expected.items():
+            report = conformance_report("dotnet", [("default", [], [("grpc", [], [result("evaluate/a", "Evaluate", outcome=outcome)])])])
+            for elements in corruptions:
+                if elements == want:
+                    continue
+                with self.subTest(outcome=outcome, elements=elements):
+                    root = ET.fromstring(conformance_junit(report))
+                    case = root.find("./testsuite/testcase")
+                    for child in list(case):
+                        case.remove(child)
+                    for tag in elements:
+                        ET.SubElement(case, tag)
+                    with self.assertRaisesRegex(gates.GateError, r"case evaluate/a: outcome elements .* want"):
+                        gates.check_conformance_junit(self.write("corrupt.xml", ET.tostring(root, encoding="unicode")), report)
+
+    def test_junit_swapped_outcomes_fail_with_unchanged_totals(self):
+        report = conformance_report("dotnet", self.runs()[0])
+        root = ET.fromstring(conformance_junit(report))
+        passed, _, skipped, _ = root.find("testsuite").findall("testcase")
+        passed.append(skipped.find("skipped"))
+        skipped.remove(skipped.find("skipped"))
+
+        with self.assertRaisesRegex(gates.GateError, r"case server_info/caps: outcome elements .* want"):
+            self.check(junit=ET.tostring(root, encoding="unicode"))
+
+    def test_a_junit_report_with_all_skips_removed_fails(self):
+        report = conformance_report("dotnet", self.runs()[0])
+        junit = conformance_junit(report).replace("<skipped/>", "")
+
+        with self.assertRaisesRegex(gates.GateError, r"case parse/no_source: outcome elements .* want"):
+            self.check(junit=junit)
+
+    def test_different_configurations_fail(self):
+        runs, responses = self.runs()
+        with self.assertRaisesRegex(gates.GateError, r"the runs test configurations"):
+            self.check(theirs=(runs[:1], responses))
+
+    def test_a_log_without_a_scenario_fails(self):
+        runs, responses = self.runs()
+        log = conformance_log(runs, responses).replace("PASS evaluate/real", "PASS evaluate/elsewhere")
+        report = conformance_report("dotnet", runs)
+        with self.assertRaisesRegex(gates.GateError, r"evaluate/real: a log has no line for it"):
+            gates.conformance_check(
+                self.write("d.json", json.dumps(report)),
+                self.write("d.log", log),
+                self.write("d.xml", conformance_junit(report)),
+                self.write("r.json", json.dumps(conformance_report("reference", runs))),
+                self.write("r.log", conformance_log(runs, responses)),
+                self.write("s.json", json.dumps(SKIPS)),
+            )
+
+    def test_main_reports_the_check(self):
+        runs, responses = self.runs()
+        report = conformance_report("dotnet", runs)
+        argv = [
+            "conformance-check",
+            "--report", self.write("d.json", json.dumps(report)),
+            "--log", self.write("d.log", conformance_log(runs, responses)),
+            "--junit", self.write("d.xml", conformance_junit(report)),
+            "--reference-report", self.write("r.json", json.dumps(conformance_report("reference", runs))),
+            "--reference-log", self.write("r.log", conformance_log(runs, responses)),
+            "--expected-skips", self.write("s.json", json.dumps(SKIPS)),
+        ]
+        stdout = io.StringIO()
+        with contextlib.redirect_stdout(stdout):
+            self.assertEqual(gates.main(argv), 0)
+        self.assertEqual(stdout.getvalue(), "OK 3 results agree with the reference runner; 2 reviewed skips excluded\n")
 
 
 if __name__ == "__main__":

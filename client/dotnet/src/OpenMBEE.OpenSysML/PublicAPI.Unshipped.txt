@@ -380,6 +380,7 @@ OpenMBEE.OpenSysML.SymbolNotFoundException
 OpenMBEE.OpenSysML.SymbolNotFoundException.Name.get -> string!
 OpenMBEE.OpenSysML.SymbolNotFoundException.Suggestions.get -> OpenMBEE.OpenSysML.ValueList<string!>
 OpenMBEE.OpenSysML.SymbolNotFoundException.SymbolNotFoundException(string! name, System.Collections.Generic.IEnumerable<string!>! suggestions, string! method) -> void
+OpenMBEE.OpenSysML.SymbolNotFoundException.SymbolNotFoundException(string! name, string! message, string! method) -> void
 OpenMBEE.OpenSysML.TransportException
 OpenMBEE.OpenSysML.TransportException.Method.get -> string!
 OpenMBEE.OpenSysML.TransportException.StatusCode.get -> OpenMBEE.OpenSysML.StatusCode

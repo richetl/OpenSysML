@@ -76,7 +76,7 @@ public sealed class ModelSymbolTests
         Assert.Equal("Demo::Nope", missing.Name);
         Assert.True(missing.Suggestions.IsEmpty);
         Assert.Equal(Model.GetSymbolMethod, missing.Method);
-        Assert.Equal("No symbol named 'Demo::Nope' in this model.", missing.Message);
+        Assert.Equal("symbol not found: Demo::Nope", missing.Message);
         Assert.Null(found);
         Assert.Equal(StatusCode.Internal, malformed.StatusCode);
     }

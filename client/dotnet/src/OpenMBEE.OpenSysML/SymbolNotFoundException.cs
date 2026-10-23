@@ -11,7 +11,7 @@ namespace OpenMBEE.OpenSysML;
 /// </summary>
 public class SymbolNotFoundException : ModelException
 {
-    /// <summary>Creates the exception.</summary>
+    /// <summary>Creates the exception for a lookup that found no symbol, naming the declared names close to it.</summary>
     /// <param name="name">The name looked up.</param>
     /// <param name="suggestions">Declared names close enough to be typos of it, best first.</param>
     /// <param name="method">The method whose answer reported no symbol, as <c>sysml.SysMLService/GetSymbol</c>.</param>
@@ -20,6 +20,19 @@ public class SymbolNotFoundException : ModelException
     public SymbolNotFoundException(string name, IEnumerable<string> suggestions, string method)
         : this(name, new ValueList<string>(suggestions ?? throw new ArgumentNullException(nameof(suggestions))), method)
     {
+    }
+
+    /// <summary>Creates the exception for a symbol the service reported it could not find, in its own words.</summary>
+    /// <param name="name">The name looked up.</param>
+    /// <param name="message">The failure, as the service worded it.</param>
+    /// <param name="method">The method whose answer reported no symbol, as <c>sysml.SysMLService/GetSymbol</c>.</param>
+    /// <exception cref="ArgumentNullException">An argument is null.</exception>
+    public SymbolNotFoundException(string name, string message, string method)
+        : base(message ?? throw new ArgumentNullException(nameof(message)), method, [])
+    {
+        ArgumentNullException.ThrowIfNull(name);
+        Name = name;
+        Suggestions = default;
     }
 
     private SymbolNotFoundException(string name, ValueList<string> suggestions, string method)
