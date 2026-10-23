@@ -66,6 +66,7 @@ internal static class ApiAdapters
     internal static FrozenDictionary<string, RpcAdapter> All { get; } =
         ConnectionArea.Adapters
             .Concat(ModelArea.Adapters)
+            .Concat(ExecutionArea.Adapters)
             .ToFrozenDictionary(adapter => adapter.Method, StringComparer.Ordinal);
 
     /// <summary>Why a scenario of an RPC the public API does not cover is skipped.</summary>

@@ -9,9 +9,11 @@ of this repository and consumed by `ProjectReference`. It is not published to Nu
 > through a raw, schema-checked escape hatch. It loads models from a file, from inline
 > notation or from several documents, and reads them: symbols and name lookup, diagnostics,
 > expression evaluation and instantiation, with the immutable values those operations
-> exchange. Its [conformance runner](#conformance) runs the shared suite through that API.
-> It does not download a release of the service, and offers none of the other
-> typed operations (execution, verification, conversion, queries, documents, editing). The
+> exchange. It [runs and checks behavior](#running-and-checking-behavior): actions and state
+> machines once or over every order of their choice points, and a search of every schedule
+> for a violated property. Its [conformance runner](#conformance) runs the shared suite
+> through that API. It does not download a release of the service, and offers none of the
+> other typed operations (verification, conversion, queries, documents, editing). The
 > other clients ([Python](../python/), [Java](../java/), [Rust](../rust/), [Node](../node/))
 > are the ones to use for those today.
 
@@ -232,6 +234,8 @@ use after disposal, which are the standard exceptions:
 | The service no longer holds the model a call named | `ModelNotFoundException`, a `ServiceException` with `NotFound` |
 | The service could not read a file a parse named | `ModelFileNotFoundException`, a `ServiceException` with `NotFound` |
 | The service answered, reporting a failure about the model: an expression that did not evaluate, a symbol that is not there, an object that could not be built | `ModelException`, with `Method` and the answer's `Diagnostics`; `SymbolNotFoundException`, with `Name` and `Suggestions`, for a symbol; `ModelErrorsException` from `RequireNoErrors` |
+| The service answered that a run failed: no initial node, no such behavior, a performer that could not be made, a run still waiting when its advance ran out | `ExecutionException`, a `ModelException` with the run's `FinalTime` and, for a traced state run, its `Trace` up to the failure and `TraceDropped` |
+| The service answered a check it refused before any search: the behavior, a property or the performer does not resolve | `CheckException`, a `ModelException` with the `Partial` result the answer carried, including its verdict when supplied |
 | No well-formed answer was read: the endpoint was unreachable or did not speak the protocol, a Connect refusal was not a Connect error, the answer was malformed or over a size limit, or the deadline passed | `TransportException`, with `StatusCode`, `Method` and the cause as `InnerException` |
 | The service answered a value of a kind this client does not know | `UnsupportedValueException`, with `Method`, `Path` and the value's `ValueBytes` |
 | The caller's token was cancelled | `OperationCanceledException` carrying that token |
@@ -325,6 +329,63 @@ fails closes it before the failure is reported.
 await using var model = await OpenSysMLClient.LoadContentAsync(
     "package P { part def A; }", new ConnectionOptions { Address = "localhost:50051" });
 ```
+
+## Running and checking behavior
+
+```csharp
+var model = (await connection.LoadAsync("behavior.sysml")).RequireNoErrors();
+var run = await model.ExecuteActionAsync("Test::addFive", new Dictionary<string, Value> { ["result"] = new Value.IntegerValue(10) });
+var declared = await model.ExecuteActionAsync("Test::race", options: new RunOptions { Schedule = "declared" });
+var every = await model.ExploreActionAsync("Test::race");             // every outcome, and whether that is all of them
+var traced = await model.ExecuteStateAsync("Test::Machine", options: new RunOptions { Trace = true });
+var tank = (await connection.LoadAsync("tank.sysml")).RequireNoErrors();
+var check = await tank.CheckActionAsync("Plant::Tank::fill", options: new CheckOptions
+{
+    PerformerSymbolId = "Plant::tank", Properties = ["Plant::Tank::low"], Diverge = ["this.level"],
+});
+```
+
+| Method | Answers |
+| --- | --- |
+| `ExecuteActionAsync` | An `ActionRun`: the action's `Outputs`, the `PerformerAttributes` of the object it ran on (`this.level`), its `Diagnostics` (choice points, unevaluable guards), the `FinalTime` of its clock, and the outputs each `OrderDependent` choice touched |
+| `ExecuteStateAsync` | A `StateRun`: the `StatesVisited` in the order the run entered them, the `FinalContext`, and, when `RunOptions.Trace` asks for it, the run's `Trace` of `DocumentEvent`s and how many records the service dropped |
+| `ExploreActionAsync` / `ExploreStateAsync` | An `Exploration`: each distinct `Outcome` with its linearizations, witness choices and model-draw probability, whether the exploration was `Complete`, and the budgets that cut it short |
+| `CheckActionAsync` / `CheckStateAsync` | A `CheckResult`: the verdict (`holds`, `fails`, `undecided`), the report's lines, the search's statistics, each violation, divergence and final outcome with a `CheckWitness` that replays it, the symbolic engine's claim, and the `Standing` of the engine that answered |
+
+`RunOptions` carries what the `sysml` command's run flags do: the `Schedule` (`declared`,
+`reverse`, `seed:<n>`, or `explore[:runs=<n>,depth=<d>]` for an exploration), the
+`PerformerSymbolId` of the object performing the behavior, the state-run `Trace`, and the
+run's `Advance`, `Seed`, `Draws` and `ClockStep`. A run and an exploration answer differently,
+so each call takes only its own kind of schedule: an exploring schedule passed to
+`ExecuteActionAsync`, a single-run schedule passed to an explore call, or a trace asked of an
+action or an exploration is an `InvalidRequestException` before anything is sent. An explore
+call naming no schedule explores under the service's default budget. `CheckOptions` carries
+the `-check-*` flags: the properties held at every stable state, the features allowed to
+diverge, the symbolic engine's free inputs and assumptions, whether each witness carries its
+file, the bounds, the engine and the performer. A failing property is a `CheckResult`, never
+an exception. A value the service would not accept, a malformed schedule or budget, an unknown
+draw policy or engine, and a negative bound are the service's to refuse, with
+`InvalidArgument`.
+
+Before anything is sent, a call is held to the capabilities its options need, in the order
+the service checks them: `schedule` for a schedule and `schedule_explore` for an exploring
+one, `state_trace` for a trace, `performer` for a performer, and the value capabilities of
+each input; a check needs `check`, then `performer`, `engines` for an engine and
+`schedule_explore` for the `explore` engine. `final_time` and `order_dependence` only say
+whether the service fills those fields: they are read whatever it advertises, as 0 or empty
+from a service without them.
+
+A trace record, and the row of a document query, is read into the `DocumentValue` family:
+an element (with no `Id` when the service names an anonymous one), an object, a string, a
+number kept as the `Value.NumberValue` it was sent as, a boolean, `*`, a quantity, or a
+verdict, state or event row. An arm this client does not know is an
+`UnsupportedValueException`, never an anonymous element, and an answer of the wrong shape (an
+exploration answering one run, a run answering an exploration) is a malformed answer, a
+`TransportException` with `Internal`.
+
+A check answer containing neither a verdict nor an error is also malformed and raises
+`TransportException` with `Internal`. An in-band error remains a `CheckException`, preserving
+the partial result even when the service omitted its verdict.
 
 ## Values
 
@@ -586,15 +647,20 @@ exits 1, including a JSON or JUnit destination that cannot be written: the diagn
 the report format, destination and filesystem error.
 
 Each RPC the API covers has an adapter, grouped by area beside the methods it calls
-(`ConnectionArea`, `ModelArea`). An adapter reads the decoded request as the arguments of the
-typed method, so the request the client sends is the one the scenario states, and renders what
-the method returned, with [`Rendering`](src/OpenMBEE.OpenSysML.Conformance/Rendering.cs) reading
-only public types, back into the response. A failure the service reported in band is rendered
-as the response's `error` and diagnostics; a refusal keeps the service's status and message; a
+(`ConnectionArea`, `ModelArea`, `ExecutionArea`). An adapter reads the decoded request as the
+arguments of the typed method, so the request the client sends is the one the scenario states,
+and renders what the method returned, with [`Rendering`](src/OpenMBEE.OpenSysML.Conformance/Rendering.cs)
+reading only public types, back into the response. The values a request sends are read into
+public `Value`s by public constructors, so the typed call writes them itself. ExecuteAction
+and ExecuteState call the explore method when the schedule explores, and the run method
+otherwise. A failure the service reported in band is rendered
+as the response's `error` and diagnostics, with what the exception kept of the answer: a run's
+clock and trace, a check's partial result; a refusal keeps the service's status and message; a
 capability the client refuses for before sending is `UNIMPLEMENTED`, which the service would
 answer; a transport failure is its status. Nothing is sent raw: a test reads the runner's IL
 and fails on any call to `Connection.CallAsync` or the generated stub. A request setting a field
-the adapter cannot send, or one the API has no way to express, is skipped for a stated reason.
+the adapter cannot send, or one the API has no way to express, is skipped for a stated reason;
+so is one the API itself refuses with `InvalidRequestException`, for that exception's message.
 
 Skips are accounted exactly. `expected-skips.json` lists the RPCs no adapter covers yet,
 which must be the inventory's `deferred` rows, and the scenarios whose request the API cannot
@@ -607,8 +673,8 @@ skip, the run says so. Per protocol, of 194 scenarios:
 
 | Configuration | ran | passed | skipped as uncovered | skipped as unexpressible |
 | --- | --: | --: | --: | --: |
-| default | 51 | 51 | 142 | 1 |
-| `strict_conformance` and `oslc_query` withheld | 50 | 50 | 142 | 1 |
+| default | 70 | 70 | 123 | 1 |
+| `strict_conformance` and `oslc_query` withheld | 69 | 69 | 123 | 1 |
 
 The one unexpressible request, `parse/naming_no_source_is_invalid`, names no source, which
 the API always does. Withheld, `strict_conformance`'s fallback runs and is refused before
@@ -619,9 +685,9 @@ test asserts it fails the run:
 
 | `-mutate` | What it does to every answer | Scenarios that fail, per protocol |
 | --- | --- | --: |
-| `perturb-reals` | Moves each real by a millionth | 13 |
-| `truncate-lists` | Drops the last entry of each list | 16 |
-| `rewrite-strings` | Replaces each non-empty string but no map key | 24 |
+| `perturb-reals` | Moves each real by a millionth | 16 |
+| `truncate-lists` | Drops the last entry of each list | 20 |
+| `rewrite-strings` | Replaces each non-empty string but no map key | 31 |
 
 `make conformance-dotnet-check` also runs the reference runner against the same binary, both
 with `-v`, and `dotnet-gates.py conformance-check` holds the two runs together: both reports

@@ -63,6 +63,32 @@ internal static class ValueWire
     internal static ValueDictionary<Value> FromWire(IReadOnlyDictionary<string, Wire.Value> values, string method, string path) =>
         new(values.Select(entry => KeyValuePair.Create(entry.Key, Read(entry.Value, method, $"{path}[{ValueText.Quoted(entry.Key)}]", 0))));
 
+    /// <summary>Reads a quantity another message carries by the rules a value's quantity is read by.</summary>
+    /// <exception cref="TransportException">The quantity is malformed.</exception>
+    internal static Quantity FromWire(Wire.Quantity quantity, string method, string path)
+    {
+        ArgumentNullException.ThrowIfNull(quantity);
+        try
+        {
+            return QuantityOf(quantity, method, path);
+        }
+        catch (ArgumentException invalid)
+        {
+            throw Malformed(method, path, Reason(invalid), invalid);
+        }
+    }
+
+    /// <summary>Reads an Integer beyond int64 another message carries, as canonical decimal digits.</summary>
+    /// <exception cref="TransportException">The digits are not canonical, or the integer is within int64.</exception>
+    internal static BigInteger BigIntegerFromWire(string digits, string method, string path) => BigIntegerOf(digits, method, path);
+
+    /// <summary>Reads an exact Rational another message carries, as canonical terms no double holds.</summary>
+    /// <exception cref="TransportException">The terms are not canonical, not in lowest terms, or a double.</exception>
+    internal static Rational RationalFromWire(Wire.Rational terms, string method, string path) => RationalOf(terms, method, path);
+
+    /// <summary>The failure of reading a malformed answer.</summary>
+    internal static TransportException MalformedAnswer(string method, string path, string reason) => Malformed(method, path, reason);
+
     /// <summary>Writes a value for a request, refusing one no service reads as an argument.</summary>
     /// <param name="value">The value.</param>
     /// <param name="path">Where the value is in the request, as <c>named_arguments["x"]</c>, for the error.</param>

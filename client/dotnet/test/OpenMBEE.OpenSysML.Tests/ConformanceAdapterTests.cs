@@ -66,7 +66,17 @@ public sealed class ConformanceAdapterTests
         { "ParseSources", """{"documents": [{"file_path": ""}]}""", "the public API names a file document by a path that is not empty" },
         { "GetSymbol", """{"model_hash": " ", "symbol_id": "Demo::Vehicle"}""", "the public API names a model by a hash that is not blank" },
         { "Evaluate", """{"expression": "2 + 2"}""", "the public API names a model by a hash that is not blank" },
-        { "ExecuteAction", """{"model_hash": "h"}""", "the public API does not cover ExecuteAction" },
+        { "VerifyConstraint", """{"model_hash": "h"}""", "the public API does not cover VerifyConstraint" },
+        { "ExecuteAction", """{"model_hash": "h", "inputs": {"x": {"unset": true}}}""", "The value at inputs[\"x\"] is unset, which is what a feature with no value reads as, never an argument; leave the argument out instead." },
+        { "ExecuteAction", """{"model_hash": "h", "inputs": {"x": {"big_int_value": "+9223372036854775808"}}}""", "the public API writes an integer in canonical digits, which inputs[\"x\"]'s \"+9223372036854775808\" is not" },
+        { "ExecuteAction", """{"model_hash": "h", "inputs": {"x": {"rational_value": {"numerator": "2", "denominator": "4"}}}}""", "the public API writes a rational in lowest terms over a positive denominator, which inputs[\"x\"]'s 2/4 is not" },
+        { "ExecuteAction", """{"model_hash": "h", "inputs": {"x": {}}}""", "the public API holds no value as inputs[\"x\"] spells it (None)" },
+        { "ExecuteAction", """{"model_hash": "h", "inputs": {"x": {"undetermined": {"reason": "open"}}}}""", "The value at inputs[\"x\"] is undetermined, which is a result the model leaves open, never an argument." },
+        { "ExecuteAction", """{"model_hash": "h", "inputs": {"x": {"sequence": {"elements": [{"quantity": {"unit": "m"}}]}}}}""", "the public API holds a quantity with its magnitude, which inputs[\"x\"].sequence[0].quantity has none of" },
+        { "CheckBehavior", """{"model_hash": "h", "action_symbol_id": "A", "inputs": {"x": {"vector": {"components": [{"bool_value": true}]}}}}""", "the public API holds a vector's components as numbers, which inputs[\"x\"].vector[0] is not" },
+        { "ExecuteState", """{"model_hash": "h", "schedule": "explore", "trace": true}""", "RunOptions.Trace asks for one run's trace, which an exploration describes none of; leave it false." },
+        { "CheckBehavior", """{"model_hash": "h", "action_symbol_id": "A", "state_machine_symbol_id": "S"}""", "the public API checks one behavior, so it cannot name both an action and a state machine" },
+        { "CheckBehavior", """{"model_hash": "h", "state_machine_symbol_id": "S", "inputs": {"x": {"int_value": 1}}}""", "the public API binds inputs only to an action it checks, so it cannot send them with a state machine" },
     };
 
     private static Dictionary<string, (IMessage Request, IMessage Response)> Complete => new(StringComparer.Ordinal)
@@ -117,7 +127,76 @@ public sealed class ConformanceAdapterTests
                 Instances = { CompleteWire.Instance, new Wire.Instance { Id = 10, TypeSymbolId = "Demo::Engine" } },
                 Diagnostics = { CompleteWire.Diagnostic },
             }),
+        ["ExecuteAction"] = (
+            new Wire.ExecuteActionRequest
+            {
+                ModelHash = Hash,
+                ActionSymbolId = "Test::addFive",
+                Inputs = { SendableValues },
+                Schedule = "declared",
+                PerformerSymbolId = "Plant::tank",
+                Advance = 3,
+                Seed = 42,
+                Draws = "min",
+                ClockStep = 0.25,
+            },
+            CompleteExecutionWire.ActionRun),
+        ["ExecuteAction exploring"] = (
+            new Wire.ExecuteActionRequest { ModelHash = Hash, ActionSymbolId = "Test::race", Schedule = "explore:runs=8,depth=4", Advance = 0 },
+            CompleteExecutionWire.ActionExploration),
+        ["ExecuteState"] = (
+            new Wire.ExecuteStateRequest
+            {
+                ModelHash = Hash,
+                StateMachineSymbolId = "Test::Machine",
+                Events = { "go", "stop" },
+                Schedule = "seed:3",
+                PerformerSymbolId = "Test::box",
+                Trace = true,
+                Advance = 1,
+                Seed = 7,
+                Draws = "random",
+                ClockStep = 2,
+            },
+            CompleteExecutionWire.StateRun),
+        ["ExecuteState exploring"] = (
+            new Wire.ExecuteStateRequest { ModelHash = Hash, StateMachineSymbolId = "Test::Machine", Events = { "go" }, Schedule = "explore" },
+            CompleteExecutionWire.StateExploration),
+        ["CheckBehavior"] = (
+            new Wire.CheckBehaviorRequest
+            {
+                ModelHash = Hash,
+                ActionSymbolId = "Plant::Tank::fill",
+                Inputs = { ["x"] = new Wire.Value { IntValue = 3 } },
+                PerformerSymbolId = "Plant::tank",
+                CheckProperty = { "Plant::Tank::low" },
+                CheckDiverge = { "this.level" },
+                CheckInput = { "x" },
+                CheckAssume = { "Plant::Tank::capped" },
+                CheckWitness = true,
+                CheckDepth = -1,
+                CheckStates = 10,
+                CheckUnroll = 2,
+                CheckTimeout = 0.5,
+                Engine = "explore",
+            },
+            CompleteExecutionWire.Check),
+        ["CheckBehavior of a state machine"] = (
+            new Wire.CheckBehaviorRequest { ModelHash = Hash, StateMachineSymbolId = "Test::Machine", CheckProperty = { "Test::ok" } },
+            new Wire.CheckBehaviorResponse { Verdict = "holds", Engine = "check" }),
+        ["CheckBehavior of no behavior"] = (
+            new Wire.CheckBehaviorRequest { ModelHash = Hash },
+            new Wire.CheckBehaviorResponse { Verdict = "undecided" }),
     };
+
+    // Every value a request can send, one of each arm the API writes as given, by name.
+    private static Dictionary<string, Wire.Value> SendableValues => CompleteWire.Values
+        .Where(value => value.KindCase is not (Wire.Value.KindOneofCase.Unset or Wire.Value.KindOneofCase.Undetermined or Wire.Value.KindOneofCase.Null)
+            && value.Function?.SelfId is null or 0)
+        .Append(new Wire.Value { Null = string.Empty })
+        .Append(new Wire.Value { Function = new Wire.Function { CalcId = "F::Sq" } })
+        .Select((value, i) => (Name: $"v{i:D2}", Value: value))
+        .ToDictionary(entry => entry.Name, entry => entry.Value, StringComparer.Ordinal);
 
     private static Dictionary<string, (IMessage Request, IMessage Response)> InBand => new(StringComparer.Ordinal)
     {
@@ -139,6 +218,15 @@ public sealed class ConformanceAdapterTests
         ["Instantiate"] = (
             new Wire.InstantiateRequest { ModelHash = Hash, SymbolId = "Test::DoesNotExist" },
             new Wire.InstantiateResponse { Error = "symbol not found: Test::DoesNotExist", Diagnostics = { CompleteWire.Diagnostic } }),
+        ["ExecuteAction"] = (
+            new Wire.ExecuteActionRequest { ModelHash = Hash, ActionSymbolId = "Timed::delayed", Advance = 2 },
+            CompleteExecutionWire.FailedAction),
+        ["ExecuteState"] = (
+            new Wire.ExecuteStateRequest { ModelHash = Hash, StateMachineSymbolId = "Test::Machine", Trace = true },
+            CompleteExecutionWire.FailedState),
+        ["CheckBehavior"] = (
+            new Wire.CheckBehaviorRequest { ModelHash = Hash, ActionSymbolId = "Plant::Tank::drain" },
+            CompleteExecutionWire.FailedCheck),
     };
 
     [Theory]
@@ -237,6 +325,22 @@ public sealed class ConformanceAdapterTests
 
         Assert.Equal(new ScenarioAnswer.Unexpressible(reason), answer);
         Assert.Equal(["GetServerInfo"], handler.Requests.Select(request => request.Method));
+    }
+
+    [Fact]
+    public async Task AValueThePublicTypesRefuseAsSpelledIsUnexpressibleForTheirReason()
+    {
+        var method = ScenarioRequests.Method("ExecuteAction");
+        using var handler = new FakeServiceHandler { Capabilities = FakeModels.ModelCapabilities };
+        await using var connection = await FakeConnection.OpenAsync(handler);
+        var request = JsonParser.Default.Parse("""{"model_hash": "h", "inputs": {"x": {"array": {"dimensions": [3], "elements": [{"int_value": 1}]}}}}""", method.InputType);
+
+        var answer = await Client(connection).CallAsync(method, request, TestContext.Current.CancellationToken);
+
+        var reason = Assert.IsType<ScenarioAnswer.Unexpressible>(answer).Reason;
+        Assert.StartsWith("the public API cannot hold inputs[\"x\"] as spelled: An array", reason, StringComparison.Ordinal);
+        Assert.DoesNotContain("(Parameter", reason, StringComparison.Ordinal);
+        Assert.Equal(["GetServerInfo"], handler.Requests.Select(sent => sent.Method));
     }
 
     [Theory]

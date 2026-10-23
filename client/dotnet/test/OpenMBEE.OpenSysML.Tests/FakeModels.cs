@@ -19,6 +19,13 @@ internal static class FakeModels
         Capabilities.ParseSourcesAffected,
         Capabilities.EvaluateSubject,
         Capabilities.Query,
+        Capabilities.Schedule,
+        Capabilities.ScheduleExplore,
+        Capabilities.Performer,
+        Capabilities.StateTrace,
+        Capabilities.Check,
+        Capabilities.Engines,
+        .. Internal.ValueWire.SendGateOrder,
     ];
 
     /// <summary>Answers a method from its request; methods answered before keep their answers.</summary>

@@ -1,12 +1,9 @@
 {
   "uncovered_rpcs": [
     "ApplyEdits",
-    "CheckBehavior",
     "CompareResults",
     "Convert",
     "EvaluateCalc",
-    "ExecuteAction",
-    "ExecuteState",
     "ExportGraphs",
     "ImportData",
     "ListEngines",

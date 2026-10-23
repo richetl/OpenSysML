@@ -229,9 +229,9 @@ public sealed class ServiceConformanceTests(ServiceFixture services) : IClassFix
             fault.Message);
     }
 
-    private static RunOptions Options() => new() { Directory = Suite, ExpectedSkips = Skips, Binary = ServiceGate.FromProcess.RequireBinary() };
+    private static Conformance.RunOptions Options() => new() { Directory = Suite, ExpectedSkips = Skips, Binary = ServiceGate.FromProcess.RequireBinary() };
 
-    private static async Task<(int Exit, string Output, string Errors)> RunAsync(RunOptions options)
+    private static async Task<(int Exit, string Output, string Errors)> RunAsync(Conformance.RunOptions options)
     {
         using var output = new StringWriter();
         using var errors = new StringWriter();

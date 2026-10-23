@@ -258,10 +258,10 @@
         "Model.ExecuteActionAsync",
         "Model.ExploreActionAsync"
       ],
-      "input": "RunOptions",
+      "input": "action ID, inputs, RunOptions",
       "result": "ActionRun or Exploration",
       "area": "execution",
-      "status": "deferred",
+      "status": "implemented",
       "gates": [
         {
           "capability": "schedule",
@@ -293,6 +293,18 @@
         "execute_action/advance_past_the_wait_completes_the_run",
         "execute_action/clock_step_rounds_a_wait_up_to_the_next_tick",
         "execute_action/an_unknown_draw_policy_is_refused"
+      ],
+      "tests": [
+        "ModelExecutionTests.ExecuteActionSendsEveryOptionAndReadsEveryFieldOfTheRun",
+        "ModelExecutionTests.ExploreSendsExploreUnlessABudgetIsNamedAndReadsEveryOutcome",
+        "ModelExecutionTests.RunGatesAreCheckedInTheServicesOrderBeforeAnythingIsSent",
+        "ModelExecutionTests.ARunAndAnExplorationEachRefuseTheOthersOptionsBeforeSending",
+        "ModelExecutionTests.AFailedRunIsAnExecutionExceptionKeepingItsClockTraceAndDiagnostics",
+        "ModelExecutionTests.AnAnswerOfTheOtherShapeOrAMalformedValueIsRefused",
+        "ServiceExecutionTests.AnActionRunsWithItsInputsScheduleAndClock",
+        "ServiceExecutionTests.AFailedRunIsInBandAndAnUnreadableOptionIsRefused",
+        "ServiceExecutionTests.AnExplorationReachesEveryOrderOrSaysWhichBudgetCutItShort",
+        "ServiceExecutionTests.AWithheldCapabilityIsRefusedBeforeAnythingIsSent"
       ]
     },
     {
@@ -303,10 +315,10 @@
         "Model.ExecuteStateAsync",
         "Model.ExploreStateAsync"
       ],
-      "input": "RunOptions",
+      "input": "state machine ID, events, RunOptions",
       "result": "StateRun or Exploration",
       "area": "execution",
-      "status": "deferred",
+      "status": "implemented",
       "gates": [
         {
           "capability": "schedule",
@@ -335,6 +347,18 @@
         "execute_state/a_requested_trace_reports_transitions",
         "execute_state/a_schedule_naming_no_policy_is_invalid",
         "execute_state/an_unknown_symbol_is_reported_in_band"
+      ],
+      "tests": [
+        "ModelExecutionTests.ExecuteStateSendsItsEventsAndTraceAndReadsTheTraceItAnswers",
+        "ModelExecutionTests.ExploreSendsExploreUnlessABudgetIsNamedAndReadsEveryOutcome",
+        "ModelExecutionTests.RunGatesAreCheckedInTheServicesOrderBeforeAnythingIsSent",
+        "ModelExecutionTests.ARunAndAnExplorationEachRefuseTheOthersOptionsBeforeSending",
+        "ModelExecutionTests.AFailedRunIsAnExecutionExceptionKeepingItsClockTraceAndDiagnostics",
+        "ModelExecutionTests.AnAnswerOfTheOtherShapeOrAMalformedValueIsRefused",
+        "ServiceExecutionTests.AStateMachineReportsTheStatesItVisitedAndItsTrace",
+        "ServiceExecutionTests.AFailedRunIsInBandAndAnUnreadableOptionIsRefused",
+        "ServiceExecutionTests.AnExplorationReachesEveryOrderOrSaysWhichBudgetCutItShort",
+        "ServiceExecutionTests.AWithheldCapabilityIsRefusedBeforeAnythingIsSent"
       ]
     },
     {
@@ -737,12 +761,13 @@
       "request": "sysml.CheckBehaviorRequest",
       "response": "sysml.CheckBehaviorResponse",
       "methods": [
-        "Model.CheckBehaviorAsync"
+        "Model.CheckActionAsync",
+        "Model.CheckStateAsync"
       ],
-      "input": "CheckOptions",
+      "input": "action ID and inputs, or state machine ID; CheckOptions",
       "result": "CheckResult",
       "area": "execution",
-      "status": "deferred",
+      "status": "implemented",
       "gates": [
         {
           "capability": "check",
@@ -773,6 +798,16 @@
         "check_behavior/a_depth_bound_hit_leaves_the_verdict_undecided",
         "check_behavior/a_negative_depth_bound_is_invalid",
         "check_behavior/a_behavior_the_model_lacks_is_answered_in_band"
+      ],
+      "tests": [
+        "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding",
+        "ModelCheckTests.CheckStateSendsTheMachineAndAHoldingCheckIsAVerdict",
+        "ModelCheckTests.ACheckRefusedInBandIsACheckExceptionKeepingThePartialAnswer",
+        "ModelCheckTests.CheckGatesAreCheckedInTheServicesOrderBeforeAnythingIsSent",
+        "ModelCheckTests.AnEmptyNameOrAnUnsendableInputIsRefusedBeforeSending",
+        "ServiceExecutionTests.ACheckWitnessesWhatBreaksAPropertyAndHoldsWhereEveryScheduleKeepsIt",
+        "ServiceExecutionTests.ACheckOfAMissingBehaviorIsInBandAndANegativeBoundIsRefused",
+        "ServiceExecutionTests.AWithheldCapabilityIsRefusedBeforeAnythingIsSent"
       ]
     },
     {
@@ -1822,9 +1857,18 @@
       }
     },
     "sysml.Bound": {
-      "name": "deferred",
-      "limit": "deferred",
-      "reached": "deferred"
+      "name": {
+        "status": "typed",
+        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
+      },
+      "limit": {
+        "status": "typed",
+        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
+      },
+      "reached": {
+        "status": "typed",
+        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
+      }
     },
     "sysml.CalcOutput": {
       "name": "deferred",
@@ -1851,81 +1895,264 @@
       "notes": "deferred"
     },
     "sysml.CheckBehaviorRequest": {
-      "model_hash": "deferred",
-      "action_symbol_id": "deferred",
-      "state_machine_symbol_id": "deferred",
-      "inputs": "deferred",
-      "performer_symbol_id": "deferred",
-      "check_property": "deferred",
-      "check_diverge": "deferred",
-      "check_input": "deferred",
-      "check_assume": "deferred",
-      "check_witness": "deferred",
-      "check_depth": "deferred",
-      "check_states": "deferred",
-      "check_unroll": "deferred",
-      "check_timeout": "deferred",
-      "engine": "deferred"
+      "model_hash": {
+        "status": "typed",
+        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
+      },
+      "action_symbol_id": {
+        "status": "typed",
+        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
+      },
+      "state_machine_symbol_id": {
+        "status": "typed",
+        "test": "ModelCheckTests.CheckStateSendsTheMachineAndAHoldingCheckIsAVerdict"
+      },
+      "inputs": {
+        "status": "typed",
+        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
+      },
+      "performer_symbol_id": {
+        "status": "typed",
+        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
+      },
+      "check_property": {
+        "status": "typed",
+        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
+      },
+      "check_diverge": {
+        "status": "typed",
+        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
+      },
+      "check_input": {
+        "status": "typed",
+        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
+      },
+      "check_assume": {
+        "status": "typed",
+        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
+      },
+      "check_witness": {
+        "status": "typed",
+        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
+      },
+      "check_depth": {
+        "status": "typed",
+        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
+      },
+      "check_states": {
+        "status": "typed",
+        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
+      },
+      "check_unroll": {
+        "status": "typed",
+        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
+      },
+      "check_timeout": {
+        "status": "typed",
+        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
+      },
+      "engine": {
+        "status": "typed",
+        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
+      }
     },
     "sysml.CheckBehaviorResponse": {
-      "verdict": "deferred",
-      "lines": "deferred",
-      "search": "deferred",
-      "violations": "deferred",
-      "divergences": "deferred",
-      "finals": "deferred",
-      "claim": "deferred",
-      "free_inputs": "deferred",
-      "assumptions": "deferred",
-      "witness": "deferred",
-      "contrast": "deferred",
-      "engine": "deferred",
-      "strength": "deferred",
-      "bounds": "deferred",
-      "reason": "deferred",
-      "error": "deferred"
+      "verdict": {
+        "status": "typed",
+        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
+      },
+      "lines": {
+        "status": "typed",
+        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
+      },
+      "search": {
+        "status": "typed",
+        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
+      },
+      "violations": {
+        "status": "typed",
+        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
+      },
+      "divergences": {
+        "status": "typed",
+        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
+      },
+      "finals": {
+        "status": "typed",
+        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
+      },
+      "claim": {
+        "status": "typed",
+        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
+      },
+      "free_inputs": {
+        "status": "typed",
+        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
+      },
+      "assumptions": {
+        "status": "typed",
+        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
+      },
+      "witness": {
+        "status": "typed",
+        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
+      },
+      "contrast": {
+        "status": "typed",
+        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
+      },
+      "engine": {
+        "status": "typed",
+        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
+      },
+      "strength": {
+        "status": "typed",
+        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
+      },
+      "bounds": {
+        "status": "typed",
+        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
+      },
+      "reason": {
+        "status": "typed",
+        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
+      },
+      "error": {
+        "status": "typed",
+        "test": "ModelCheckTests.ACheckRefusedInBandIsACheckExceptionKeepingThePartialAnswer"
+      }
     },
     "sysml.CheckDivergence": {
-      "feature": "deferred",
-      "values": "deferred"
+      "feature": {
+        "status": "typed",
+        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
+      },
+      "values": {
+        "status": "typed",
+        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
+      }
     },
     "sysml.CheckDivergentValue": {
-      "value": "deferred",
-      "witness": "deferred"
+      "value": {
+        "status": "typed",
+        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
+      },
+      "witness": {
+        "status": "typed",
+        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
+      }
     },
     "sysml.CheckFinal": {
-      "outcome": "deferred",
-      "values": "deferred",
-      "witness": "deferred"
+      "outcome": {
+        "status": "typed",
+        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
+      },
+      "values": {
+        "status": "typed",
+        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
+      },
+      "witness": {
+        "status": "typed",
+        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
+      }
     },
     "sysml.CheckSearch": {
-      "states": "deferred",
-      "moves": "deferred",
-      "max_depth": "deferred",
-      "bounds_hit": "deferred",
-      "horizon": "deferred",
-      "horizon_set": "deferred",
-      "mass_bounded": "deferred",
-      "notes": "deferred",
-      "scope": "deferred",
-      "status": "deferred"
+      "states": {
+        "status": "typed",
+        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
+      },
+      "moves": {
+        "status": "typed",
+        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
+      },
+      "max_depth": {
+        "status": "typed",
+        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
+      },
+      "bounds_hit": {
+        "status": "typed",
+        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
+      },
+      "horizon": {
+        "status": "typed",
+        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
+      },
+      "horizon_set": {
+        "status": "typed",
+        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
+      },
+      "mass_bounded": {
+        "status": "typed",
+        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
+      },
+      "notes": {
+        "status": "typed",
+        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
+      },
+      "scope": {
+        "status": "typed",
+        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
+      },
+      "status": {
+        "status": "typed",
+        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
+      }
     },
     "sysml.CheckViolation": {
-      "kind": "deferred",
-      "property": "deferred",
-      "error": "deferred",
-      "depth": "deferred",
-      "probability": "deferred",
-      "witness": "deferred",
-      "text": "deferred"
+      "kind": {
+        "status": "typed",
+        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
+      },
+      "property": {
+        "status": "typed",
+        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
+      },
+      "error": {
+        "status": "typed",
+        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
+      },
+      "depth": {
+        "status": "typed",
+        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
+      },
+      "probability": {
+        "status": "typed",
+        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
+      },
+      "witness": {
+        "status": "typed",
+        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
+      },
+      "text": {
+        "status": "typed",
+        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
+      }
     },
     "sysml.CheckWitness": {
-      "schedule": "deferred",
-      "draws": "deferred",
-      "choices": "deferred",
-      "inputs": "deferred",
-      "file_name": "deferred",
-      "file_content": "deferred"
+      "schedule": {
+        "status": "typed",
+        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
+      },
+      "draws": {
+        "status": "typed",
+        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
+      },
+      "choices": {
+        "status": "typed",
+        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
+      },
+      "inputs": {
+        "status": "typed",
+        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
+      },
+      "file_name": {
+        "status": "typed",
+        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
+      },
+      "file_content": {
+        "status": "typed",
+        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
+      }
     },
     "sysml.CompareResultsRequest": {
       "model_hash": "deferred",
@@ -2081,24 +2308,72 @@
       }
     },
     "sysml.DocumentEvent": {
-      "kind": "deferred",
-      "time": "deferred",
-      "object": "deferred",
-      "machine": "deferred",
-      "state": "deferred",
-      "from": "deferred",
-      "to": "deferred",
-      "target": "deferred",
-      "event": "deferred",
-      "payload": "deferred",
-      "alternatives": "deferred",
-      "taken": "deferred",
-      "text": "deferred"
+      "kind": {
+        "status": "typed",
+        "test": "ModelExecutionTests.ExecuteStateSendsItsEventsAndTraceAndReadsTheTraceItAnswers"
+      },
+      "time": {
+        "status": "typed",
+        "test": "ModelExecutionTests.ExecuteStateSendsItsEventsAndTraceAndReadsTheTraceItAnswers"
+      },
+      "object": {
+        "status": "typed",
+        "test": "ModelExecutionTests.ExecuteStateSendsItsEventsAndTraceAndReadsTheTraceItAnswers"
+      },
+      "machine": {
+        "status": "typed",
+        "test": "ModelExecutionTests.ExecuteStateSendsItsEventsAndTraceAndReadsTheTraceItAnswers"
+      },
+      "state": {
+        "status": "typed",
+        "test": "ModelExecutionTests.ExecuteStateSendsItsEventsAndTraceAndReadsTheTraceItAnswers"
+      },
+      "from": {
+        "status": "typed",
+        "test": "ModelExecutionTests.ExecuteStateSendsItsEventsAndTraceAndReadsTheTraceItAnswers"
+      },
+      "to": {
+        "status": "typed",
+        "test": "ModelExecutionTests.ExecuteStateSendsItsEventsAndTraceAndReadsTheTraceItAnswers"
+      },
+      "target": {
+        "status": "typed",
+        "test": "ModelExecutionTests.ExecuteStateSendsItsEventsAndTraceAndReadsTheTraceItAnswers"
+      },
+      "event": {
+        "status": "typed",
+        "test": "ModelExecutionTests.ExecuteStateSendsItsEventsAndTraceAndReadsTheTraceItAnswers"
+      },
+      "payload": {
+        "status": "typed",
+        "test": "ModelExecutionTests.ExecuteStateSendsItsEventsAndTraceAndReadsTheTraceItAnswers"
+      },
+      "alternatives": {
+        "status": "typed",
+        "test": "ModelExecutionTests.ExecuteStateSendsItsEventsAndTraceAndReadsTheTraceItAnswers"
+      },
+      "taken": {
+        "status": "typed",
+        "test": "ModelExecutionTests.ExecuteStateSendsItsEventsAndTraceAndReadsTheTraceItAnswers"
+      },
+      "text": {
+        "status": "typed",
+        "test": "ModelExecutionTests.ExecuteStateSendsItsEventsAndTraceAndReadsTheTraceItAnswers"
+      }
     },
     "sysml.DocumentObject": {
-      "instance_id": "deferred",
-      "path": "deferred",
-      "element": "deferred"
+      "instance_id": {
+        "status": "typed",
+        "test": "DocumentValueTests.EachArmIsReadAsTheServiceSentIt"
+      },
+      "path": {
+        "status": "typed",
+        "test": "DocumentValueTests.EachArmIsReadAsTheServiceSentIt"
+      },
+      "element": {
+        "status": "typed",
+        "test": "DocumentValueTests.EachArmIsReadAsTheServiceSentIt"
+      }
     },
     "sysml.DocumentQueryBinding": {
       "parameter": "deferred",
@@ -2115,39 +2390,126 @@
       "cells": "deferred"
     },
     "sysml.DocumentState": {
-      "object": "deferred",
-      "machine": "deferred",
-      "name": "deferred",
-      "state_path": "deferred",
-      "state": "deferred",
-      "region": "deferred",
-      "enclosing": "deferred"
+      "object": {
+        "status": "typed",
+        "test": "DocumentValueTests.EachArmIsReadAsTheServiceSentIt"
+      },
+      "machine": {
+        "status": "typed",
+        "test": "DocumentValueTests.EachArmIsReadAsTheServiceSentIt"
+      },
+      "name": {
+        "status": "typed",
+        "test": "DocumentValueTests.EachArmIsReadAsTheServiceSentIt"
+      },
+      "state_path": {
+        "status": "typed",
+        "test": "DocumentValueTests.EachArmIsReadAsTheServiceSentIt"
+      },
+      "state": {
+        "status": "typed",
+        "test": "DocumentValueTests.EachArmIsReadAsTheServiceSentIt"
+      },
+      "region": {
+        "status": "typed",
+        "test": "DocumentValueTests.EachArmIsReadAsTheServiceSentIt"
+      },
+      "enclosing": {
+        "status": "typed",
+        "test": "DocumentValueTests.EachArmIsReadAsTheServiceSentIt"
+      }
     },
     "sysml.DocumentValue": {
-      "element_id": "deferred",
-      "string_value": "deferred",
-      "int_value": "deferred",
-      "real_value": "deferred",
-      "bool_value": "deferred",
-      "infinity": "deferred",
-      "quantity": "deferred",
-      "verdict": "deferred",
-      "object": "deferred",
-      "state": "deferred",
-      "event": "deferred",
-      "big_int_value": "deferred",
-      "rational_value": "deferred",
-      "element_type": "deferred"
+      "element_id": {
+        "status": "typed",
+        "test": "DocumentValueTests.EachArmIsReadAsTheServiceSentIt"
+      },
+      "string_value": {
+        "status": "typed",
+        "test": "DocumentValueTests.EachArmIsReadAsTheServiceSentIt"
+      },
+      "int_value": {
+        "status": "typed",
+        "test": "DocumentValueTests.EachArmIsReadAsTheServiceSentIt"
+      },
+      "real_value": {
+        "status": "typed",
+        "test": "DocumentValueTests.EachArmIsReadAsTheServiceSentIt"
+      },
+      "bool_value": {
+        "status": "typed",
+        "test": "DocumentValueTests.EachArmIsReadAsTheServiceSentIt"
+      },
+      "infinity": {
+        "status": "typed",
+        "test": "DocumentValueTests.EachArmIsReadAsTheServiceSentIt"
+      },
+      "quantity": {
+        "status": "typed",
+        "test": "DocumentValueTests.EachArmIsReadAsTheServiceSentIt"
+      },
+      "verdict": {
+        "status": "typed",
+        "test": "DocumentValueTests.EachArmIsReadAsTheServiceSentIt"
+      },
+      "object": {
+        "status": "typed",
+        "test": "DocumentValueTests.EachArmIsReadAsTheServiceSentIt"
+      },
+      "state": {
+        "status": "typed",
+        "test": "DocumentValueTests.EachArmIsReadAsTheServiceSentIt"
+      },
+      "event": {
+        "status": "typed",
+        "test": "DocumentValueTests.EachArmIsReadAsTheServiceSentIt"
+      },
+      "big_int_value": {
+        "status": "typed",
+        "test": "DocumentValueTests.EachArmIsReadAsTheServiceSentIt"
+      },
+      "rational_value": {
+        "status": "typed",
+        "test": "DocumentValueTests.EachArmIsReadAsTheServiceSentIt"
+      },
+      "element_type": {
+        "status": "typed",
+        "test": "DocumentValueTests.EachArmIsReadAsTheServiceSentIt"
+      }
     },
     "sysml.DocumentVerdict": {
-      "assertion": "deferred",
-      "kind": "deferred",
-      "text": "deferred",
-      "path": "deferred",
-      "verdict": "deferred",
-      "condition": "deferred",
-      "reason": "deferred",
-      "verification": "deferred"
+      "assertion": {
+        "status": "typed",
+        "test": "DocumentValueTests.EachArmIsReadAsTheServiceSentIt"
+      },
+      "kind": {
+        "status": "typed",
+        "test": "DocumentValueTests.EachArmIsReadAsTheServiceSentIt"
+      },
+      "text": {
+        "status": "typed",
+        "test": "DocumentValueTests.EachArmIsReadAsTheServiceSentIt"
+      },
+      "path": {
+        "status": "typed",
+        "test": "DocumentValueTests.EachArmIsReadAsTheServiceSentIt"
+      },
+      "verdict": {
+        "status": "typed",
+        "test": "DocumentValueTests.EachArmIsReadAsTheServiceSentIt"
+      },
+      "condition": {
+        "status": "typed",
+        "test": "DocumentValueTests.EachArmIsReadAsTheServiceSentIt"
+      },
+      "reason": {
+        "status": "typed",
+        "test": "DocumentValueTests.EachArmIsReadAsTheServiceSentIt"
+      },
+      "verification": {
+        "status": "typed",
+        "test": "DocumentValueTests.EachArmIsReadAsTheServiceSentIt"
+      }
     },
     "sysml.EditOperation": {
       "set_value": "deferred",
@@ -2255,59 +2617,194 @@
       }
     },
     "sysml.ExecuteActionRequest": {
-      "model_hash": "deferred",
-      "action_symbol_id": "deferred",
-      "inputs": "deferred",
-      "schedule": "deferred",
-      "performer_symbol_id": "deferred",
-      "advance": "deferred",
-      "seed": "deferred",
-      "draws": "deferred",
-      "clock_step": "deferred"
+      "model_hash": {
+        "status": "typed",
+        "test": "ModelExecutionTests.ExecuteActionSendsEveryOptionAndReadsEveryFieldOfTheRun"
+      },
+      "action_symbol_id": {
+        "status": "typed",
+        "test": "ModelExecutionTests.ExecuteActionSendsEveryOptionAndReadsEveryFieldOfTheRun"
+      },
+      "inputs": {
+        "status": "typed",
+        "test": "ModelExecutionTests.ExecuteActionSendsEveryOptionAndReadsEveryFieldOfTheRun"
+      },
+      "schedule": {
+        "status": "typed",
+        "test": "ModelExecutionTests.ExecuteActionSendsEveryOptionAndReadsEveryFieldOfTheRun"
+      },
+      "performer_symbol_id": {
+        "status": "typed",
+        "test": "ModelExecutionTests.ExecuteActionSendsEveryOptionAndReadsEveryFieldOfTheRun"
+      },
+      "advance": {
+        "status": "typed",
+        "test": "ModelExecutionTests.ExecuteActionSendsEveryOptionAndReadsEveryFieldOfTheRun"
+      },
+      "seed": {
+        "status": "typed",
+        "test": "ModelExecutionTests.ExecuteActionSendsEveryOptionAndReadsEveryFieldOfTheRun"
+      },
+      "draws": {
+        "status": "typed",
+        "test": "ModelExecutionTests.ExecuteActionSendsEveryOptionAndReadsEveryFieldOfTheRun"
+      },
+      "clock_step": {
+        "status": "typed",
+        "test": "ModelExecutionTests.ExecuteActionSendsEveryOptionAndReadsEveryFieldOfTheRun"
+      }
     },
     "sysml.ExecuteActionResponse": {
-      "outputs": "deferred",
-      "error": "deferred",
-      "diagnostics": "deferred",
-      "outcomes": "deferred",
-      "exploration": "deferred",
-      "final_time": "deferred",
-      "performer_attributes": "deferred",
-      "order_dependent": "deferred"
+      "outputs": {
+        "status": "typed",
+        "test": "ModelExecutionTests.ExecuteActionSendsEveryOptionAndReadsEveryFieldOfTheRun"
+      },
+      "error": {
+        "status": "typed",
+        "test": "ModelExecutionTests.AFailedRunIsAnExecutionExceptionKeepingItsClockTraceAndDiagnostics"
+      },
+      "diagnostics": {
+        "status": "typed",
+        "test": "ModelExecutionTests.ExecuteActionSendsEveryOptionAndReadsEveryFieldOfTheRun"
+      },
+      "outcomes": {
+        "status": "typed",
+        "test": "ModelExecutionTests.ExploreSendsExploreUnlessABudgetIsNamedAndReadsEveryOutcome"
+      },
+      "exploration": {
+        "status": "typed",
+        "test": "ModelExecutionTests.ExploreSendsExploreUnlessABudgetIsNamedAndReadsEveryOutcome"
+      },
+      "final_time": {
+        "status": "typed",
+        "test": "ModelExecutionTests.ExecuteActionSendsEveryOptionAndReadsEveryFieldOfTheRun"
+      },
+      "performer_attributes": {
+        "status": "typed",
+        "test": "ModelExecutionTests.ExecuteActionSendsEveryOptionAndReadsEveryFieldOfTheRun"
+      },
+      "order_dependent": {
+        "status": "typed",
+        "test": "ModelExecutionTests.ExecuteActionSendsEveryOptionAndReadsEveryFieldOfTheRun"
+      }
     },
     "sysml.ExecuteStateRequest": {
-      "model_hash": "deferred",
-      "state_machine_symbol_id": "deferred",
-      "events": "deferred",
-      "schedule": "deferred",
-      "performer_symbol_id": "deferred",
-      "trace": "deferred",
-      "advance": "deferred",
-      "seed": "deferred",
-      "draws": "deferred",
-      "clock_step": "deferred"
+      "model_hash": {
+        "status": "typed",
+        "test": "ModelExecutionTests.ExecuteStateSendsItsEventsAndTraceAndReadsTheTraceItAnswers"
+      },
+      "state_machine_symbol_id": {
+        "status": "typed",
+        "test": "ModelExecutionTests.ExecuteStateSendsItsEventsAndTraceAndReadsTheTraceItAnswers"
+      },
+      "events": {
+        "status": "typed",
+        "test": "ModelExecutionTests.ExecuteStateSendsItsEventsAndTraceAndReadsTheTraceItAnswers"
+      },
+      "schedule": {
+        "status": "typed",
+        "test": "ModelExecutionTests.ExecuteStateSendsItsEventsAndTraceAndReadsTheTraceItAnswers"
+      },
+      "performer_symbol_id": {
+        "status": "typed",
+        "test": "ModelExecutionTests.ExecuteStateSendsItsEventsAndTraceAndReadsTheTraceItAnswers"
+      },
+      "trace": {
+        "status": "typed",
+        "test": "ModelExecutionTests.ExecuteStateSendsItsEventsAndTraceAndReadsTheTraceItAnswers"
+      },
+      "advance": {
+        "status": "typed",
+        "test": "ModelExecutionTests.ExecuteStateSendsItsEventsAndTraceAndReadsTheTraceItAnswers"
+      },
+      "seed": {
+        "status": "typed",
+        "test": "ModelExecutionTests.ExecuteStateSendsItsEventsAndTraceAndReadsTheTraceItAnswers"
+      },
+      "draws": {
+        "status": "typed",
+        "test": "ModelExecutionTests.ExecuteStateSendsItsEventsAndTraceAndReadsTheTraceItAnswers"
+      },
+      "clock_step": {
+        "status": "typed",
+        "test": "ModelExecutionTests.ExecuteStateSendsItsEventsAndTraceAndReadsTheTraceItAnswers"
+      }
     },
     "sysml.ExecuteStateResponse": {
-      "states_visited": "deferred",
-      "final_context": "deferred",
-      "error": "deferred",
-      "diagnostics": "deferred",
-      "outcomes": "deferred",
-      "exploration": "deferred",
-      "final_time": "deferred",
-      "trace": "deferred",
-      "trace_dropped": "deferred",
-      "order_dependent": "deferred"
+      "states_visited": {
+        "status": "typed",
+        "test": "ModelExecutionTests.ExecuteStateSendsItsEventsAndTraceAndReadsTheTraceItAnswers"
+      },
+      "final_context": {
+        "status": "typed",
+        "test": "ModelExecutionTests.ExecuteStateSendsItsEventsAndTraceAndReadsTheTraceItAnswers"
+      },
+      "error": {
+        "status": "typed",
+        "test": "ModelExecutionTests.AFailedRunIsAnExecutionExceptionKeepingItsClockTraceAndDiagnostics"
+      },
+      "diagnostics": {
+        "status": "typed",
+        "test": "ModelExecutionTests.ExecuteStateSendsItsEventsAndTraceAndReadsTheTraceItAnswers"
+      },
+      "outcomes": {
+        "status": "typed",
+        "test": "ModelExecutionTests.ExploreSendsExploreUnlessABudgetIsNamedAndReadsEveryOutcome"
+      },
+      "exploration": {
+        "status": "typed",
+        "test": "ModelExecutionTests.ExploreSendsExploreUnlessABudgetIsNamedAndReadsEveryOutcome"
+      },
+      "final_time": {
+        "status": "typed",
+        "test": "ModelExecutionTests.ExecuteStateSendsItsEventsAndTraceAndReadsTheTraceItAnswers"
+      },
+      "trace": {
+        "status": "typed",
+        "test": "ModelExecutionTests.ExecuteStateSendsItsEventsAndTraceAndReadsTheTraceItAnswers"
+      },
+      "trace_dropped": {
+        "status": "typed",
+        "test": "ModelExecutionTests.ExecuteStateSendsItsEventsAndTraceAndReadsTheTraceItAnswers"
+      },
+      "order_dependent": {
+        "status": "typed",
+        "test": "ModelExecutionTests.ExecuteStateSendsItsEventsAndTraceAndReadsTheTraceItAnswers"
+      }
     },
     "sysml.ExplorationStatus": {
-      "complete": "deferred",
-      "runs": "deferred",
-      "budgets_hit": "deferred",
-      "runs_budget": "deferred",
-      "depth_budget": "deferred",
-      "probabilities_lower_bound": "deferred",
-      "failed_linearizations": "deferred",
-      "unenumerated": "deferred"
+      "complete": {
+        "status": "typed",
+        "test": "ModelExecutionTests.ExploreSendsExploreUnlessABudgetIsNamedAndReadsEveryOutcome"
+      },
+      "runs": {
+        "status": "typed",
+        "test": "ModelExecutionTests.ExploreSendsExploreUnlessABudgetIsNamedAndReadsEveryOutcome"
+      },
+      "budgets_hit": {
+        "status": "typed",
+        "test": "ModelExecutionTests.ExploreSendsExploreUnlessABudgetIsNamedAndReadsEveryOutcome"
+      },
+      "runs_budget": {
+        "status": "typed",
+        "test": "ModelExecutionTests.ExploreSendsExploreUnlessABudgetIsNamedAndReadsEveryOutcome"
+      },
+      "depth_budget": {
+        "status": "typed",
+        "test": "ModelExecutionTests.ExploreSendsExploreUnlessABudgetIsNamedAndReadsEveryOutcome"
+      },
+      "probabilities_lower_bound": {
+        "status": "typed",
+        "test": "ModelExecutionTests.ExploreSendsExploreUnlessABudgetIsNamedAndReadsEveryOutcome"
+      },
+      "failed_linearizations": {
+        "status": "typed",
+        "test": "ModelExecutionTests.ExploreSendsExploreUnlessABudgetIsNamedAndReadsEveryOutcome"
+      },
+      "unenumerated": {
+        "status": "typed",
+        "test": "ModelExecutionTests.ExploreSendsExploreUnlessABudgetIsNamedAndReadsEveryOutcome"
+      }
     },
     "sysml.ExportGraphsRequest": {
       "model_hash": "deferred",
@@ -2548,15 +3045,42 @@
       "feature": "deferred"
     },
     "sysml.Outcome": {
-      "outputs": "deferred",
-      "final_state": "deferred",
-      "states_visited": "deferred",
-      "error": "deferred",
-      "linearizations": "deferred",
-      "witness": "deferred",
-      "diagnostics": "deferred",
-      "probability": "deferred",
-      "probability_range": "deferred"
+      "outputs": {
+        "status": "typed",
+        "test": "ModelExecutionTests.ExploreSendsExploreUnlessABudgetIsNamedAndReadsEveryOutcome"
+      },
+      "final_state": {
+        "status": "typed",
+        "test": "ModelExecutionTests.ExploreSendsExploreUnlessABudgetIsNamedAndReadsEveryOutcome"
+      },
+      "states_visited": {
+        "status": "typed",
+        "test": "ModelExecutionTests.ExploreSendsExploreUnlessABudgetIsNamedAndReadsEveryOutcome"
+      },
+      "error": {
+        "status": "typed",
+        "test": "ModelExecutionTests.ExploreSendsExploreUnlessABudgetIsNamedAndReadsEveryOutcome"
+      },
+      "linearizations": {
+        "status": "typed",
+        "test": "ModelExecutionTests.ExploreSendsExploreUnlessABudgetIsNamedAndReadsEveryOutcome"
+      },
+      "witness": {
+        "status": "typed",
+        "test": "ModelExecutionTests.ExploreSendsExploreUnlessABudgetIsNamedAndReadsEveryOutcome"
+      },
+      "diagnostics": {
+        "status": "typed",
+        "test": "ModelExecutionTests.ExploreSendsExploreUnlessABudgetIsNamedAndReadsEveryOutcome"
+      },
+      "probability": {
+        "status": "typed",
+        "test": "ModelExecutionTests.ExploreSendsExploreUnlessABudgetIsNamedAndReadsEveryOutcome"
+      },
+      "probability_range": {
+        "status": "typed",
+        "test": "ModelExecutionTests.ExploreSendsExploreUnlessABudgetIsNamedAndReadsEveryOutcome"
+      }
     },
     "sysml.ParseFileRequest": {
       "file_path": {
@@ -2642,8 +3166,14 @@
       "value": "deferred"
     },
     "sysml.ProbabilityRange": {
-      "min": "deferred",
-      "max": "deferred"
+      "min": {
+        "status": "typed",
+        "test": "ModelExecutionTests.ExploreSendsExploreUnlessABudgetIsNamedAndReadsEveryOutcome"
+      },
+      "max": {
+        "status": "typed",
+        "test": "ModelExecutionTests.ExploreSendsExploreUnlessABudgetIsNamedAndReadsEveryOutcome"
+      }
     },
     "sysml.Quantity": {
       "int_magnitude": {

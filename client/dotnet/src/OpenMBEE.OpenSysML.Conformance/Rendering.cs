@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using System.Numerics;
+using Google.Protobuf.Collections;
 
 namespace OpenMBEE.OpenSysML.Conformance;
 
@@ -139,6 +141,184 @@ internal static class Rendering
         return rendered;
     }
 
+    /// <summary>One run of an action, with everything the API reports of it.</summary>
+    internal static Wire.ExecuteActionResponse ActionRun(ActionRun run)
+    {
+        ArgumentNullException.ThrowIfNull(run);
+        var rendered = new Wire.ExecuteActionResponse { FinalTime = run.FinalTime };
+        Values(rendered.Outputs, run.Outputs);
+        rendered.Diagnostics.AddRange(Diagnostics(run.Diagnostics));
+        Values(rendered.PerformerAttributes, run.PerformerAttributes);
+        rendered.OrderDependent.Add(run.OrderDependent.ToDictionary(StringComparer.Ordinal));
+        return rendered;
+    }
+
+    /// <summary>One run of a state machine, with its trace and everything else the API reports of it.</summary>
+    internal static Wire.ExecuteStateResponse StateRun(StateRun run)
+    {
+        ArgumentNullException.ThrowIfNull(run);
+        var rendered = new Wire.ExecuteStateResponse { StatesVisited = { run.StatesVisited }, FinalTime = run.FinalTime, TraceDropped = run.TraceDropped };
+        Values(rendered.FinalContext, run.FinalContext);
+        rendered.Diagnostics.AddRange(Diagnostics(run.Diagnostics));
+        rendered.Trace.AddRange(Trace(run.Trace));
+        rendered.OrderDependent.Add(run.OrderDependent.ToDictionary(StringComparer.Ordinal));
+        return rendered;
+    }
+
+    /// <summary>An exploration's outcomes, in the order the API reports them.</summary>
+    internal static IEnumerable<Wire.Outcome> Outcomes(Exploration exploration)
+    {
+        ArgumentNullException.ThrowIfNull(exploration);
+        foreach (var outcome in exploration.Outcomes)
+        {
+            var rendered = new Wire.Outcome
+            {
+                FinalState = outcome.FinalState,
+                StatesVisited = { outcome.StatesVisited },
+                Error = outcome.Error,
+                Linearizations = outcome.Linearizations,
+                Witness = { outcome.Witness },
+                Probability = outcome.Probability,
+            };
+            Values(rendered.Outputs, outcome.Outputs);
+            rendered.Diagnostics.AddRange(Diagnostics(outcome.Diagnostics));
+            if (outcome.ProbabilityRange is { } range)
+            {
+                rendered.ProbabilityRange = new Wire.ProbabilityRange { Min = range.Min, Max = range.Max };
+            }
+
+            yield return rendered;
+        }
+    }
+
+    /// <summary>How an exploration ended.</summary>
+    internal static Wire.ExplorationStatus ExplorationStatus(Exploration exploration)
+    {
+        ArgumentNullException.ThrowIfNull(exploration);
+        return new Wire.ExplorationStatus
+        {
+            Complete = exploration.Complete,
+            Runs = exploration.Runs,
+            BudgetsHit = { exploration.BudgetsHit },
+            RunsBudget = exploration.RunsBudget,
+            DepthBudget = exploration.DepthBudget,
+            ProbabilitiesLowerBound = exploration.ProbabilitiesLowerBound,
+            FailedLinearizations = exploration.FailedLinearizations,
+            Unenumerated = { exploration.Unenumerated },
+        };
+    }
+
+    /// <summary>What a check found, with every witness the API reports.</summary>
+    internal static Wire.CheckBehaviorResponse CheckResult(CheckResult result)
+    {
+        ArgumentNullException.ThrowIfNull(result);
+        var rendered = new Wire.CheckBehaviorResponse
+        {
+            Verdict = result.Verdict,
+            Lines = { result.Lines },
+            Claim = result.Claim,
+            FreeInputs = { result.FreeInputs },
+            Assumptions = { result.Assumptions },
+            Witness = Witness(result.Witness),
+            Contrast = Witness(result.Contrast),
+            Engine = result.Standing.Engine,
+            Strength = result.Standing.Strength,
+            Reason = result.Reason,
+        };
+        if (result.Search is { } search)
+        {
+            rendered.Search = new Wire.CheckSearch
+            {
+                States = search.States,
+                Moves = search.Moves,
+                MaxDepth = search.MaxDepth,
+                BoundsHit = { search.BoundsHit },
+                Horizon = search.Horizon,
+                HorizonSet = search.HorizonSet,
+                MassBounded = search.MassBounded,
+                Notes = { search.Notes },
+                Scope = { search.Scope },
+                Status = search.Status,
+            };
+        }
+
+        foreach (var violation in result.Violations)
+        {
+            rendered.Violations.Add(new Wire.CheckViolation
+            {
+                Kind = violation.Kind,
+                Property = violation.Property,
+                Error = violation.Error,
+                Depth = violation.Depth,
+                Probability = violation.Probability,
+                Witness = Witness(violation.Witness),
+                Text = violation.Text,
+            });
+        }
+
+        foreach (var divergence in result.Divergences)
+        {
+            var rendering = new Wire.CheckDivergence { Feature = divergence.Feature };
+            foreach (var value in divergence.Values)
+            {
+                rendering.Values.Add(new Wire.CheckDivergentValue { Value = value.Value, Witness = Witness(value.Witness) });
+            }
+
+            rendered.Divergences.Add(rendering);
+        }
+
+        foreach (var final in result.Finals)
+        {
+            var rendering = new Wire.CheckFinal { Outcome = final.Outcome, Witness = Witness(final.Witness) };
+            rendering.Values.Add(final.Values.ToDictionary(StringComparer.Ordinal));
+            rendered.Finals.Add(rendering);
+        }
+
+        foreach (var bound in result.Standing.Bounds)
+        {
+            rendered.Bounds.Add(new Wire.Bound { Name = bound.Name, Limit = bound.Limit, Reached = bound.Reached });
+        }
+
+        return rendered;
+    }
+
+    /// <summary>A run's trace, in the order the API reports it.</summary>
+    internal static IEnumerable<Wire.DocumentEvent> Trace(IEnumerable<DocumentEvent> trace)
+    {
+        foreach (var record in trace)
+        {
+            yield return Event(record);
+        }
+    }
+
+    /// <summary>A document value, in the arm of its kind.</summary>
+    /// <exception cref="InvalidOperationException">The value is of a kind this renderer does not know.</exception>
+    internal static Wire.DocumentValue DocumentValue(DocumentValue value)
+    {
+        ArgumentNullException.ThrowIfNull(value);
+        return value switch
+        {
+            OpenSysML.DocumentValue.ElementValue element => Element(element),
+            OpenSysML.DocumentValue.ObjectValue held => new() { Object = Object(held.Value) },
+            OpenSysML.DocumentValue.TextValue text => new() { StringValue = text.Text },
+            OpenSysML.DocumentValue.NumberValue number => number.Number switch
+            {
+                OpenSysML.Value.IntegerValue integer => new() { IntValue = integer.Value },
+                OpenSysML.Value.BigIntegerValue big => new() { BigIntValue = Digits(big.Value) },
+                OpenSysML.Value.RationalValue rational => new() { RationalValue = Terms(rational.Value) },
+                OpenSysML.Value.RealValue real => new() { RealValue = real.Value },
+                var other => throw new InvalidOperationException($"no rendering of a document number that is a {other.GetType().FullName}"),
+            },
+            OpenSysML.DocumentValue.BooleanValue boolean => new() { BoolValue = boolean.Value },
+            OpenSysML.DocumentValue.InfinityValue => new() { Infinity = true },
+            OpenSysML.DocumentValue.QuantityValue quantity => new() { Quantity = Quantity(quantity.Quantity) },
+            OpenSysML.DocumentValue.VerdictValue verdict => new() { Verdict = Verdict(verdict.Verdict) },
+            OpenSysML.DocumentValue.StateValue state => new() { State = State(state.State) },
+            OpenSysML.DocumentValue.EventValue record => new() { Event = Event(record.Event) },
+            _ => throw new InvalidOperationException($"no rendering of a {value.GetType().FullName}"),
+        };
+    }
+
     /// <summary>A value, in the arm of its kind.</summary>
     /// <exception cref="InvalidOperationException">The value is of a kind this renderer does not know.</exception>
     internal static Wire.Value Value(Value value)
@@ -269,4 +449,77 @@ internal static class Rendering
 
     private static Wire.Rational Terms(Rational rational) =>
         new() { Numerator = Digits(rational.Numerator), Denominator = Digits(rational.Denominator) };
+
+    private static void Values(MapField<string, Wire.Value> field, ValueDictionary<Value> values)
+    {
+        foreach (var (name, value) in values)
+        {
+            field.Add(name, Value(value));
+        }
+    }
+
+    // An element named by no id is the value of no arm, which is how the service sends one.
+    private static Wire.DocumentValue Element(DocumentValue.ElementValue element) =>
+        element.Id is { } id ? new() { ElementId = id, ElementType = element.ElementType } : new() { ElementType = element.ElementType };
+
+    private static Wire.DocumentValue? OptionalElement(DocumentValue.ElementValue? element) => element is null ? null : Element(element);
+
+    private static Wire.DocumentObject Object(DocumentObject held) =>
+        new() { InstanceId = held.InstanceId, Path = held.Path, Element = OptionalElement(held.Element) };
+
+    private static Wire.DocumentVerdict Verdict(DocumentVerdict verdict) =>
+        new()
+        {
+            Assertion = OptionalElement(verdict.Assertion),
+            Kind = verdict.Kind,
+            Text = verdict.Text,
+            Path = verdict.Path,
+            Verdict = verdict.Verdict,
+            Condition = verdict.Condition,
+            Reason = verdict.Reason,
+            Verification = { verdict.Verification },
+        };
+
+    private static Wire.DocumentState State(DocumentState state) =>
+        new()
+        {
+            Object = state.Subject is { } subject ? Object(subject) : null,
+            Machine = state.Machine,
+            Name = state.Name,
+            StatePath = state.StatePath,
+            State = OptionalElement(state.State),
+            Region = state.Region,
+            Enclosing = { state.Enclosing },
+        };
+
+    private static Wire.DocumentEvent Event(DocumentEvent record) =>
+        new()
+        {
+            Kind = record.Kind,
+            Time = record.Time is { } time ? DocumentValue(time) : null,
+            Object = record.Subject is { } subject ? Object(subject) : null,
+            Machine = record.Machine,
+            State = record.State,
+            From = record.From,
+            To = record.To,
+            Target = record.Target is { } target ? Object(target) : null,
+            Event = record.Event,
+            Payload = { record.Payload },
+            Alternatives = { record.Alternatives },
+            Taken = record.Taken,
+            Text = record.Text,
+        };
+
+    private static Wire.CheckWitness? Witness(CheckWitness? witness) =>
+        witness is null
+            ? null
+            : new()
+            {
+                Schedule = witness.Schedule,
+                Draws = { witness.Draws },
+                Choices = { witness.Choices },
+                Inputs = { witness.Inputs },
+                FileName = witness.FileName,
+                FileContent = witness.FileContent,
+            };
 }
