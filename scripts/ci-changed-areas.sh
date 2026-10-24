@@ -28,6 +28,8 @@ node_pattern='^client/node/'
 python_pattern='^client/python/'
 java_pattern='^client/java/'
 rust_pattern='^client/rust/'
+# The repository-root global.json pins only the .NET SDK.
+dotnet_pattern='^(client/dotnet/|global\.json$)'
 julia_pattern='^client/julia/'
 matlab_pattern='^client/matlab/'
 vscode_pattern='^editors/vscode/'
@@ -38,7 +40,7 @@ syson_pattern='^editors/syson/'
 # lives, so one of those changing anywhere runs the Go area.
 hygiene_pattern='(^|/)testdata/|\.golden\.|_test\.go$'
 
-known_pattern="$service_pattern|$docs_pattern|$node_pattern|$python_pattern|$java_pattern|$rust_pattern|$julia_pattern|$matlab_pattern|$vscode_pattern|$jupyterlab_pattern|$mdk_pattern|$syson_pattern|^\.agents/|^\.gitignore$|^\.gitattributes$|^LICENSE|^packaging/"
+known_pattern="$service_pattern|$docs_pattern|$node_pattern|$python_pattern|$java_pattern|$rust_pattern|$dotnet_pattern|$julia_pattern|$matlab_pattern|$vscode_pattern|$jupyterlab_pattern|$mdk_pattern|$syson_pattern|^\.agents/|^\.gitignore$|^\.gitattributes$|^LICENSE|^packaging/"
 
 matches() {
   local pattern=$1
@@ -65,12 +67,13 @@ emit go "$( { [[ "$service" = true ]] || matches "$hygiene_pattern"; } && echo t
 emit docs "$( { [[ "$fanout" = true ]] || matches "$docs_pattern"; } && echo true || echo false)"
 emit node "$( { [[ "$fanout" = true ]] || matches "$node_pattern"; } && echo true || echo false)"
 # The client-manifest/Python version lockstep tests live in the Python suite,
-# so the Node, Java and Rust manifests, every editor manifest
+# so the Node, Java, Rust and .NET manifests, every editor manifest
 # check_version.py --editors reads, and the editors' client references have
 # to run it too.
-emit python "$( { [[ "$fanout" = true ]] || matches "$python_pattern" || matches '^client/node/package\.json$' || matches '^client/java/pom\.xml$' || matches '^client/rust/opensysml/Cargo\.toml$' || matches '^client/rust/Cargo\.lock$' || matches '^editors/(mdk|syson(/backend)?)/pom\.xml$' || matches '^editors/(mdk/(plugin|tools|openapi-stubs|mdk-api-stubs|mdk-bridge|dist)|syson/syson-api-stubs)/pom\.xml$' || matches '^editors/(vscode|jupyterlab|syson/frontend)/package(-lock)?\.json$'; } && echo true || echo false)"
+emit python "$( { [[ "$fanout" = true ]] || matches "$python_pattern" || matches '^client/node/package\.json$' || matches '^client/java/pom\.xml$' || matches '^client/rust/opensysml/Cargo\.toml$' || matches '^client/rust/Cargo\.lock$' || matches '^client/dotnet/Directory\.Build\.props$' || matches '^editors/(mdk|syson(/backend)?)/pom\.xml$' || matches '^editors/(mdk/(plugin|tools|openapi-stubs|mdk-api-stubs|mdk-bridge|dist)|syson/syson-api-stubs)/pom\.xml$' || matches '^editors/(vscode|jupyterlab|syson/frontend)/package(-lock)?\.json$'; } && echo true || echo false)"
 emit java "$( { [[ "$fanout" = true ]] || matches "$java_pattern"; } && echo true || echo false)"
 emit rust "$( { [[ "$fanout" = true ]] || matches "$rust_pattern"; } && echo true || echo false)"
+emit dotnet "$( { [[ "$fanout" = true ]] || matches "$dotnet_pattern"; } && echo true || echo false)"
 emit julia "$( { [[ "$fanout" = true ]] || matches "$julia_pattern"; } && echo true || echo false)"
 emit matlab "$( { [[ "$fanout" = true ]] || matches "$matlab_pattern"; } && echo true || echo false)"
 emit vscode "$( { [[ "$fanout" = true ]] || matches "$vscode_pattern"; } && echo true || echo false)"
