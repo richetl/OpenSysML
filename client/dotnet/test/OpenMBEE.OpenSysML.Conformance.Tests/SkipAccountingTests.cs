@@ -56,7 +56,7 @@ public sealed class SkipAccountingTests
              "unexpressible": {"parse/gone": "r", "query/oslc": "r"}}
             """);
         IReadOnlyList<Scenario> scenarios = [Scenario("""{"id": "query/oslc", "rpc": "Query"}""")];
-        var covered = ApiAdapters.All.Keys.Where(rpc => rpc != "GetDiagnostics");
+        var covered = ApiAdapters.All.Keys.Where(rpc => rpc is not ("GetDiagnostics" or "Query"));
 
         Assert.Equal(
             [

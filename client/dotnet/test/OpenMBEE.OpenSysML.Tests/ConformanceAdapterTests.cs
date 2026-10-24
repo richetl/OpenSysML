@@ -67,7 +67,29 @@ public sealed class ConformanceAdapterTests
         { "ParseSources", """{"documents": [{"file_path": ""}]}""", "the public API names a file document by a path that is not empty" },
         { "GetSymbol", """{"model_hash": " ", "symbol_id": "Demo::Vehicle"}""", "the public API names a model by a hash that is not blank" },
         { "Evaluate", """{"expression": "2 + 2"}""", "the public API names a model by a hash that is not blank" },
-        { "Query", """{"model_hash": "h"}""", "the public API does not cover Query" },
+        { "Query", """{"model_hash": "h"}""", "the public API always names a query, so it cannot send a request naming none" },
+        { "Query", """{"model_hash": "h", "query": {}, "oslc_query": "sysml:type=PartUsage"}""", "the public API names a query in one form, structured or OSLC text, so it cannot send both" },
+        { "Query", """{"model_hash": "h", "query": {"where": {"primitive": {"property": "@type", "value": ["PartUsage"]}}}}""", "the public API names a comparison's operator, which query.where.primitive does not" },
+        { "Query", """{"model_hash": "h", "query": {"where": {}}}""", "the public API names a constraint's form, which query.where does not" },
+        { "Query", """{"model_hash": "h", "query": {"where": {"composite": {"constraint": [{"primitive": {"property": "name", "operator": "PRIMITIVE_OPERATOR_EQUAL", "value": ["a"]}}]}}}}""", "the public API names a composite's operator, which query.where.composite does not" },
+        { "Query", """{"model_hash": "h", "query": {"where": {"composite": {"operator": "COMPOSITE_OPERATOR_OR"}}}}""", "the public API cannot hold query.where.composite as spelled: A composite combines at least one constraint." },
+        { "Query", """{"model_hash": "h", "query": {"where": {"composite": {"operator": "COMPOSITE_OPERATOR_AND", "constraint": [{"primitive": {"property": "multiplicityLower", "operator": "PRIMITIVE_OPERATOR_GREATER", "value": ["1", "2"]}}]}}}}""", "the public API cannot hold query.where.composite.constraint[0].primitive as spelled: A Greater comparison compares against exactly one value, not 2." },
+        { "Query", """{"model_hash": "h", "query": {"where": {"primitive": {"operator": "PRIMITIVE_OPERATOR_EQUAL", "value": ["a"]}}}}""", "the public API cannot hold query.where.primitive as spelled: The value cannot be an empty string." },
+        { "RunDocumentQuery", """{"model_hash": "h"}""", "the public API names a document query by a qualified name that is not empty" },
+        { "RunDocumentQuery", """{"model_hash": "h", "query_id": "Q", "bindings": [{"values": [{"string_value": "x"}]}]}""", "the public API cannot hold bindings[0] as spelled: The value cannot be an empty string." },
+        { "RunDocumentQuery", """{"model_hash": "h", "query_id": "Q", "bindings": [{"parameter": "p", "values": [{"infinity": true}]}]}""", "the public API cannot hold bindings[0] as spelled: The value p[0] is infinity, which queries answer and are never bound to." },
+        { "RunDocumentQuery", """{"model_hash": "h", "query_id": "Q", "bindings": [{"parameter": "p", "values": [{"element_type": "PartUsage"}]}]}""", "the public API cannot hold bindings[0] as spelled: The value p[0] is an element named by no qualified name, which a query cannot be bound to." },
+        { "RunDocumentQuery", """{"model_hash": "h", "query_id": "Q", "bindings": [{"parameter": "p", "values": [{"object": {}}]}]}""", "the public API cannot hold bindings[0] as spelled: The value p[0] is an object named by neither a path nor an id, which ids count up from 1." },
+        { "RunDocumentQuery", """{"model_hash": "h", "query_id": "Q", "bindings": [{"parameter": "p", "values": [{"verdict": {"verdict": "holds"}}]}]}""", "the public API binds no value as bindings[0].values[0] spells it (Verdict), which queries answer and are never bound to" },
+        { "RunDocumentQuery", """{"model_hash": "h", "query_id": "Q", "bindings": [{"parameter": "p", "values": [{"object": {"path": "car", "element": {"string_value": "x"}}}]}]}""", "the public API holds an object's element as an element value, which bindings[0].values[0].object.element is not" },
+        { "RunDocumentQuery", """{"model_hash": "h", "query_id": "Q", "bindings": [{"parameter": "p", "values": [{"rational_value": {"numerator": "2", "denominator": "4"}}]}]}""", "the public API writes a rational in lowest terms over a positive denominator, which bindings[0].values[0]'s 2/4 is not" },
+        { "RenderDocument", """{"model_hash": "h"}""", "the public API names a document by a qualified name that is not empty" },
+        { "RenderDocument", """{"model_hash": "h", "document_id": "D", "form": "markdown"}""", "the public API sends the Markdown form as the empty form it defaults to" },
+        { "RenderDocument", """{"model_hash": "h", "document_id": "D", "form": "pdf"}""", "the public API names a form as a DocumentForm, which has none spelled \"pdf\"" },
+        { "RenderView", """{"model_hash": "h"}""", "the public API names a view by a name that is not empty" },
+        { "RenderView", """{"model_hash": "h", "view": "V", "ports": "minimal"}""", "the public API sends minimal ports as the empty selection they default to" },
+        { "RenderView", """{"model_hash": "h", "view": "V", "ports": "all"}""", "the public API names ports as a RenderViewPorts, which has none spelled \"all\"" },
+        { "RenderView", """{"model_hash": "h", "view": "V", "depth": -1}""", "RenderViewOptions.Depth is -1, which draws no level; leave it null for the view's own depth." },
         { "VerifyConstraint", """{"symbol_id": "C"}""", "the public API names a model by a hash that is not blank" },
         { "EvaluateCalc", """{"model_hash": "h", "arguments": [{"function": {"calc_id": "F::Scaler::scale", "self_id": 3}}]}""", "The value at arguments[0] is the function F::Scaler::scale closing over instance(3), which lives only within the response that held it." },
         { "EvaluateCalc", """{"model_hash": "h", "arguments": [{"measurement_ref": {"unit": "m"}}]}""", "the public API holds a measurement reference with its reduction, which arguments[0] has none of" },
@@ -377,6 +399,84 @@ public sealed class ConformanceAdapterTests
                 Strict = true,
             },
             CompleteConversionWire.Migration),
+        ["Query"] = (
+            new Wire.QueryRequest
+            {
+                ModelHash = Hash,
+                Query = new Wire.Query
+                {
+                    Scope = { "Demo::vehicle" },
+                    Select = { "name", "owner" },
+                    Where = new Wire.Constraint
+                    {
+                        Composite = new Wire.CompositeConstraint
+                        {
+                            Operator = Wire.CompositeOperator.Or,
+                            Constraint =
+                            {
+                                new Wire.Constraint { Primitive = new Wire.PrimitiveConstraint { Property = "@type", Operator = Wire.PrimitiveOperator.Equal, Value = { "PartUsage", "PartDefinition" } } },
+                                new Wire.Constraint { Primitive = new Wire.PrimitiveConstraint { Inverse = true, Property = "multiplicityUpper", Operator = Wire.PrimitiveOperator.Less, Value = { "4" } } },
+                                new Wire.Constraint { Composite = new Wire.CompositeConstraint { Operator = Wire.CompositeOperator.And, Constraint = { new Wire.Constraint { Primitive = new Wire.PrimitiveConstraint { Property = "multiplicityLower", Operator = Wire.PrimitiveOperator.Greater, Value = { "0" } } } } } },
+                            },
+                        },
+                    },
+                },
+            },
+            CompleteQueryDocsWire.Query),
+        ["Query of the whole model"] = (new Wire.QueryRequest { ModelHash = Hash, Query = new Wire.Query() }, new Wire.QueryResponse()),
+        ["Query by OSLC text"] = (new Wire.QueryRequest { ModelHash = Hash, OslcQuery = "oslc.where=rdf:type=\"PartUsage\"" }, CompleteQueryDocsWire.Query),
+        ["RunDocumentQuery"] = (
+            new Wire.RunDocumentQueryRequest
+            {
+                ModelHash = Hash,
+                QueryId = "Garage::Checks",
+                Bindings =
+                {
+                    new Wire.DocumentQueryBinding
+                    {
+                        Parameter = "root",
+                        Values =
+                        {
+                            new Wire.DocumentValue { ElementId = "Garage::car" },
+                            new Wire.DocumentValue { ElementId = "Garage::Car", ElementType = "PartDefinition" },
+                            new Wire.DocumentValue { Object = new Wire.DocumentObject { Path = "Garage::car.wheels[2]" } },
+                            new Wire.DocumentValue { Object = CompleteExecutionWire.Object },
+                            new Wire.DocumentValue { Object = new Wire.DocumentObject { InstanceId = 3, Element = new Wire.DocumentValue { ElementType = "PartUsage" } } },
+                        },
+                    },
+                    new Wire.DocumentQueryBinding
+                    {
+                        Parameter = "threshold",
+                        Values =
+                        {
+                            new Wire.DocumentValue { StringValue = "10" },
+                            new Wire.DocumentValue { IntValue = -3 },
+                            new Wire.DocumentValue { BigIntValue = "-9223372036854775809" },
+                            new Wire.DocumentValue { RationalValue = new Wire.Rational { Numerator = "1", Denominator = "3" } },
+                            new Wire.DocumentValue { RealValue = 2.5 },
+                            new Wire.DocumentValue { BoolValue = true },
+                            new Wire.DocumentValue
+                            {
+                                Quantity = new Wire.Quantity
+                                {
+                                    RealMagnitude = 2.5,
+                                    Unit = "km",
+                                    UnitTerm = new Wire.UnitTerm { ScaleNum = 1000, ScaleDen = 1, Factors = { new Wire.UnitFactor { UnitId = "ISQBase::L", Exponent = 1 } } },
+                                },
+                            },
+                        },
+                    },
+                    new Wire.DocumentQueryBinding { Parameter = "root", Values = { new Wire.DocumentValue { ElementId = "Garage::bike" } } },
+                    new Wire.DocumentQueryBinding { Parameter = "none" },
+                },
+            },
+            CompleteQueryDocsWire.DocumentQuery),
+        ["RenderDocument"] = (new Wire.RenderDocumentRequest { ModelHash = Hash, DocumentId = "Observatory::MassReport" }, CompleteQueryDocsWire.Markdown),
+        ["RenderDocument as HTML"] = (new Wire.RenderDocumentRequest { ModelHash = Hash, DocumentId = "Observatory::MassReport", Form = "html" }, CompleteQueryDocsWire.Html),
+        ["RenderView"] = (
+            new Wire.RenderViewRequest { ModelHash = Hash, View = "PlantViews::placedView", Ports = "full", Show = { "all", "typings" }, Depth = 3 },
+            CompleteQueryDocsWire.View),
+        ["RenderView of a pseudo-view"] = (new Wire.RenderViewRequest { ModelHash = Hash, View = "#tree:Plant::Loop" }, CompleteQueryDocsWire.SparseView),
         ["Migrate from a file"] = (
             new Wire.MigrateRequest { FilePath = Path.GetFullPath("/models/a.xmi"), ToFormat = "ttl", LayoutPath = "/models/a_mtip.xml" },
             CompleteConversionWire.Migration),
@@ -544,6 +644,25 @@ public sealed class ConformanceAdapterTests
         Assert.Equal(new ScenarioAnswer.Refused(StatusCode.NotFound, "model not found: h"), evaluate);
         Assert.Equal(new ScenarioAnswer.Refused(StatusCode.InvalidArgument, "unknown lint code no-such-lint"), lint);
         Assert.Equal(new ScenarioAnswer.Refused(StatusCode.NotFound, "open /nonexistent: no such file"), file);
+    }
+
+    [Theory]
+    [MemberData(nameof(Wires))]
+    public async Task AFaultInTheModelsDocumentDeclarationsIsRenderedAsTheRefusalTheServiceMade(ClientWire wire)
+    {
+        const string Broken = "unknown property \"nope\" (declared in document.sysml)";
+        using var handler = new FakeServiceHandler(wire) { Capabilities = FakeModels.ModelCapabilities }
+            .Refusing("RunDocumentQuery", StatusCode.FailedPrecondition, Broken)
+            .Refusing("RenderDocument", StatusCode.FailedPrecondition, Broken);
+        await using var connection = await FakeConnection.OpenAsync(handler);
+        var client = Client(connection);
+        var token = TestContext.Current.CancellationToken;
+
+        var query = await client.CallAsync(ScenarioRequests.Method("RunDocumentQuery"), new Wire.RunDocumentQueryRequest { ModelHash = Hash, QueryId = "Q" }, token);
+        var document = await client.CallAsync(ScenarioRequests.Method("RenderDocument"), new Wire.RenderDocumentRequest { ModelHash = Hash, DocumentId = "D" }, token);
+
+        Assert.Equal(new ScenarioAnswer.Refused(StatusCode.FailedPrecondition, Broken), query);
+        Assert.Equal(new ScenarioAnswer.Refused(StatusCode.FailedPrecondition, Broken), document);
     }
 
     [Theory]

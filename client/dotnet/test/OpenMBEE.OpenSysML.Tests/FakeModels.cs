@@ -36,6 +36,11 @@ internal static class FakeModels
         Capabilities.ConvertCompact,
         Capabilities.ConvertCheckDiagnostics,
         Capabilities.Migrate,
+        Capabilities.OslcQuery,
+        Capabilities.DocumentQuery,
+        Capabilities.RenderDocument,
+        Capabilities.RenderDocumentHtml,
+        Capabilities.RenderView,
         .. Internal.ValueWire.SendGateOrder,
     ];
 

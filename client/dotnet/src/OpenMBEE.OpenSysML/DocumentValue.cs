@@ -4,9 +4,9 @@ using System.Diagnostics.CodeAnalysis;
 namespace OpenMBEE.OpenSysML;
 
 /// <summary>
-/// One typed document value, as the service answers it: a model element, an object it holds, a
-/// scalar, a quantity, or a row a <c>Verdicts</c>, <c>States</c> or <c>Events</c> query answered.
-/// It is an immutable variant of the service's <c>DocumentValue</c>, one nested sealed class per
+/// One typed document value, as the service answers it and as a <see cref="DocumentBinding"/> binds it: a model
+/// element, an object it holds, a scalar, a quantity, or a row a <c>Verdicts</c>, <c>States</c> or <c>Events</c>
+/// query answered. It is an immutable variant of the service's <c>DocumentValue</c>, one nested sealed class per
 /// arm; a state run's trace records its <see cref="DocumentEvent.Time"/> as one.
 /// </summary>
 /// <remarks>
@@ -21,6 +21,38 @@ public abstract class DocumentValue : IEquatable<DocumentValue>
 {
     private DocumentValue()
     {
+    }
+
+    /// <summary>A model element bound by its qualified name, as a <see cref="DocumentBinding"/> names one.</summary>
+    /// <param name="qualifiedName">The element's qualified name (<c>Observatory::telescope</c>).</param>
+    /// <returns>The element value, of no stated type: a type is answered, never bound.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="qualifiedName"/> is null.</exception>
+    /// <exception cref="ArgumentException"><paramref name="qualifiedName"/> is empty.</exception>
+    public static ElementValue ElementRef(string qualifiedName)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(qualifiedName);
+        return new ElementValue(qualifiedName, string.Empty);
+    }
+
+    /// <summary>An object the service holds for the model, bound by the label a session reaches it under.</summary>
+    /// <param name="path">The qualified name it was instantiated as (<c>Garage::car</c>), its id (<c>#2</c>), or a path through the feature values of either (<c>Garage::car.wheels[2]</c>).</param>
+    /// <returns>The object value.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="path"/> is null.</exception>
+    /// <exception cref="ArgumentException"><paramref name="path"/> is empty.</exception>
+    public static ObjectValue ObjectRef(string path)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(path);
+        return new ObjectValue(new DocumentObject(0, path, null));
+    }
+
+    /// <summary>An object the service holds for the model, bound by the id an instantiation answered for it.</summary>
+    /// <param name="instanceId">The object's id; ids count up from 1.</param>
+    /// <returns>The object value.</returns>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="instanceId"/> is not positive.</exception>
+    public static ObjectValue ObjectRef(long instanceId)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(instanceId);
+        return new ObjectValue(new DocumentObject(instanceId, string.Empty, null));
     }
 
     /// <inheritdoc/>

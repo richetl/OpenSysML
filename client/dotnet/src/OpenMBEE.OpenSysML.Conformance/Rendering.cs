@@ -644,6 +644,138 @@ internal static class Rendering
         };
     }
 
+    /// <summary>What a query selected, every element with its id, type and reported properties.</summary>
+    internal static Wire.QueryResponse QueryResult(QueryResult result)
+    {
+        ArgumentNullException.ThrowIfNull(result);
+        return new Wire.QueryResponse
+        {
+            Elements =
+            {
+                result.Elements.Select(element => new Wire.QueryResultElement
+                {
+                    Id = element.Id,
+                    Type = element.Type,
+                    Properties = { element.Properties.ToDictionary(StringComparer.Ordinal) },
+                }),
+            },
+        };
+    }
+
+    /// <summary>A document query's columns and rows, each value in the arm of its kind.</summary>
+    internal static Wire.RunDocumentQueryResponse DocumentQueryResult(DocumentQueryResult result)
+    {
+        ArgumentNullException.ThrowIfNull(result);
+        return new Wire.RunDocumentQueryResponse
+        {
+            Columns = { result.Columns.Select(column => new Wire.DocumentQueryColumn { Name = column }) },
+            Rows =
+            {
+                result.Rows.Select(row => new Wire.DocumentQueryRow
+                {
+                    Element = DocumentValue(row.Element),
+                    Cells = { row.Cells.Select(cell => new Wire.DocumentQueryCell { Values = { cell.Select(DocumentValue) } }) },
+                }),
+            },
+        };
+    }
+
+    /// <summary>A rendered document, in the field of its form, and the file a rendered set writes it to.</summary>
+    internal static Wire.RenderDocumentResponse RenderedDocument(RenderedDocument document)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        var rendered = new Wire.RenderDocumentResponse { FileName = document.FileName ?? string.Empty };
+        if (document.Form == DocumentForm.Html)
+        {
+            rendered.Html = document.Content;
+        }
+        else
+        {
+            rendered.Markdown = document.Content;
+        }
+
+        return rendered;
+    }
+
+    /// <summary>A view rendering, with every node, edge, row, note and notice, and absent what the API reports absent.</summary>
+    internal static Wire.RenderViewResponse RenderedView(RenderedView view)
+    {
+        ArgumentNullException.ThrowIfNull(view);
+        return new Wire.RenderViewResponse
+        {
+            View = view.View,
+            Kind = view.Kind,
+            Stated = view.Stated,
+            Nodes =
+            {
+                view.Nodes.Select(node => new Wire.RenderNode
+                {
+                    Id = node.Id,
+                    Kind = node.Kind,
+                    Name = node.Name,
+                    NameSynthesized = node.NameSynthesized,
+                    Type = node.Type,
+                    Detail = node.Detail,
+                    Text = node.Text,
+                    StandIn = node.StandIn,
+                    Parent = node.Parent,
+                    Ports = { node.Ports.Select(port => new Wire.RenderPort { Id = port.Id, Name = port.Name, Type = port.Type, Direction = port.Direction }) },
+                    Origin = Span(node.Origin),
+                    Geometry = node.Geometry is { } geometry
+                        ? new Wire.RenderGeometry
+                        {
+                            X = geometry.X,
+                            Y = geometry.Y,
+                            Width = geometry.Width,
+                            Height = geometry.Height,
+                            HasSize = geometry.HasSize,
+                            Collapsed = geometry.Collapsed,
+                            Unplaced = geometry.Unplaced,
+                        }
+                        : null,
+                    Style = Style(node.Style),
+                }),
+            },
+            Edges =
+            {
+                view.Edges.Select(edge => new Wire.RenderEdge
+                {
+                    From = edge.From,
+                    To = edge.To,
+                    FromPort = edge.FromPort,
+                    ToPort = edge.ToPort,
+                    Label = edge.Label,
+                    Name = edge.Name,
+                    Kind = edge.Kind,
+                    Origin = Span(edge.Origin),
+                    Route = { edge.Route.Select(point => new Wire.RenderPoint { X = point.X, Y = point.Y }) },
+                    Style = Style(edge.Style),
+                }),
+            },
+            Columns = { view.Columns },
+            Rows = { view.Rows.Select(row => new Wire.RenderRow { Cells = { row.Cells }, Origin = Span(row.Origin) }) },
+            Canvas = view.Canvas is { } canvas ? new Wire.RenderCanvas { Unit = canvas.Unit, Width = canvas.Width, Height = canvas.Height, HasSize = canvas.HasSize } : null,
+            Notes =
+            {
+                view.Notes.Select(note => new Wire.RenderNote
+                {
+                    Text = note.Text,
+                    Anchor = note.Anchor,
+                    EdgeFrom = note.EdgeFrom,
+                    EdgeTo = note.EdgeTo,
+                    X = note.X,
+                    Y = note.Y,
+                    Width = note.Width,
+                    Height = note.Height,
+                    HasSize = note.HasSize,
+                    Origin = Span(note.Origin),
+                }),
+            },
+            Notices = { view.Notices },
+            Shown = { view.Shown },
+        };
+    }
+
     /// <summary>One engine's listing.</summary>
     internal static Wire.EngineInfo Engine(EngineInfo engine)
     {
@@ -846,6 +978,14 @@ internal static class Rendering
     // An element named by no id is the value of no arm, which is how the service sends one.
     private static Wire.DocumentValue Element(DocumentValue.ElementValue element) =>
         element.Id is { } id ? new() { ElementId = id, ElementType = element.ElementType } : new() { ElementType = element.ElementType };
+
+    private static Wire.Span? Span(SourceSpan? span) => span is null
+        ? null
+        : new Wire.Span { File = span.File, StartLine = span.StartLine, StartCol = span.StartColumn, EndLine = span.EndLine, EndCol = span.EndColumn };
+
+    private static Wire.RenderStyle? Style(ViewStyle? style) => style is null
+        ? null
+        : new Wire.RenderStyle { Fill = style.Fill, Line = style.Line, Text = style.Text, Font = style.Font, FontSize = style.FontSize, Bold = style.Bold, Italic = style.Italic };
 
     private static Wire.DocumentValue? OptionalElement(DocumentValue.ElementValue? element) => element is null ? null : Element(element);
 

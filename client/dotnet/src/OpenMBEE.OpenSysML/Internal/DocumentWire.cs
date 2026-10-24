@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.Linq;
 using Google.Protobuf;
 using DocumentKind = OpenMBEE.OpenSysML.Wire.DocumentValue.KindOneofCase;
@@ -7,9 +9,10 @@ namespace OpenMBEE.OpenSysML.Internal;
 /// <summary>
 /// Reads the service's document messages, <c>DocumentValue</c>, <c>DocumentObject</c>,
 /// <c>DocumentVerdict</c>, <c>DocumentState</c> and <c>DocumentEvent</c>, into the client's immutable
-/// records. A number or a quantity is read by <see cref="ValueWire"/>'s rules; a malformed answer is a
-/// <see cref="TransportException"/> naming where it is, and an arm this client does not know is an
-/// <see cref="UnsupportedValueException"/>, never an anonymous element.
+/// records, and writes the values a document query is bound to. A number or a quantity is read and written
+/// by <see cref="ValueWire"/>'s rules; a malformed answer is a <see cref="TransportException"/> naming where
+/// it is, and an arm this client does not know is an <see cref="UnsupportedValueException"/>, never an
+/// anonymous element.
 /// </summary>
 internal static class DocumentWire
 {
@@ -24,6 +27,97 @@ internal static class DocumentWire
     /// <param name="method">The method answered, for an error.</param>
     /// <param name="path">Where the record is in the answer, as <c>trace[0]</c>.</param>
     internal static DocumentEvent Event(Wire.DocumentEvent value, string method, string path) => ReadEvent(value, method, path, 0);
+
+    /// <summary>Reads a document query's answer: its columns, and each row's element and cells.</summary>
+    /// <exception cref="TransportException">A row selects no element, or a value is malformed.</exception>
+    /// <exception cref="UnsupportedValueException">A value is of a kind this client does not know.</exception>
+    internal static DocumentQueryResult Result(Wire.RunDocumentQueryResponse response, string method) =>
+        new(
+            response.Columns.Select(column => column.Name),
+            response.Rows.Select((row, i) => new DocumentRow(
+                row.Element is { } element
+                    ? Value(element, method, $"rows[{i}].element")
+                    : throw ValueWire.MalformedAnswer(method, $"rows[{i}]", "it selects no element, which every row stands for"),
+                row.Cells.Select((cell, j) => cell.Values.Select((value, k) => Value(value, method, $"rows[{i}].cells[{j}].values[{k}]"))))));
+
+    /// <summary>Writes a document query's bindings, in the order given, each value as it is held.</summary>
+    /// <exception cref="InvalidRequestException">A quantity cannot be sent.</exception>
+    internal static IEnumerable<Wire.DocumentQueryBinding> ToWire(IEnumerable<DocumentBinding> bindings) =>
+        bindings.Select((binding, i) => new Wire.DocumentQueryBinding
+        {
+            Parameter = binding.Parameter,
+            Values = { binding.Values.Select((value, j) => ToWire(value, $"bindings[{i}].values[{j}]")) },
+        });
+
+    /// <summary>
+    /// Holds written bindings to what a service advertises, by the service's own predicates and in its order: first, to
+    /// a service without <c>rational_values</c>, each Rational a <see cref="double"/> holds exactly becomes that double,
+    /// the same number; then an Integer beyond <see cref="long"/> needs <c>big_int_values</c>, and a Rational
+    /// <c>rational_values</c>, as a value's own arm or a quantity's magnitude.
+    /// </summary>
+    /// <exception cref="CapabilityException">The service does not advertise a capability a binding needs.</exception>
+    internal static void Fit(IReadOnlyList<Wire.DocumentQueryBinding> bindings, Capabilities capabilities)
+    {
+        var values = bindings.SelectMany(binding => binding.Values).ToList();
+        if (!capabilities.Has(Capabilities.RationalValues))
+        {
+            values.ForEach(RationalAsReal);
+        }
+
+        if (values.Any(value => Holds(value, DocumentKind.BigIntValue, Wire.Quantity.MagnitudeOneofCase.BigIntMagnitude)))
+        {
+            capabilities.Require(Capabilities.BigIntValues);
+        }
+
+        if (values.Any(value => Holds(value, DocumentKind.RationalValue, Wire.Quantity.MagnitudeOneofCase.RationalMagnitude)))
+        {
+            capabilities.Require(Capabilities.RationalValues);
+        }
+    }
+
+    private static Wire.DocumentValue ToWire(DocumentValue value, string path) => value switch
+    {
+        DocumentValue.ElementValue element => Element(element),
+        DocumentValue.ObjectValue held => new Wire.DocumentValue
+        {
+            Object = new Wire.DocumentObject
+            {
+                InstanceId = held.Value.InstanceId,
+                Path = held.Value.Path,
+                Element = held.Value.Element is { } element ? Element(element) : null,
+            },
+        },
+        DocumentValue.TextValue text => new Wire.DocumentValue { StringValue = text.Text },
+        DocumentValue.NumberValue number => ValueWire.ToWire(number.Number, path) switch
+        {
+            { KindCase: Wire.Value.KindOneofCase.IntValue } written => new Wire.DocumentValue { IntValue = written.IntValue },
+            { KindCase: Wire.Value.KindOneofCase.BigIntValue } written => new Wire.DocumentValue { BigIntValue = written.BigIntValue },
+            { KindCase: Wire.Value.KindOneofCase.RationalValue } written => new Wire.DocumentValue { RationalValue = written.RationalValue },
+            var written => new Wire.DocumentValue { RealValue = written.RealValue },
+        },
+        DocumentValue.BooleanValue boolean => new Wire.DocumentValue { BoolValue = boolean.Value },
+        DocumentValue.QuantityValue quantity => new Wire.DocumentValue { Quantity = ValueWire.ToWire(quantity.Quantity, path + ".quantity") },
+        _ => throw new InvalidOperationException($"No binding is written for a {value.GetType().FullName}, which a DocumentBinding refuses."),
+    };
+
+    // An element named by no id is sent, as the service answers one, as the value of no arm.
+    private static Wire.DocumentValue Element(DocumentValue.ElementValue element) =>
+        element.Id is { } id ? new Wire.DocumentValue { ElementId = id, ElementType = element.ElementType } : new Wire.DocumentValue { ElementType = element.ElementType };
+
+    private static bool Holds(Wire.DocumentValue value, DocumentKind arm, Wire.Quantity.MagnitudeOneofCase magnitude) =>
+        value.KindCase == DocumentKind.Quantity ? value.Quantity.MagnitudeCase == magnitude : value.KindCase == arm;
+
+    private static void RationalAsReal(Wire.DocumentValue value)
+    {
+        if (value.KindCase == DocumentKind.RationalValue && ValueWire.ExactDouble(value.RationalValue) is { } real)
+        {
+            value.RealValue = real;
+        }
+        else if (value.KindCase == DocumentKind.Quantity)
+        {
+            ValueWire.RationalAsReal(value.Quantity);
+        }
+    }
 
     private static DocumentValue Read(Wire.DocumentValue value, string method, string path, int depth)
     {

@@ -1975,3 +1975,334 @@ static OpenMBEE.OpenSysML.MigrationEntry.operator ==(OpenMBEE.OpenSysML.Migratio
 static OpenMBEE.OpenSysML.MigrationReport.operator !=(OpenMBEE.OpenSysML.MigrationReport? left, OpenMBEE.OpenSysML.MigrationReport? right) -> bool
 static OpenMBEE.OpenSysML.MigrationReport.operator ==(OpenMBEE.OpenSysML.MigrationReport? left, OpenMBEE.OpenSysML.MigrationReport? right) -> bool
 static OpenMBEE.OpenSysML.SaveOptions.Default.get -> OpenMBEE.OpenSysML.SaveOptions!
+OpenMBEE.OpenSysML.ComparisonOperator
+OpenMBEE.OpenSysML.ComparisonOperator.Equal = 1 -> OpenMBEE.OpenSysML.ComparisonOperator
+OpenMBEE.OpenSysML.ComparisonOperator.Greater = 2 -> OpenMBEE.OpenSysML.ComparisonOperator
+OpenMBEE.OpenSysML.ComparisonOperator.Less = 3 -> OpenMBEE.OpenSysML.ComparisonOperator
+OpenMBEE.OpenSysML.CompositeOperator
+OpenMBEE.OpenSysML.CompositeOperator.And = 1 -> OpenMBEE.OpenSysML.CompositeOperator
+OpenMBEE.OpenSysML.CompositeOperator.Or = 2 -> OpenMBEE.OpenSysML.CompositeOperator
+OpenMBEE.OpenSysML.DocumentBinding
+OpenMBEE.OpenSysML.DocumentBinding.<Clone>$() -> OpenMBEE.OpenSysML.DocumentBinding!
+OpenMBEE.OpenSysML.DocumentBinding.DocumentBinding(string! parameter, params System.Collections.Generic.IEnumerable<OpenMBEE.OpenSysML.DocumentValue!>! values) -> void
+OpenMBEE.OpenSysML.DocumentBinding.Equals(OpenMBEE.OpenSysML.DocumentBinding? other) -> bool
+OpenMBEE.OpenSysML.DocumentBinding.Parameter.get -> string!
+OpenMBEE.OpenSysML.DocumentBinding.Values.get -> OpenMBEE.OpenSysML.ValueList<OpenMBEE.OpenSysML.DocumentValue!>
+OpenMBEE.OpenSysML.DocumentForm
+OpenMBEE.OpenSysML.DocumentForm.Html = 1 -> OpenMBEE.OpenSysML.DocumentForm
+OpenMBEE.OpenSysML.DocumentForm.Markdown = 0 -> OpenMBEE.OpenSysML.DocumentForm
+OpenMBEE.OpenSysML.DocumentQueryResult
+OpenMBEE.OpenSysML.DocumentQueryResult.<Clone>$() -> OpenMBEE.OpenSysML.DocumentQueryResult!
+OpenMBEE.OpenSysML.DocumentQueryResult.Columns.get -> OpenMBEE.OpenSysML.ValueList<string!>
+OpenMBEE.OpenSysML.DocumentQueryResult.DocumentQueryResult(System.Collections.Generic.IEnumerable<string!>! columns, System.Collections.Generic.IEnumerable<OpenMBEE.OpenSysML.DocumentRow!>! rows) -> void
+OpenMBEE.OpenSysML.DocumentQueryResult.Equals(OpenMBEE.OpenSysML.DocumentQueryResult? other) -> bool
+OpenMBEE.OpenSysML.DocumentQueryResult.Rows.get -> OpenMBEE.OpenSysML.ValueList<OpenMBEE.OpenSysML.DocumentRow!>
+OpenMBEE.OpenSysML.DocumentRow
+OpenMBEE.OpenSysML.DocumentRow.<Clone>$() -> OpenMBEE.OpenSysML.DocumentRow!
+OpenMBEE.OpenSysML.DocumentRow.Cells.get -> OpenMBEE.OpenSysML.ValueList<OpenMBEE.OpenSysML.ValueList<OpenMBEE.OpenSysML.DocumentValue!>>
+OpenMBEE.OpenSysML.DocumentRow.DocumentRow(OpenMBEE.OpenSysML.DocumentValue! element, System.Collections.Generic.IEnumerable<System.Collections.Generic.IEnumerable<OpenMBEE.OpenSysML.DocumentValue!>!>! cells) -> void
+OpenMBEE.OpenSysML.DocumentRow.Element.get -> OpenMBEE.OpenSysML.DocumentValue!
+OpenMBEE.OpenSysML.DocumentRow.Equals(OpenMBEE.OpenSysML.DocumentRow? other) -> bool
+OpenMBEE.OpenSysML.Model.QueryAsync(OpenMBEE.OpenSysML.Query! query, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<OpenMBEE.OpenSysML.QueryResult!>!
+OpenMBEE.OpenSysML.Model.QueryOslcAsync(string! oslcQuery, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<OpenMBEE.OpenSysML.QueryResult!>!
+OpenMBEE.OpenSysML.Model.RenderDocumentAsync(string! documentId, OpenMBEE.OpenSysML.DocumentForm form = OpenMBEE.OpenSysML.DocumentForm.Markdown, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<OpenMBEE.OpenSysML.RenderedDocument!>!
+OpenMBEE.OpenSysML.Model.RenderViewAsync(string! view, OpenMBEE.OpenSysML.RenderViewOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<OpenMBEE.OpenSysML.RenderedView!>!
+OpenMBEE.OpenSysML.Model.RunDocumentQueryAsync(string! queryId, System.Collections.Generic.IEnumerable<OpenMBEE.OpenSysML.DocumentBinding!>? bindings = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<OpenMBEE.OpenSysML.DocumentQueryResult!>!
+OpenMBEE.OpenSysML.ModelException.ModelException(string! message, string! method, System.Collections.Generic.IEnumerable<OpenMBEE.OpenSysML.Diagnostic!>! diagnostics, System.Exception? innerException) -> void
+OpenMBEE.OpenSysML.Query
+OpenMBEE.OpenSysML.Query.<Clone>$() -> OpenMBEE.OpenSysML.Query!
+OpenMBEE.OpenSysML.Query.Equals(OpenMBEE.OpenSysML.Query? other) -> bool
+OpenMBEE.OpenSysML.Query.Query() -> void
+OpenMBEE.OpenSysML.Query.Scope.get -> System.Collections.Generic.IReadOnlyList<string!>!
+OpenMBEE.OpenSysML.Query.Scope.init -> void
+OpenMBEE.OpenSysML.Query.Select.get -> System.Collections.Generic.IReadOnlyList<string!>!
+OpenMBEE.OpenSysML.Query.Select.init -> void
+OpenMBEE.OpenSysML.Query.Where.get -> OpenMBEE.OpenSysML.QueryConstraint?
+OpenMBEE.OpenSysML.Query.Where.init -> void
+OpenMBEE.OpenSysML.QueryConstraint
+OpenMBEE.OpenSysML.QueryConstraint.Comparison
+OpenMBEE.OpenSysML.QueryConstraint.Comparison.Comparison(string! property, OpenMBEE.OpenSysML.ComparisonOperator operator, System.Collections.Generic.IEnumerable<string!>! values, bool inverse = false) -> void
+OpenMBEE.OpenSysML.QueryConstraint.Comparison.Inverse.get -> bool
+OpenMBEE.OpenSysML.QueryConstraint.Comparison.Inverted() -> OpenMBEE.OpenSysML.QueryConstraint.Comparison!
+OpenMBEE.OpenSysML.QueryConstraint.Comparison.Operator.get -> OpenMBEE.OpenSysML.ComparisonOperator
+OpenMBEE.OpenSysML.QueryConstraint.Comparison.Property.get -> string!
+OpenMBEE.OpenSysML.QueryConstraint.Comparison.Values.get -> OpenMBEE.OpenSysML.ValueList<string!>
+OpenMBEE.OpenSysML.QueryConstraint.Composite
+OpenMBEE.OpenSysML.QueryConstraint.Composite.Composite(OpenMBEE.OpenSysML.CompositeOperator operator, System.Collections.Generic.IEnumerable<OpenMBEE.OpenSysML.QueryConstraint!>! constraints) -> void
+OpenMBEE.OpenSysML.QueryConstraint.Composite.Constraints.get -> OpenMBEE.OpenSysML.ValueList<OpenMBEE.OpenSysML.QueryConstraint!>
+OpenMBEE.OpenSysML.QueryConstraint.Composite.Operator.get -> OpenMBEE.OpenSysML.CompositeOperator
+OpenMBEE.OpenSysML.QueryElement
+OpenMBEE.OpenSysML.QueryElement.<Clone>$() -> OpenMBEE.OpenSysML.QueryElement!
+OpenMBEE.OpenSysML.QueryElement.Equals(OpenMBEE.OpenSysML.QueryElement? other) -> bool
+OpenMBEE.OpenSysML.QueryElement.Id.get -> string!
+OpenMBEE.OpenSysML.QueryElement.Properties.get -> OpenMBEE.OpenSysML.ValueDictionary<string!>
+OpenMBEE.OpenSysML.QueryElement.QueryElement(string! id, string! type, System.Collections.Generic.IEnumerable<System.Collections.Generic.KeyValuePair<string!, string!>>! properties) -> void
+OpenMBEE.OpenSysML.QueryElement.Type.get -> string!
+OpenMBEE.OpenSysML.QueryException
+OpenMBEE.OpenSysML.QueryException.QueryException(OpenMBEE.OpenSysML.StatusCode statusCode, string! serviceMessage, string! method, System.Exception? innerException = null) -> void
+OpenMBEE.OpenSysML.QueryException.ServiceMessage.get -> string!
+OpenMBEE.OpenSysML.QueryException.StatusCode.get -> OpenMBEE.OpenSysML.StatusCode
+OpenMBEE.OpenSysML.QueryResult
+OpenMBEE.OpenSysML.QueryResult.<Clone>$() -> OpenMBEE.OpenSysML.QueryResult!
+OpenMBEE.OpenSysML.QueryResult.Elements.get -> OpenMBEE.OpenSysML.ValueList<OpenMBEE.OpenSysML.QueryElement!>
+OpenMBEE.OpenSysML.QueryResult.Equals(OpenMBEE.OpenSysML.QueryResult? other) -> bool
+OpenMBEE.OpenSysML.QueryResult.QueryResult(System.Collections.Generic.IEnumerable<OpenMBEE.OpenSysML.QueryElement!>! elements) -> void
+OpenMBEE.OpenSysML.RenderViewOptions
+OpenMBEE.OpenSysML.RenderViewOptions.Depth.get -> int?
+OpenMBEE.OpenSysML.RenderViewOptions.Depth.init -> void
+OpenMBEE.OpenSysML.RenderViewOptions.Ports.get -> OpenMBEE.OpenSysML.RenderViewPorts
+OpenMBEE.OpenSysML.RenderViewOptions.Ports.init -> void
+OpenMBEE.OpenSysML.RenderViewOptions.RenderViewOptions() -> void
+OpenMBEE.OpenSysML.RenderViewOptions.Show.get -> System.Collections.Generic.IReadOnlyList<string!>!
+OpenMBEE.OpenSysML.RenderViewOptions.Show.init -> void
+OpenMBEE.OpenSysML.RenderViewPorts
+OpenMBEE.OpenSysML.RenderViewPorts.Full = 1 -> OpenMBEE.OpenSysML.RenderViewPorts
+OpenMBEE.OpenSysML.RenderViewPorts.Minimal = 0 -> OpenMBEE.OpenSysML.RenderViewPorts
+OpenMBEE.OpenSysML.RenderedDocument
+OpenMBEE.OpenSysML.RenderedDocument.<Clone>$() -> OpenMBEE.OpenSysML.RenderedDocument!
+OpenMBEE.OpenSysML.RenderedDocument.Content.get -> string!
+OpenMBEE.OpenSysML.RenderedDocument.Equals(OpenMBEE.OpenSysML.RenderedDocument? other) -> bool
+OpenMBEE.OpenSysML.RenderedDocument.FileName.get -> string?
+OpenMBEE.OpenSysML.RenderedDocument.Form.get -> OpenMBEE.OpenSysML.DocumentForm
+OpenMBEE.OpenSysML.RenderedDocument.RenderedDocument(OpenMBEE.OpenSysML.DocumentForm form, string! content, string? fileName) -> void
+OpenMBEE.OpenSysML.RenderedView
+OpenMBEE.OpenSysML.RenderedView.<Clone>$() -> OpenMBEE.OpenSysML.RenderedView!
+OpenMBEE.OpenSysML.RenderedView.Canvas.get -> OpenMBEE.OpenSysML.ViewCanvas?
+OpenMBEE.OpenSysML.RenderedView.ChildrenOf(OpenMBEE.OpenSysML.ViewNode! node) -> System.Collections.Generic.IEnumerable<OpenMBEE.OpenSysML.ViewNode!>!
+OpenMBEE.OpenSysML.RenderedView.Columns.get -> OpenMBEE.OpenSysML.ValueList<string!>
+OpenMBEE.OpenSysML.RenderedView.Edges.get -> OpenMBEE.OpenSysML.ValueList<OpenMBEE.OpenSysML.ViewEdge!>
+OpenMBEE.OpenSysML.RenderedView.Equals(OpenMBEE.OpenSysML.RenderedView? other) -> bool
+OpenMBEE.OpenSysML.RenderedView.Kind.get -> string!
+OpenMBEE.OpenSysML.RenderedView.Node(string! id) -> OpenMBEE.OpenSysML.ViewNode?
+OpenMBEE.OpenSysML.RenderedView.Nodes.get -> OpenMBEE.OpenSysML.ValueList<OpenMBEE.OpenSysML.ViewNode!>
+OpenMBEE.OpenSysML.RenderedView.Notes.get -> OpenMBEE.OpenSysML.ValueList<OpenMBEE.OpenSysML.ViewNote!>
+OpenMBEE.OpenSysML.RenderedView.Notices.get -> OpenMBEE.OpenSysML.ValueList<string!>
+OpenMBEE.OpenSysML.RenderedView.RenderedView(string! view, string! kind, string! stated, System.Collections.Generic.IEnumerable<OpenMBEE.OpenSysML.ViewNode!>! nodes, System.Collections.Generic.IEnumerable<OpenMBEE.OpenSysML.ViewEdge!>! edges, System.Collections.Generic.IEnumerable<string!>! columns, System.Collections.Generic.IEnumerable<OpenMBEE.OpenSysML.ViewRow!>! rows, OpenMBEE.OpenSysML.ViewCanvas? canvas, System.Collections.Generic.IEnumerable<OpenMBEE.OpenSysML.ViewNote!>! notes, System.Collections.Generic.IEnumerable<string!>! notices, System.Collections.Generic.IEnumerable<string!>! shown) -> void
+OpenMBEE.OpenSysML.RenderedView.Roots.get -> System.Collections.Generic.IEnumerable<OpenMBEE.OpenSysML.ViewNode!>!
+OpenMBEE.OpenSysML.RenderedView.Rows.get -> OpenMBEE.OpenSysML.ValueList<OpenMBEE.OpenSysML.ViewRow!>
+OpenMBEE.OpenSysML.RenderedView.Shown.get -> OpenMBEE.OpenSysML.ValueList<string!>
+OpenMBEE.OpenSysML.RenderedView.Stated.get -> string!
+OpenMBEE.OpenSysML.RenderedView.View.get -> string!
+OpenMBEE.OpenSysML.ViewCanvas
+OpenMBEE.OpenSysML.ViewCanvas.<Clone>$() -> OpenMBEE.OpenSysML.ViewCanvas!
+OpenMBEE.OpenSysML.ViewCanvas.Equals(OpenMBEE.OpenSysML.ViewCanvas? other) -> bool
+OpenMBEE.OpenSysML.ViewCanvas.HasSize.get -> bool
+OpenMBEE.OpenSysML.ViewCanvas.Height.get -> double
+OpenMBEE.OpenSysML.ViewCanvas.Unit.get -> string!
+OpenMBEE.OpenSysML.ViewCanvas.ViewCanvas(string! unit, double width, double height, bool hasSize) -> void
+OpenMBEE.OpenSysML.ViewCanvas.Width.get -> double
+OpenMBEE.OpenSysML.ViewEdge
+OpenMBEE.OpenSysML.ViewEdge.<Clone>$() -> OpenMBEE.OpenSysML.ViewEdge!
+OpenMBEE.OpenSysML.ViewEdge.Equals(OpenMBEE.OpenSysML.ViewEdge? other) -> bool
+OpenMBEE.OpenSysML.ViewEdge.From.get -> string!
+OpenMBEE.OpenSysML.ViewEdge.FromPort.get -> string!
+OpenMBEE.OpenSysML.ViewEdge.Kind.get -> string!
+OpenMBEE.OpenSysML.ViewEdge.Label.get -> string!
+OpenMBEE.OpenSysML.ViewEdge.Name.get -> string!
+OpenMBEE.OpenSysML.ViewEdge.Origin.get -> OpenMBEE.OpenSysML.SourceSpan?
+OpenMBEE.OpenSysML.ViewEdge.Route.get -> OpenMBEE.OpenSysML.ValueList<OpenMBEE.OpenSysML.ViewPoint!>
+OpenMBEE.OpenSysML.ViewEdge.Style.get -> OpenMBEE.OpenSysML.ViewStyle?
+OpenMBEE.OpenSysML.ViewEdge.To.get -> string!
+OpenMBEE.OpenSysML.ViewEdge.ToPort.get -> string!
+OpenMBEE.OpenSysML.ViewEdge.ViewEdge(string! from, string! to, string! fromPort, string! toPort, string! label, string! name, string! kind, OpenMBEE.OpenSysML.SourceSpan? origin, System.Collections.Generic.IEnumerable<OpenMBEE.OpenSysML.ViewPoint!>! route, OpenMBEE.OpenSysML.ViewStyle? style) -> void
+OpenMBEE.OpenSysML.ViewGeometry
+OpenMBEE.OpenSysML.ViewGeometry.<Clone>$() -> OpenMBEE.OpenSysML.ViewGeometry!
+OpenMBEE.OpenSysML.ViewGeometry.Collapsed.get -> bool
+OpenMBEE.OpenSysML.ViewGeometry.Collapsed.init -> void
+OpenMBEE.OpenSysML.ViewGeometry.Deconstruct(out double X, out double Y, out double Width, out double Height, out bool HasSize, out bool Collapsed, out bool Unplaced) -> void
+OpenMBEE.OpenSysML.ViewGeometry.Equals(OpenMBEE.OpenSysML.ViewGeometry? other) -> bool
+OpenMBEE.OpenSysML.ViewGeometry.HasSize.get -> bool
+OpenMBEE.OpenSysML.ViewGeometry.HasSize.init -> void
+OpenMBEE.OpenSysML.ViewGeometry.Height.get -> double
+OpenMBEE.OpenSysML.ViewGeometry.Height.init -> void
+OpenMBEE.OpenSysML.ViewGeometry.Unplaced.get -> bool
+OpenMBEE.OpenSysML.ViewGeometry.Unplaced.init -> void
+OpenMBEE.OpenSysML.ViewGeometry.ViewGeometry(double X, double Y, double Width, double Height, bool HasSize, bool Collapsed, bool Unplaced) -> void
+OpenMBEE.OpenSysML.ViewGeometry.Width.get -> double
+OpenMBEE.OpenSysML.ViewGeometry.Width.init -> void
+OpenMBEE.OpenSysML.ViewGeometry.X.get -> double
+OpenMBEE.OpenSysML.ViewGeometry.X.init -> void
+OpenMBEE.OpenSysML.ViewGeometry.Y.get -> double
+OpenMBEE.OpenSysML.ViewGeometry.Y.init -> void
+OpenMBEE.OpenSysML.ViewNode
+OpenMBEE.OpenSysML.ViewNode.<Clone>$() -> OpenMBEE.OpenSysML.ViewNode!
+OpenMBEE.OpenSysML.ViewNode.Detail.get -> string!
+OpenMBEE.OpenSysML.ViewNode.Equals(OpenMBEE.OpenSysML.ViewNode? other) -> bool
+OpenMBEE.OpenSysML.ViewNode.Geometry.get -> OpenMBEE.OpenSysML.ViewGeometry?
+OpenMBEE.OpenSysML.ViewNode.Id.get -> string!
+OpenMBEE.OpenSysML.ViewNode.Kind.get -> string!
+OpenMBEE.OpenSysML.ViewNode.Name.get -> string!
+OpenMBEE.OpenSysML.ViewNode.NameSynthesized.get -> bool
+OpenMBEE.OpenSysML.ViewNode.Origin.get -> OpenMBEE.OpenSysML.SourceSpan?
+OpenMBEE.OpenSysML.ViewNode.Parent.get -> string!
+OpenMBEE.OpenSysML.ViewNode.Ports.get -> OpenMBEE.OpenSysML.ValueList<OpenMBEE.OpenSysML.ViewPort!>
+OpenMBEE.OpenSysML.ViewNode.StandIn.get -> bool
+OpenMBEE.OpenSysML.ViewNode.Style.get -> OpenMBEE.OpenSysML.ViewStyle?
+OpenMBEE.OpenSysML.ViewNode.Text.get -> string!
+OpenMBEE.OpenSysML.ViewNode.Type.get -> string!
+OpenMBEE.OpenSysML.ViewNode.ViewNode(string! id, string! kind, string! name, bool nameSynthesized, string! type, string! detail, string! text, bool standIn, string! parent, System.Collections.Generic.IEnumerable<OpenMBEE.OpenSysML.ViewPort!>! ports, OpenMBEE.OpenSysML.SourceSpan? origin, OpenMBEE.OpenSysML.ViewGeometry? geometry, OpenMBEE.OpenSysML.ViewStyle? style) -> void
+OpenMBEE.OpenSysML.ViewNotation
+OpenMBEE.OpenSysML.ViewNote
+OpenMBEE.OpenSysML.ViewNote.<Clone>$() -> OpenMBEE.OpenSysML.ViewNote!
+OpenMBEE.OpenSysML.ViewNote.Anchor.get -> string!
+OpenMBEE.OpenSysML.ViewNote.EdgeFrom.get -> string!
+OpenMBEE.OpenSysML.ViewNote.EdgeTo.get -> string!
+OpenMBEE.OpenSysML.ViewNote.Equals(OpenMBEE.OpenSysML.ViewNote? other) -> bool
+OpenMBEE.OpenSysML.ViewNote.HasSize.get -> bool
+OpenMBEE.OpenSysML.ViewNote.Height.get -> double
+OpenMBEE.OpenSysML.ViewNote.Origin.get -> OpenMBEE.OpenSysML.SourceSpan?
+OpenMBEE.OpenSysML.ViewNote.Text.get -> string!
+OpenMBEE.OpenSysML.ViewNote.ViewNote(string! text, string! anchor, string! edgeFrom, string! edgeTo, double x, double y, double width, double height, bool hasSize, OpenMBEE.OpenSysML.SourceSpan? origin) -> void
+OpenMBEE.OpenSysML.ViewNote.Width.get -> double
+OpenMBEE.OpenSysML.ViewNote.X.get -> double
+OpenMBEE.OpenSysML.ViewNote.Y.get -> double
+OpenMBEE.OpenSysML.ViewPoint
+OpenMBEE.OpenSysML.ViewPoint.<Clone>$() -> OpenMBEE.OpenSysML.ViewPoint!
+OpenMBEE.OpenSysML.ViewPoint.Deconstruct(out double X, out double Y) -> void
+OpenMBEE.OpenSysML.ViewPoint.Equals(OpenMBEE.OpenSysML.ViewPoint? other) -> bool
+OpenMBEE.OpenSysML.ViewPoint.ViewPoint(double X, double Y) -> void
+OpenMBEE.OpenSysML.ViewPoint.X.get -> double
+OpenMBEE.OpenSysML.ViewPoint.X.init -> void
+OpenMBEE.OpenSysML.ViewPoint.Y.get -> double
+OpenMBEE.OpenSysML.ViewPoint.Y.init -> void
+OpenMBEE.OpenSysML.ViewPort
+OpenMBEE.OpenSysML.ViewPort.<Clone>$() -> OpenMBEE.OpenSysML.ViewPort!
+OpenMBEE.OpenSysML.ViewPort.Direction.get -> string!
+OpenMBEE.OpenSysML.ViewPort.Equals(OpenMBEE.OpenSysML.ViewPort? other) -> bool
+OpenMBEE.OpenSysML.ViewPort.Id.get -> string!
+OpenMBEE.OpenSysML.ViewPort.Name.get -> string!
+OpenMBEE.OpenSysML.ViewPort.Type.get -> string!
+OpenMBEE.OpenSysML.ViewPort.ViewPort(string! id, string! name, string! type, string! direction) -> void
+OpenMBEE.OpenSysML.ViewRow
+OpenMBEE.OpenSysML.ViewRow.<Clone>$() -> OpenMBEE.OpenSysML.ViewRow!
+OpenMBEE.OpenSysML.ViewRow.Cells.get -> OpenMBEE.OpenSysML.ValueList<string!>
+OpenMBEE.OpenSysML.ViewRow.Equals(OpenMBEE.OpenSysML.ViewRow? other) -> bool
+OpenMBEE.OpenSysML.ViewRow.Origin.get -> OpenMBEE.OpenSysML.SourceSpan?
+OpenMBEE.OpenSysML.ViewRow.ViewRow(System.Collections.Generic.IEnumerable<string!>! cells, OpenMBEE.OpenSysML.SourceSpan? origin) -> void
+OpenMBEE.OpenSysML.ViewStyle
+OpenMBEE.OpenSysML.ViewStyle.<Clone>$() -> OpenMBEE.OpenSysML.ViewStyle!
+OpenMBEE.OpenSysML.ViewStyle.Bold.get -> bool
+OpenMBEE.OpenSysML.ViewStyle.Equals(OpenMBEE.OpenSysML.ViewStyle? other) -> bool
+OpenMBEE.OpenSysML.ViewStyle.Fill.get -> string!
+OpenMBEE.OpenSysML.ViewStyle.Font.get -> string!
+OpenMBEE.OpenSysML.ViewStyle.FontSize.get -> double
+OpenMBEE.OpenSysML.ViewStyle.Italic.get -> bool
+OpenMBEE.OpenSysML.ViewStyle.Line.get -> string!
+OpenMBEE.OpenSysML.ViewStyle.Text.get -> string!
+OpenMBEE.OpenSysML.ViewStyle.ViewStyle(string! fill, string! line, string! text, string! font, double fontSize, bool bold, bool italic) -> void
+abstract OpenMBEE.OpenSysML.QueryConstraint.Equals(OpenMBEE.OpenSysML.QueryConstraint? other) -> bool
+const OpenMBEE.OpenSysML.ViewNotation.All = "all" -> string!
+const OpenMBEE.OpenSysML.ViewNotation.Compartments = "compartments" -> string!
+const OpenMBEE.OpenSysML.ViewNotation.EdgeLabels = "edge-labels" -> string!
+const OpenMBEE.OpenSysML.ViewNotation.Keywords = "keywords" -> string!
+const OpenMBEE.OpenSysML.ViewNotation.Multiplicities = "multiplicities" -> string!
+const OpenMBEE.OpenSysML.ViewNotation.ParameterSymbols = "parameter-symbols" -> string!
+const OpenMBEE.OpenSysML.ViewNotation.PortSymbols = "port-symbols" -> string!
+const OpenMBEE.OpenSysML.ViewNotation.Qualifiers = "qualifiers" -> string!
+const OpenMBEE.OpenSysML.ViewNotation.Typings = "typings" -> string!
+override OpenMBEE.OpenSysML.DocumentBinding.Equals(object? obj) -> bool
+override OpenMBEE.OpenSysML.DocumentBinding.GetHashCode() -> int
+override OpenMBEE.OpenSysML.DocumentBinding.ToString() -> string!
+override OpenMBEE.OpenSysML.DocumentQueryResult.Equals(object? obj) -> bool
+override OpenMBEE.OpenSysML.DocumentQueryResult.GetHashCode() -> int
+override OpenMBEE.OpenSysML.DocumentQueryResult.ToString() -> string!
+override OpenMBEE.OpenSysML.DocumentRow.Equals(object? obj) -> bool
+override OpenMBEE.OpenSysML.DocumentRow.GetHashCode() -> int
+override OpenMBEE.OpenSysML.DocumentRow.ToString() -> string!
+override OpenMBEE.OpenSysML.Query.Equals(object? obj) -> bool
+override OpenMBEE.OpenSysML.Query.GetHashCode() -> int
+override OpenMBEE.OpenSysML.Query.ToString() -> string!
+override OpenMBEE.OpenSysML.QueryConstraint.Comparison.Equals(OpenMBEE.OpenSysML.QueryConstraint? other) -> bool
+override OpenMBEE.OpenSysML.QueryConstraint.Comparison.GetHashCode() -> int
+override OpenMBEE.OpenSysML.QueryConstraint.Comparison.ToString() -> string!
+override OpenMBEE.OpenSysML.QueryConstraint.Composite.Equals(OpenMBEE.OpenSysML.QueryConstraint? other) -> bool
+override OpenMBEE.OpenSysML.QueryConstraint.Composite.GetHashCode() -> int
+override OpenMBEE.OpenSysML.QueryConstraint.Composite.ToString() -> string!
+override OpenMBEE.OpenSysML.QueryElement.Equals(object? obj) -> bool
+override OpenMBEE.OpenSysML.QueryElement.GetHashCode() -> int
+override OpenMBEE.OpenSysML.QueryElement.ToString() -> string!
+override OpenMBEE.OpenSysML.QueryResult.Equals(object? obj) -> bool
+override OpenMBEE.OpenSysML.QueryResult.GetHashCode() -> int
+override OpenMBEE.OpenSysML.QueryResult.ToString() -> string!
+override OpenMBEE.OpenSysML.RenderedDocument.Equals(object? obj) -> bool
+override OpenMBEE.OpenSysML.RenderedDocument.GetHashCode() -> int
+override OpenMBEE.OpenSysML.RenderedDocument.ToString() -> string!
+override OpenMBEE.OpenSysML.RenderedView.Equals(object? obj) -> bool
+override OpenMBEE.OpenSysML.RenderedView.GetHashCode() -> int
+override OpenMBEE.OpenSysML.RenderedView.ToString() -> string!
+override OpenMBEE.OpenSysML.ViewCanvas.Equals(object? obj) -> bool
+override OpenMBEE.OpenSysML.ViewCanvas.GetHashCode() -> int
+override OpenMBEE.OpenSysML.ViewCanvas.ToString() -> string!
+override OpenMBEE.OpenSysML.ViewEdge.Equals(object? obj) -> bool
+override OpenMBEE.OpenSysML.ViewEdge.GetHashCode() -> int
+override OpenMBEE.OpenSysML.ViewEdge.ToString() -> string!
+override OpenMBEE.OpenSysML.ViewGeometry.Equals(object? obj) -> bool
+override OpenMBEE.OpenSysML.ViewGeometry.GetHashCode() -> int
+override OpenMBEE.OpenSysML.ViewGeometry.ToString() -> string!
+override OpenMBEE.OpenSysML.ViewNode.Equals(object? obj) -> bool
+override OpenMBEE.OpenSysML.ViewNode.GetHashCode() -> int
+override OpenMBEE.OpenSysML.ViewNode.ToString() -> string!
+override OpenMBEE.OpenSysML.ViewNote.Equals(object? obj) -> bool
+override OpenMBEE.OpenSysML.ViewNote.GetHashCode() -> int
+override OpenMBEE.OpenSysML.ViewNote.ToString() -> string!
+override OpenMBEE.OpenSysML.ViewPoint.Equals(object? obj) -> bool
+override OpenMBEE.OpenSysML.ViewPoint.GetHashCode() -> int
+override OpenMBEE.OpenSysML.ViewPoint.ToString() -> string!
+override OpenMBEE.OpenSysML.ViewPort.Equals(object? obj) -> bool
+override OpenMBEE.OpenSysML.ViewPort.GetHashCode() -> int
+override OpenMBEE.OpenSysML.ViewPort.ToString() -> string!
+override OpenMBEE.OpenSysML.ViewRow.Equals(object? obj) -> bool
+override OpenMBEE.OpenSysML.ViewRow.GetHashCode() -> int
+override OpenMBEE.OpenSysML.ViewRow.ToString() -> string!
+override OpenMBEE.OpenSysML.ViewStyle.Equals(object? obj) -> bool
+override OpenMBEE.OpenSysML.ViewStyle.GetHashCode() -> int
+override OpenMBEE.OpenSysML.ViewStyle.ToString() -> string!
+override abstract OpenMBEE.OpenSysML.QueryConstraint.GetHashCode() -> int
+override abstract OpenMBEE.OpenSysML.QueryConstraint.ToString() -> string!
+override sealed OpenMBEE.OpenSysML.QueryConstraint.Equals(object? obj) -> bool
+static OpenMBEE.OpenSysML.DocumentBinding.operator !=(OpenMBEE.OpenSysML.DocumentBinding? left, OpenMBEE.OpenSysML.DocumentBinding? right) -> bool
+static OpenMBEE.OpenSysML.DocumentBinding.operator ==(OpenMBEE.OpenSysML.DocumentBinding? left, OpenMBEE.OpenSysML.DocumentBinding? right) -> bool
+static OpenMBEE.OpenSysML.DocumentQueryResult.operator !=(OpenMBEE.OpenSysML.DocumentQueryResult? left, OpenMBEE.OpenSysML.DocumentQueryResult? right) -> bool
+static OpenMBEE.OpenSysML.DocumentQueryResult.operator ==(OpenMBEE.OpenSysML.DocumentQueryResult? left, OpenMBEE.OpenSysML.DocumentQueryResult? right) -> bool
+static OpenMBEE.OpenSysML.DocumentRow.operator !=(OpenMBEE.OpenSysML.DocumentRow? left, OpenMBEE.OpenSysML.DocumentRow? right) -> bool
+static OpenMBEE.OpenSysML.DocumentRow.operator ==(OpenMBEE.OpenSysML.DocumentRow? left, OpenMBEE.OpenSysML.DocumentRow? right) -> bool
+static OpenMBEE.OpenSysML.DocumentValue.ElementRef(string! qualifiedName) -> OpenMBEE.OpenSysML.DocumentValue.ElementValue!
+static OpenMBEE.OpenSysML.DocumentValue.ObjectRef(long instanceId) -> OpenMBEE.OpenSysML.DocumentValue.ObjectValue!
+static OpenMBEE.OpenSysML.DocumentValue.ObjectRef(string! path) -> OpenMBEE.OpenSysML.DocumentValue.ObjectValue!
+static OpenMBEE.OpenSysML.Query.All.get -> OpenMBEE.OpenSysML.Query!
+static OpenMBEE.OpenSysML.Query.operator !=(OpenMBEE.OpenSysML.Query? left, OpenMBEE.OpenSysML.Query? right) -> bool
+static OpenMBEE.OpenSysML.Query.operator ==(OpenMBEE.OpenSysML.Query? left, OpenMBEE.OpenSysML.Query? right) -> bool
+static OpenMBEE.OpenSysML.QueryConstraint.And(params System.Collections.Generic.IEnumerable<OpenMBEE.OpenSysML.QueryConstraint!>! constraints) -> OpenMBEE.OpenSysML.QueryConstraint.Composite!
+static OpenMBEE.OpenSysML.QueryConstraint.Equal(string! property, params System.Collections.Generic.IEnumerable<string!>! values) -> OpenMBEE.OpenSysML.QueryConstraint.Comparison!
+static OpenMBEE.OpenSysML.QueryConstraint.Greater(string! property, string! value) -> OpenMBEE.OpenSysML.QueryConstraint.Comparison!
+static OpenMBEE.OpenSysML.QueryConstraint.Less(string! property, string! value) -> OpenMBEE.OpenSysML.QueryConstraint.Comparison!
+static OpenMBEE.OpenSysML.QueryConstraint.Or(params System.Collections.Generic.IEnumerable<OpenMBEE.OpenSysML.QueryConstraint!>! constraints) -> OpenMBEE.OpenSysML.QueryConstraint.Composite!
+static OpenMBEE.OpenSysML.QueryConstraint.operator !=(OpenMBEE.OpenSysML.QueryConstraint? left, OpenMBEE.OpenSysML.QueryConstraint? right) -> bool
+static OpenMBEE.OpenSysML.QueryConstraint.operator ==(OpenMBEE.OpenSysML.QueryConstraint? left, OpenMBEE.OpenSysML.QueryConstraint? right) -> bool
+static OpenMBEE.OpenSysML.QueryElement.operator !=(OpenMBEE.OpenSysML.QueryElement? left, OpenMBEE.OpenSysML.QueryElement? right) -> bool
+static OpenMBEE.OpenSysML.QueryElement.operator ==(OpenMBEE.OpenSysML.QueryElement? left, OpenMBEE.OpenSysML.QueryElement? right) -> bool
+static OpenMBEE.OpenSysML.QueryResult.operator !=(OpenMBEE.OpenSysML.QueryResult? left, OpenMBEE.OpenSysML.QueryResult? right) -> bool
+static OpenMBEE.OpenSysML.QueryResult.operator ==(OpenMBEE.OpenSysML.QueryResult? left, OpenMBEE.OpenSysML.QueryResult? right) -> bool
+static OpenMBEE.OpenSysML.RenderViewOptions.Default.get -> OpenMBEE.OpenSysML.RenderViewOptions!
+static OpenMBEE.OpenSysML.RenderedDocument.operator !=(OpenMBEE.OpenSysML.RenderedDocument? left, OpenMBEE.OpenSysML.RenderedDocument? right) -> bool
+static OpenMBEE.OpenSysML.RenderedDocument.operator ==(OpenMBEE.OpenSysML.RenderedDocument? left, OpenMBEE.OpenSysML.RenderedDocument? right) -> bool
+static OpenMBEE.OpenSysML.RenderedView.operator !=(OpenMBEE.OpenSysML.RenderedView? left, OpenMBEE.OpenSysML.RenderedView? right) -> bool
+static OpenMBEE.OpenSysML.RenderedView.operator ==(OpenMBEE.OpenSysML.RenderedView? left, OpenMBEE.OpenSysML.RenderedView? right) -> bool
+static OpenMBEE.OpenSysML.ViewCanvas.operator !=(OpenMBEE.OpenSysML.ViewCanvas? left, OpenMBEE.OpenSysML.ViewCanvas? right) -> bool
+static OpenMBEE.OpenSysML.ViewCanvas.operator ==(OpenMBEE.OpenSysML.ViewCanvas? left, OpenMBEE.OpenSysML.ViewCanvas? right) -> bool
+static OpenMBEE.OpenSysML.ViewEdge.operator !=(OpenMBEE.OpenSysML.ViewEdge? left, OpenMBEE.OpenSysML.ViewEdge? right) -> bool
+static OpenMBEE.OpenSysML.ViewEdge.operator ==(OpenMBEE.OpenSysML.ViewEdge? left, OpenMBEE.OpenSysML.ViewEdge? right) -> bool
+static OpenMBEE.OpenSysML.ViewGeometry.operator !=(OpenMBEE.OpenSysML.ViewGeometry? left, OpenMBEE.OpenSysML.ViewGeometry? right) -> bool
+static OpenMBEE.OpenSysML.ViewGeometry.operator ==(OpenMBEE.OpenSysML.ViewGeometry? left, OpenMBEE.OpenSysML.ViewGeometry? right) -> bool
+static OpenMBEE.OpenSysML.ViewNode.operator !=(OpenMBEE.OpenSysML.ViewNode? left, OpenMBEE.OpenSysML.ViewNode? right) -> bool
+static OpenMBEE.OpenSysML.ViewNode.operator ==(OpenMBEE.OpenSysML.ViewNode? left, OpenMBEE.OpenSysML.ViewNode? right) -> bool
+static OpenMBEE.OpenSysML.ViewNote.operator !=(OpenMBEE.OpenSysML.ViewNote? left, OpenMBEE.OpenSysML.ViewNote? right) -> bool
+static OpenMBEE.OpenSysML.ViewNote.operator ==(OpenMBEE.OpenSysML.ViewNote? left, OpenMBEE.OpenSysML.ViewNote? right) -> bool
+static OpenMBEE.OpenSysML.ViewPoint.operator !=(OpenMBEE.OpenSysML.ViewPoint? left, OpenMBEE.OpenSysML.ViewPoint? right) -> bool
+static OpenMBEE.OpenSysML.ViewPoint.operator ==(OpenMBEE.OpenSysML.ViewPoint? left, OpenMBEE.OpenSysML.ViewPoint? right) -> bool
+static OpenMBEE.OpenSysML.ViewPort.operator !=(OpenMBEE.OpenSysML.ViewPort? left, OpenMBEE.OpenSysML.ViewPort? right) -> bool
+static OpenMBEE.OpenSysML.ViewPort.operator ==(OpenMBEE.OpenSysML.ViewPort? left, OpenMBEE.OpenSysML.ViewPort? right) -> bool
+static OpenMBEE.OpenSysML.ViewRow.operator !=(OpenMBEE.OpenSysML.ViewRow? left, OpenMBEE.OpenSysML.ViewRow? right) -> bool
+static OpenMBEE.OpenSysML.ViewRow.operator ==(OpenMBEE.OpenSysML.ViewRow? left, OpenMBEE.OpenSysML.ViewRow? right) -> bool
+static OpenMBEE.OpenSysML.ViewStyle.operator !=(OpenMBEE.OpenSysML.ViewStyle? left, OpenMBEE.OpenSysML.ViewStyle? right) -> bool
+static OpenMBEE.OpenSysML.ViewStyle.operator ==(OpenMBEE.OpenSysML.ViewStyle? left, OpenMBEE.OpenSysML.ViewStyle? right) -> bool

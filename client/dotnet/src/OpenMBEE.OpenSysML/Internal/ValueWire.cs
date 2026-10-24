@@ -100,6 +100,14 @@ internal static class ValueWire
         return Write(value, path, 0);
     }
 
+    /// <summary>Writes a quantity another message carries by the rules a value's quantity is written by.</summary>
+    /// <exception cref="InvalidRequestException">The quantity cannot be sent.</exception>
+    internal static Wire.Quantity ToWire(Quantity quantity, string path)
+    {
+        ArgumentNullException.ThrowIfNull(quantity);
+        return WriteQuantity(quantity, path);
+    }
+
     /// <summary>Writes the values of a repeated field, in order.</summary>
     internal static List<Wire.Value> ToWire(ValueList<Value> values, string path) =>
         values.Select((value, i) => Write(value, $"{path}[{i}]", 0)).ToList();
@@ -242,7 +250,8 @@ internal static class ValueWire
         }
     }
 
-    private static void RationalAsReal(Wire.Quantity quantity)
+    /// <summary>Rewrites a quantity's Rational magnitude a <see cref="double"/> holds exactly as that double, the same number.</summary>
+    internal static void RationalAsReal(Wire.Quantity quantity)
     {
         if (quantity.MagnitudeCase == Wire.Quantity.MagnitudeOneofCase.RationalMagnitude && ExactDouble(quantity.RationalMagnitude) is { } real)
         {
@@ -250,8 +259,8 @@ internal static class ValueWire
         }
     }
 
-    // The double a Rational this client wrote is exactly, if any.
-    private static double? ExactDouble(Wire.Rational terms) =>
+    /// <summary>The double a Rational this client wrote is exactly, if any.</summary>
+    internal static double? ExactDouble(Wire.Rational terms) =>
         new Rational(Integer(terms.Numerator), Integer(terms.Denominator)).TryGetExactDouble(out var real) ? real : null;
 
     private static BigInteger Integer(string digits) =>

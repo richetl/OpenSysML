@@ -297,11 +297,61 @@ public sealed class ParityInventoryTests
         Assert.ThrowsAny<JsonException>(() => ParityInventory.Parse("{" + string.Join(",", members) + "}"));
     }
 
+    [Fact]
+    public void FieldGroupsExpandToOneClassificationPerField()
+    {
+        var inventory = WithFieldsJson("""
+            {
+              "sysml.A": [
+                {"status": "typed", "test": "T.Proves", "fields": ["a", "b"]},
+                {"status": "unsupported", "reason": "never populated", "test": "T.Shows", "fields": ["c"]},
+                {"status": "deferred", "fields": ["d"]}
+              ],
+              "sysml.B": [{"status": "typed", "test": "T.Proves", "fields": ["a"]}]
+            }
+            """);
+
+        Assert.Equal(["sysml.A", "sysml.B"], inventory.Fields.Keys);
+        Assert.Equal(new FieldClass("typed", Test: "T.Proves"), inventory.Fields["sysml.A"]["a"]);
+        Assert.Equal(new FieldClass("typed", Test: "T.Proves"), inventory.Fields["sysml.A"]["b"]);
+        Assert.Equal(new FieldClass("unsupported", "never populated", "T.Shows"), inventory.Fields["sysml.A"]["c"]);
+        Assert.Equal(new FieldClass("deferred"), inventory.Fields["sysml.A"]["d"]);
+        Assert.Equal(["a"], inventory.Fields["sysml.B"].Keys);
+    }
+
+    [Theory]
+    [InlineData("""{"sysml.A": [{"status": "typed", "test": "T.P", "fields": ["a", "a"]}]}""", "Field sysml.A.a is classified twice.")]
+    [InlineData("""{"sysml.A": [{"status": "typed", "test": "T.P", "fields": ["a"]}, {"status": "deferred", "fields": ["a"]}]}""", "Field sysml.A.a is classified twice.")]
+    [InlineData("""{"sysml.A": [{"status": "deferred", "fields": ["a"]}, {"status": "deferred", "fields": ["b"]}]}""", "Message sysml.A has two groups classified deferred; they are one group.")]
+    [InlineData("""{"sysml.A": [{"status": "deferred", "fields": []}]}""", "A group of message sysml.A classifies no field.")]
+    [InlineData("""{"sysml.A": [{"status": "deferred"}]}""", "A group of message sysml.A has no fields.")]
+    [InlineData("""{"sysml.A": [{"fields": ["a"]}]}""", "A group of message sysml.A has no status.")]
+    [InlineData("""{"sysml.A": [{"status": "deferred", "status": "typed", "fields": ["a"]}]}""", "A group of message sysml.A repeats its member status.")]
+    [InlineData("""{"sysml.A": [{"status": "deferred", "note": "x", "fields": ["a"]}]}""", "A group of message sysml.A has an unknown member note.")]
+    [InlineData("""{"sysml.A": [{"status": "deferred", "fields": [1]}]}""", "A group's fields of message sysml.A is text, not Number.")]
+    [InlineData("""{"sysml.A": [], "sysml.A": []}""", "Message sysml.A is classified twice.")]
+    [InlineData("""{"sysml.A": {"a": "deferred"}}""", "Message sysml.A's fields are a list of groups, not StartObject.")]
+    public void TheInventoryRefusesAFieldGroupThatClassifiesAFieldTwiceNoneOrAmbiguously(string fields, string problem)
+    {
+        var error = Assert.ThrowsAny<JsonException>(() => WithFieldsJson(fields));
+
+        Assert.Equal(problem, error.Message);
+    }
+
     private static IReadOnlyList<string> Check(ParityInventory inventory, FileDescriptor? schema = null, IReadOnlyList<Scenario>? scenarios = null) =>
         ParityChecker.Check(inventory, schema ?? Wire.SysmlReflection.Descriptor, scenarios ?? Scenario.All, ServiceCapabilities.Names, TestNames);
 
     private static ParityInventory WithRow(ParityInventory inventory, string rpc, Func<RpcRow, RpcRow> change) =>
         inventory with { Rpcs = [.. inventory.Rpcs.Select(row => row.Rpc == rpc ? change(row) : row)] };
+
+    // The committed inventory read with its field classifications written as given.
+    private static ParityInventory WithFieldsJson(string fields)
+    {
+        using var document = JsonDocument.Parse(System.IO.File.ReadAllText(ParityInventory.CommittedPath));
+        var members = document.RootElement.EnumerateObject()
+            .Select(member => $"\"{member.Name}\": {(member.Name == "fields" ? fields : member.Value.GetRawText())}");
+        return ParityInventory.Parse("{" + string.Join(",", members) + "}");
+    }
 
     private static ParityInventory WithField(string field, FieldClass classification)
     {

@@ -17,10 +17,11 @@ of this repository and consumed by `ProjectReference`. It is not published to Nu
 > [runs them repeatedly](#running-repeatedly-self-checking-and-recording), self-checks and
 > records runs. It [converts and migrates](#converting-migrating-and-saving) models, between
 > notation, Turtle and the API's JSON form and from SysML v1, and saves them to disk without
-> ever leaving a partial file. Its [conformance runner](#conformance) runs the shared suite
-> through that API. It does not download a release of the service, and offers none of the
-> other typed operations (queries, documents, views, editing, graph export, data import and
-> result comparison). The other clients ([Python](../python/), [Java](../java/),
+> ever leaving a partial file. It [queries models, runs their document queries and renders
+> their documents and views](#querying-documents-and-views). Its [conformance
+> runner](#conformance) runs the shared suite through that API. It does not download a release
+> of the service, and offers none of the other typed operations (editing, graph export, data
+> import and result comparison). The other clients ([Python](../python/), [Java](../java/),
 > [Rust](../rust/), [Node](../node/)) are the ones to use for those today.
 
 ## Requirements
@@ -244,6 +245,7 @@ use after disposal, which are the standard exceptions:
 | The service answered a check it refused before any search: the behavior, a property or the performer does not resolve | `CheckException`, a `ModelException` with the `Partial` result the answer carried, including its verdict when supplied |
 | The service answered that it could not verify, validate, calculate or sweep at all: an unknown symbol, a symbol of another kind, a subject or argument that does not read, a range no values follow from | `VerificationException`, a `ModelException` with the failure's `Reason` (`FailureReason.WrongKind` for a symbol of another kind) and the `Instances`, `Verifications` and engine `Standing` the answer carried |
 | The service answered that an analysis case could not run to its end | `AnalysisException`, a `VerificationException` with the `Partial` run: the outputs computed, the verdicts and evaluations made and the objects named before the failure |
+| The service refused a document query or document because the model declares it, or a query it runs, wrongly (`FailedPrecondition`) | `QueryException`, a `ModelException` with the `StatusCode` and `ServiceMessage` the service gave |
 | No well-formed answer was read: the endpoint was unreachable or did not speak the protocol, a Connect refusal was not a Connect error, the answer was malformed or over a size limit, or the deadline passed | `TransportException`, with `StatusCode`, `Method` and the cause as `InnerException` |
 | The service answered a value of a kind this client does not know | `UnsupportedValueException`, with `Method`, `Path` and the value's `ValueBytes` |
 | The caller's token was cancelled | `OperationCanceledException` carrying that token |
@@ -564,6 +566,78 @@ A failed write removes the files and directories it created; several files are n
 atomically, so a file an overwrite already replaced stays replaced, and a directory replaced
 by a link while the write is under way is not guarded against.
 
+## Querying, documents and views
+
+```csharp
+var model = (await connection.LoadAsync("query.sysml")).RequireNoErrors();
+var parts = await model.QueryAsync(new Query
+{
+    Scope = ["Demo::vehicle"],
+    Select = ["name", "owner"],
+    Where = QueryConstraint.And(QueryConstraint.Equal("@type", "PartUsage"), QueryConstraint.Less("multiplicityUpper", "5")),
+});                                                                       // Demo::vehicle::wheels (PartUsage)
+var same = await model.QueryOslcAsync("oslc.where=rdf:type=\"PartUsage\"&oslc.select=sysml:name");
+
+var observatory = (await connection.LoadAsync("document.sysml")).RequireNoErrors();
+var table = await observatory.RunDocumentQueryAsync("Observatory::SubsystemTable",
+    [new DocumentBinding("root", DocumentValue.ElementRef("Observatory::telescope"))]);
+var report = await observatory.RenderDocumentAsync("Observatory::MassReport", DocumentForm.Html);
+
+var plant = await connection.LoadAsync("layout.sysml");
+var view = await plant.RenderViewAsync("PlantViews::placedView",
+    new RenderViewOptions { Ports = RenderViewPorts.Full, Show = [ViewNotation.EdgeLabels], Depth = 2 });
+```
+
+| Method | Answers |
+| --- | --- |
+| `QueryAsync` | A `QueryResult` of a SysML v2 API & Services `Query`: the `Elements` in its `Scope` (the whole model when empty, nested elements included) that its `Where` constraint matches, in declaration order, each a `QueryElement` with its `Id`, its metamodel `Type` and the `Properties` its `Select` asked for, a property the element does not have absent |
+| `QueryOslcAsync` | The same for OSLC Query 3.0 parameter text |
+| `RunDocumentQueryAsync` | A `DocumentQueryResult` of a document query the model declares, with its entry parameters bound: the projected `Columns` and the `Rows`, each a `DocumentRow` with the `Element` it selects and a cell of `DocumentValue`s per column |
+| `RenderDocumentAsync` | A `RenderedDocument` the model declares, byte-for-byte what `sysml -render-document` writes, in Markdown or `DocumentForm.Html`, with the `FileName` a rendered set writes it to, null from a service that names none |
+| `RenderViewAsync` | A `RenderedView` of a declared view or a `#<kind>:<qualified name>` pseudo-view: every field the view renderer produced |
+
+A `Query` is an immutable record; `Query.All` considers every element, and a `with`
+expression derives another. A `QueryConstraint` is a `Comparison` of one property (`Equal` to
+any of its values, `Greater` or `Less` than exactly one, optionally `Inverted`) or a
+`Composite` combining at least one constraint by `And` or `Or`, so a constraint is complete by
+construction: one without an operator, an operand or a constraint cannot be built, and a
+structured query and OSLC text are two calls, never one request. What the service still
+judges, a property it does not know, a scope element the model does not have, an order on a
+property that has none, it refuses with `InvalidArgument` rather than answering empty.
+
+A `DocumentBinding` binds one entry parameter to its values, in order; a parameter several
+bindings name takes all their values. A value is a `DocumentValue`: an element by qualified
+name (`DocumentValue.ElementRef`), an object the service holds by path or id
+(`DocumentValue.ObjectRef`), a string, a number, a boolean or a quantity. An element or object
+a query answered can be bound again as it was answered. Infinity and the rows of `Verdicts`,
+`States` and `Events` are only ever answered, so a binding refuses them with
+`ArgumentException`, as it does an element with no name and an object with neither a path nor
+an id. The objects are those the service holds for the model, which `InstantiateAsync`
+creates. A row's element and cells read every arm, the verdict, state and event rows included.
+
+A `RenderedView` keeps its `Nodes` flattened, parents before children, each naming its
+`Parent`; `Roots`, `ChildrenOf` and `Node` walk them. A node has its `Ports`, an edge its end
+ports, `Route` and `Label`, a tabular rendering its `Columns` and `Rows`, and the view its
+`Notes`, its `Notices` and the optional notation it has `Shown`. What a view leaves unstated
+stays absent: a node no layout places has a null `Geometry`, one no style colours a null
+`Style`, a view stating no canvas a null `Canvas`, and an element the service located nowhere
+a null `Origin`, never zeros. A layout that only folds or hides a node is `Unplaced`, and one
+that states no size says so with `HasSize`. `RenderViewOptions` chooses the `Ports`, the
+optional notation to `Show` as `ViewNotation` names it, and a positive `Depth` overriding the
+view's own.
+
+A model the service no longer holds is a `ModelNotFoundException`; a query, document or view
+the model does not declare, or an object it does not hold, is a `ServiceException` with
+`NotFound`, and a name declaring something else one with `InvalidArgument`. A document query
+or document the model declares wrongly, an operation the engine does not support or a
+property no element has, is a `QueryException`. A malformed answer, an element with no id or
+type, a row selecting no element, a node whose parent is not drawn before it, is a
+`TransportException`. Before anything is sent the calls need `query`, and `oslc_query` for
+OSLC text; `document_query`, then `big_int_values` and `rational_values` for a bound Integer
+beyond `long` or exact Rational (one a `double` holds exactly is sent as that `double` to a
+service without `rational_values`); `render_document`, then `render_document_html` for HTML;
+or `render_view`.
+
 ## Values
 
 `Value` is an immutable value the service evaluates, or one sent to it: one nested sealed
@@ -731,7 +805,10 @@ and the tests hold it to the schema and the [conformance scenarios](../../confor
   reads from the service's source.
 - `population`: response fields the service fills only under a capability.
 - `fields`: every field of every message an RPC reaches, `deferred`, or once mapped `typed`,
-  `raw-only` or `unsupported` with its reason and the test that proves it.
+  `raw-only` or `unsupported` with its reason and the test that proves it. Each message lists
+  its fields in groups of one classification, `{"status", "reason", "test", "fields": [...]}`
+  with a reason and test only where the classification has them; a field named twice, a group
+  naming no field, and two groups of one classification, which are one group, are refused.
 
 The checks compare sets, never counts: an RPC, field, arm or scenario the schema or the
 suite adds, renames or removes fails the tests until the inventory accounts for it, and so
@@ -824,7 +901,8 @@ exits 1, including a JSON or JUnit destination that cannot be written: the diagn
 the report format, destination and filesystem error.
 
 Each RPC the API covers has an adapter, grouped by area beside the methods it calls
-(`ConnectionArea`, `ModelArea`, `ExecutionArea`, `VerificationArea`, `SamplingArea`, `ConversionArea`). An adapter reads the
+(`ConnectionArea`, `ModelArea`, `ExecutionArea`, `VerificationArea`, `SamplingArea`, `ConversionArea`,
+`QueryDocsArea`). An adapter reads the
 decoded request as the arguments of the typed method, so the request the client sends is the
 one the scenario states, and renders what the method returned, with
 [`Rendering`](src/OpenMBEE.OpenSysML.Conformance/Rendering.cs) reading only public types, back
@@ -837,7 +915,9 @@ response's `error`, failure reason and diagnostics, with what the exception kept
 a run's clock and trace, a check's or an analysis's partial result, a verification's objects,
 verification verdicts and engine standing, the table runs made, the run, sweep or sample a
 recording made, with its own failure where it reported one, and a conversion's or migration's
-formats, notice and diagnostics; a refusal keeps the service's status and message; a
+formats, notice and diagnostics; a refusal keeps the service's status and message, as does a
+document query or document the model declares wrongly, which the API raises as a
+`QueryException`; a
 capability the client refuses for before sending is `UNIMPLEMENTED`, which the service would
 answer; a transport failure is its status. Nothing is sent raw: a test reads the runner's IL
 and fails on any call to `Connection.CallAsync` or the generated stub. A request setting a field
@@ -855,23 +935,25 @@ skip, the run says so. Per protocol, of 194 scenarios:
 
 | Configuration | ran | passed | skipped as uncovered | skipped as unexpressible |
 | --- | --: | --: | --: | --: |
-| default | 133 | 133 | 57 | 4 |
-| `strict_conformance` and `oslc_query` withheld | 132 | 132 | 57 | 4 |
+| default | 151 | 151 | 37 | 6 |
+| `strict_conformance` and `oslc_query` withheld | 150 | 150 | 37 | 6 |
 
 The unexpressible requests send what the public types refuse to hold or send:
-`parse/naming_no_source_is_invalid` names no source, which the API always does, and three
+`parse/naming_no_source_is_invalid` names no source, which the API always does; three
 EvaluateCalc scenarios send a measurement reference without its reduction, a vector with a
-string component, and a function closing over an object of another call. Withheld, `strict_conformance`'s fallback runs and is refused before
-sending; `oslc_query`'s is a `Query` scenario, an uncovered RPC, and is reported as a listed skip.
+string component, and a function closing over an object of another call; and two Query
+scenarios send a comparison with no operator, and a structured query together with OSLC text,
+which `QueryConstraint` and the two query calls cannot express. Withheld, the fallbacks of
+`strict_conformance` and `oslc_query` run and are refused before sending.
 
 `-mutate` shows the comparison catches what each corruption breaks, on every protocol, and a
 test asserts it fails the run:
 
 | `-mutate` | What it does to every answer | Scenarios that fail, per protocol |
 | --- | --- | --: |
-| `perturb-reals` | Moves each real by a millionth | 26 |
-| `truncate-lists` | Drops the last entry of each list | 41 |
-| `rewrite-strings` | Replaces each non-empty string but no map key | 68 |
+| `perturb-reals` | Moves each real by a millionth | 27 |
+| `truncate-lists` | Drops the last entry of each list | 51 |
+| `rewrite-strings` | Replaces each non-empty string but no map key | 77 |
 
 `make conformance-dotnet-check` also runs the reference runner against the same binary, both
 with `-v`, and `dotnet-gates.py conformance-check` holds the two runs together: both reports

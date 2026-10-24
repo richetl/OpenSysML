@@ -76,8 +76,13 @@ public sealed class ServiceConformanceTests(ServiceFixture services) : IClassFix
             .Where(result => result.GetProperty("id").GetString() == "parse/strict_conformance_is_asked_for_by_field")
             .Select(result => (result.GetProperty("outcome").GetString(), result.GetProperty("status").GetString(), result.GetProperty("without_capability").GetBoolean()));
         Assert.Equal([("pass", "UNIMPLEMENTED", true), ("pass", "UNIMPLEMENTED", true), ("pass", "UNIMPLEMENTED", true)], fallbacks);
+        var oslc = configurations[1].GetProperty("protocols").EnumerateArray()
+            .SelectMany(protocol => protocol.GetProperty("results").EnumerateArray())
+            .Where(result => result.GetProperty("id").GetString() == "query/an_oslc_text_query_is_parsed")
+            .Select(result => (result.GetProperty("outcome").GetString(), result.GetProperty("status").GetString(), result.GetProperty("without_capability").GetBoolean()));
+        Assert.Equal([("pass", "UNIMPLEMENTED", true), ("pass", "UNIMPLEMENTED", true), ("pass", "UNIMPLEMENTED", true)], oslc);
         Assert.StartsWith("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<testsuites name=\"conformance\"", File.ReadAllText(options.JUnit!), StringComparison.Ordinal);
-        Assert.Contains("note: without-strict_conformance-oslc_query grpc: no without-capability expectation of oslc_query ran", output, StringComparison.Ordinal);
+        Assert.DoesNotContain("no without-capability expectation", output, StringComparison.Ordinal);
     }
 
     [Theory]

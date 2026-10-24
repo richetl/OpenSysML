@@ -1124,10 +1124,10 @@
         "Model.QueryAsync",
         "Model.QueryOslcAsync"
       ],
-      "input": "Query or OSLC text",
+      "input": "Query (scope, select and a QueryConstraint) or OSLC text",
       "result": "QueryResult",
       "area": "query-docs",
-      "status": "deferred",
+      "status": "implemented",
       "gates": [
         {
           "capability": "query",
@@ -1149,6 +1149,15 @@
         "query/an_unset_operator_fails_the_call",
         "query/an_oslc_text_query_is_parsed",
         "query/naming_both_query_forms_is_invalid"
+      ],
+      "tests": [
+        "ModelQueryDocsTests.QuerySendsTheStructuredQueryAndReadsEveryElement",
+        "ModelQueryDocsTests.OslcTextIsSentAloneAndGatedBehindTheQueryCapability",
+        "ModelQueryDocsTests.AConstraintCannotBeBuiltWithoutAnOperatorItsOperandsOrItsConstraints",
+        "ModelQueryDocsTests.AnElementWithoutItsIdOrTypeIsAMalformedAnswer",
+        "ServiceQueryDocsTests.QueriesSelectWhatTheServiceEvaluatesInEveryConstraintForm",
+        "ServiceQueryDocsTests.EveryElementOfEveryConformanceFixtureIsAnsweredWithItsIdAndType",
+        "ServiceQueryDocsTests.AWithheldCapabilityIsRefusedBeforeAnythingIsSent"
       ]
     },
     {
@@ -1158,10 +1167,10 @@
       "methods": [
         "Model.RunDocumentQueryAsync"
       ],
-      "input": "query ID, typed bindings",
+      "input": "query ID, DocumentBinding list",
       "result": "DocumentQueryResult",
       "area": "query-docs",
-      "status": "deferred",
+      "status": "implemented",
       "gates": [
         {
           "capability": "document_query",
@@ -1175,7 +1184,7 @@
         {
           "capability": "rational_values",
           "field": "bindings.values",
-          "when": "a binding holds an exact Rational"
+          "when": "a binding holds an exact Rational no double holds; one a double holds is sent as that double"
         }
       ],
       "valueFields": [],
@@ -1186,6 +1195,15 @@
         "document/an_unknown_query_is_not_found",
         "document/a_missing_binding_is_invalid",
         "document/an_object_binding_needs_an_object_the_model_holds"
+      ],
+      "tests": [
+        "ModelQueryDocsTests.RunDocumentQuerySendsEveryBindingInOrderAndReadsEveryRow",
+        "ModelQueryDocsTests.ABindingRefusesWhatAQueryOnlyAnswersAndCopiesItsValues",
+        "ModelQueryDocsTests.DocumentQueryGatesAreCheckedInTheServicesOrderAndAnExactRationalIsSentAsTheSameReal",
+        "ModelQueryDocsTests.AMissingModelAMissingDeclarationAndAFaultInTheModelsDeclarationsAreToldApart",
+        "ModelQueryDocsTests.ARowSelectingNoElementOrHoldingAnUnknownArmIsRefused",
+        "ServiceQueryDocsTests.DocumentQueriesAnswerTypedRowsOverElementsObjectsVerdictsStatesAndEvents",
+        "ServiceQueryDocsTests.AMissingModelAMissingDeclarationAWrongBindingAndAFaultInTheModelAreToldApart"
       ]
     },
     {
@@ -1198,7 +1216,7 @@
       "input": "document ID, DocumentForm",
       "result": "RenderedDocument",
       "area": "query-docs",
-      "status": "deferred",
+      "status": "implemented",
       "gates": [
         {
           "capability": "render_document",
@@ -1215,6 +1233,12 @@
         "document/a_named_document_renders_markdown",
         "document/an_unknown_document_is_not_found",
         "document/a_query_is_not_a_document"
+      ],
+      "tests": [
+        "ModelQueryDocsTests.RenderDocumentSendsTheFormAndReadsTheContentAndFileName",
+        "ModelQueryDocsTests.AMissingModelAMissingDeclarationAndAFaultInTheModelsDeclarationsAreToldApart",
+        "ServiceQueryDocsTests.ADocumentRendersToMarkdownAndHtmlNamingTheFileARenderedSetWrites",
+        "ServiceQueryDocsTests.AMissingModelAMissingDeclarationAWrongBindingAndAFaultInTheModelAreToldApart"
       ]
     },
     {
@@ -1227,7 +1251,7 @@
       "input": "view name, RenderViewOptions",
       "result": "RenderedView",
       "area": "query-docs",
-      "status": "deferred",
+      "status": "implemented",
       "gates": [
         {
           "capability": "render_view",
@@ -1239,6 +1263,14 @@
         "render_view/interconnection_includes_ports_and_connected_edge_endpoints",
         "render_view_full_ports_is_accepted",
         "render_view_unknown_view_is_not_found"
+      ],
+      "tests": [
+        "ModelQueryDocsTests.RenderViewSendsEveryOptionAndReadsEveryFieldOfTheRendering",
+        "ModelQueryDocsTests.AGeometryStyleCanvasOrOriginTheRenderingOmitsStaysAbsentRatherThanZero",
+        "ModelQueryDocsTests.InvalidViewOptionsAreRefusedBeforeSendingAndNodesOutOfOrderAreMalformed",
+        "ServiceQueryDocsTests.AViewRendersWithItsPortsNotationAndDepthAndNothingItOmitsFilledIn",
+        "ServiceQueryDocsTests.AViewsLayoutStylesNotesCanvasAndTableAreReadAsTheViewStatesThem",
+        "ServiceQueryDocsTests.EveryViewTheRenderersOwnTestsDeclareIsReadWithItsNodesInOrder"
       ]
     },
     {
@@ -1832,3315 +1864,2661 @@
     "sysml.DocumentValue.rational_value": "rational_values"
   },
   "fields": {
-    "sysml.AddCommentEdit": {
-      "owner": "deferred",
-      "body": "deferred",
-      "name": "deferred",
-      "about": "deferred",
-      "locale": "deferred"
-    },
-    "sysml.AddConnectionEdit": {
-      "owner": "deferred",
-      "kind": "deferred",
-      "from_end": "deferred",
-      "to_end": "deferred",
-      "name": "deferred",
-      "type": "deferred"
-    },
-    "sysml.AddDocumentationEdit": {
-      "target": "deferred",
-      "body": "deferred",
-      "name": "deferred",
-      "locale": "deferred",
-      "replace": "deferred"
-    },
-    "sysml.AddImportEdit": {
-      "owner": "deferred",
-      "visibility": "deferred",
-      "target": "deferred",
-      "is_recursive": "deferred",
-      "is_import_all": "deferred",
-      "filters": "deferred"
-    },
-    "sysml.AddMemberEdit": {
-      "owner": "deferred",
-      "kind": "deferred",
-      "name": "deferred",
-      "type": "deferred",
-      "multiplicity": "deferred",
-      "value": "deferred",
-      "specializes": "deferred",
-      "is_abstract": "deferred",
-      "redefines": "deferred",
-      "is_default": "deferred",
-      "direction": "deferred",
-      "metadata_prefixes": "deferred",
-      "doc": "deferred",
-      "body_expression": "deferred"
-    },
-    "sysml.AddMetadataEdit": {
-      "owner": "deferred",
-      "metadata_type": "deferred",
-      "name": "deferred",
-      "about": "deferred",
-      "values": "deferred",
-      "shorthand": "deferred"
-    },
-    "sysml.AddMetadataPrefixEdit": {
-      "target": "deferred",
-      "metadata_type": "deferred"
-    },
-    "sysml.AddNoteEdit": {
-      "target": "deferred",
-      "text": "deferred"
-    },
-    "sysml.AddRequirementConstraintEdit": {
-      "owner": "deferred",
-      "kind": "deferred",
-      "expression": "deferred",
-      "name": "deferred"
-    },
-    "sysml.AddSatisfyEdit": {
-      "owner": "deferred",
-      "requirement": "deferred",
-      "satisfying_feature": "deferred",
-      "is_asserted": "deferred",
-      "is_negated": "deferred"
-    },
-    "sysml.AddSequenceEdit": {
-      "owner": "deferred",
-      "keyword": "deferred",
-      "ref": "deferred",
-      "member_kind": "deferred",
-      "member_name": "deferred",
-      "type": "deferred",
-      "after": "deferred",
-      "condition": "deferred",
-      "value": "deferred",
-      "target": "deferred",
-      "via": "deferred",
-      "until": "deferred",
-      "body": "deferred",
-      "else_body": "deferred",
-      "multiplicity": "deferred",
-      "parameter": "deferred"
-    },
-    "sysml.AddTransitionEdit": {
-      "owner": "deferred",
-      "name": "deferred",
-      "source": "deferred",
-      "target": "deferred",
-      "trigger": "deferred",
-      "guard": "deferred",
-      "effect": "deferred",
-      "initial": "deferred"
-    },
-    "sysml.AddVerifyEdit": {
-      "owner": "deferred",
-      "requirement": "deferred"
-    },
-    "sysml.AppliedEdit": {
-      "operation_index": "deferred",
-      "target": "deferred",
-      "offset": "deferred",
-      "length": "deferred",
-      "old_text": "deferred",
-      "new_text": "deferred",
-      "document": "deferred"
-    },
-    "sysml.ApplyEditsRequest": {
-      "model_hash": "deferred",
-      "operations": "deferred",
-      "document": "deferred",
-      "accept_documents": "deferred"
-    },
-    "sysml.ApplyEditsResponse": {
-      "content": "deferred",
-      "applied": "deferred",
-      "error": "deferred",
-      "failure": "deferred",
-      "diagnostics": "deferred",
-      "referring_elements": "deferred",
-      "documents": "deferred",
-      "referrers": "deferred"
-    },
-    "sysml.Array": {
-      "dimensions": {
-        "status": "typed",
-        "test": "ValueArmTests.ArrayArm"
-      },
-      "elements": {
-        "status": "typed",
-        "test": "ValueArmTests.ArrayArm"
+    "sysml.AddCommentEdit": [
+      {
+        "status": "deferred",
+        "fields": [
+          "owner",
+          "body",
+          "name",
+          "about",
+          "locale"
+        ]
       }
-    },
-    "sysml.AttributeInfo": {
-      "name": {
-        "status": "typed",
-        "test": "ModelSymbolTests.SymbolAsyncReadsEveryFieldOfTheSymbol"
-      },
-      "type": {
-        "status": "typed",
-        "test": "ModelSymbolTests.SymbolAsyncReadsEveryFieldOfTheSymbol"
-      },
-      "value": {
-        "status": "typed",
-        "test": "ModelSymbolTests.SymbolAsyncReadsEveryFieldOfTheSymbol"
-      },
-      "unit": {
-        "status": "typed",
-        "test": "ModelSymbolTests.SymbolAsyncReadsEveryFieldOfTheSymbol"
+    ],
+    "sysml.AddConnectionEdit": [
+      {
+        "status": "deferred",
+        "fields": [
+          "owner",
+          "kind",
+          "from_end",
+          "to_end",
+          "name",
+          "type"
+        ]
       }
-    },
-    "sysml.Bound": {
-      "name": {
-        "status": "typed",
-        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
-      },
-      "limit": {
-        "status": "typed",
-        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
-      },
-      "reached": {
-        "status": "typed",
-        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
+    ],
+    "sysml.AddDocumentationEdit": [
+      {
+        "status": "deferred",
+        "fields": [
+          "target",
+          "body",
+          "name",
+          "locale",
+          "replace"
+        ]
       }
-    },
-    "sysml.CalcOutput": {
-      "name": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.CalcSendsItsArgumentsInOrderAndReadsTheValueOutputsAndStanding"
-      },
-      "value": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.CalcSendsItsArgumentsInOrderAndReadsTheValueOutputsAndStanding"
+    ],
+    "sysml.AddImportEdit": [
+      {
+        "status": "deferred",
+        "fields": [
+          "owner",
+          "visibility",
+          "target",
+          "is_recursive",
+          "is_import_all",
+          "filters"
+        ]
       }
-    },
-    "sysml.CaseEvaluation": {
-      "function_id": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
-      },
-      "arguments": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
-      },
-      "result": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
-      },
-      "error": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
-      },
-      "selected": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
-      },
-      "tied": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
+    ],
+    "sysml.AddMemberEdit": [
+      {
+        "status": "deferred",
+        "fields": [
+          "owner",
+          "kind",
+          "name",
+          "type",
+          "multiplicity",
+          "value",
+          "specializes",
+          "is_abstract",
+          "redefines",
+          "is_default",
+          "direction",
+          "metadata_prefixes",
+          "doc",
+          "body_expression"
+        ]
       }
-    },
-    "sysml.CaseStatistic": {
-      "statistic": "deferred",
-      "of": "deferred",
-      "tool": "deferred",
-      "run": "deferred",
-      "difference": "deferred"
-    },
-    "sysml.CaseStatistics": {
-      "analysis": "deferred",
-      "rows": "deferred",
-      "notes": "deferred"
-    },
-    "sysml.CheckBehaviorRequest": {
-      "model_hash": {
-        "status": "typed",
-        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
-      },
-      "action_symbol_id": {
-        "status": "typed",
-        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
-      },
-      "state_machine_symbol_id": {
-        "status": "typed",
-        "test": "ModelCheckTests.CheckStateSendsTheMachineAndAHoldingCheckIsAVerdict"
-      },
-      "inputs": {
-        "status": "typed",
-        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
-      },
-      "performer_symbol_id": {
-        "status": "typed",
-        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
-      },
-      "check_property": {
-        "status": "typed",
-        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
-      },
-      "check_diverge": {
-        "status": "typed",
-        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
-      },
-      "check_input": {
-        "status": "typed",
-        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
-      },
-      "check_assume": {
-        "status": "typed",
-        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
-      },
-      "check_witness": {
-        "status": "typed",
-        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
-      },
-      "check_depth": {
-        "status": "typed",
-        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
-      },
-      "check_states": {
-        "status": "typed",
-        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
-      },
-      "check_unroll": {
-        "status": "typed",
-        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
-      },
-      "check_timeout": {
-        "status": "typed",
-        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
-      },
-      "engine": {
-        "status": "typed",
-        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
+    ],
+    "sysml.AddMetadataEdit": [
+      {
+        "status": "deferred",
+        "fields": [
+          "owner",
+          "metadata_type",
+          "name",
+          "about",
+          "values",
+          "shorthand"
+        ]
       }
-    },
-    "sysml.CheckBehaviorResponse": {
-      "verdict": {
-        "status": "typed",
-        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
-      },
-      "lines": {
-        "status": "typed",
-        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
-      },
-      "search": {
-        "status": "typed",
-        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
-      },
-      "violations": {
-        "status": "typed",
-        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
-      },
-      "divergences": {
-        "status": "typed",
-        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
-      },
-      "finals": {
-        "status": "typed",
-        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
-      },
-      "claim": {
-        "status": "typed",
-        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
-      },
-      "free_inputs": {
-        "status": "typed",
-        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
-      },
-      "assumptions": {
-        "status": "typed",
-        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
-      },
-      "witness": {
-        "status": "typed",
-        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
-      },
-      "contrast": {
-        "status": "typed",
-        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
-      },
-      "engine": {
-        "status": "typed",
-        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
-      },
-      "strength": {
-        "status": "typed",
-        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
-      },
-      "bounds": {
-        "status": "typed",
-        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
-      },
-      "reason": {
-        "status": "typed",
-        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
-      },
-      "error": {
-        "status": "typed",
-        "test": "ModelCheckTests.ACheckRefusedInBandIsACheckExceptionKeepingThePartialAnswer"
+    ],
+    "sysml.AddMetadataPrefixEdit": [
+      {
+        "status": "deferred",
+        "fields": [
+          "target",
+          "metadata_type"
+        ]
       }
-    },
-    "sysml.CheckDivergence": {
-      "feature": {
-        "status": "typed",
-        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
-      },
-      "values": {
-        "status": "typed",
-        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
+    ],
+    "sysml.AddNoteEdit": [
+      {
+        "status": "deferred",
+        "fields": [
+          "target",
+          "text"
+        ]
       }
-    },
-    "sysml.CheckDivergentValue": {
-      "value": {
-        "status": "typed",
-        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
-      },
-      "witness": {
-        "status": "typed",
-        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
+    ],
+    "sysml.AddRequirementConstraintEdit": [
+      {
+        "status": "deferred",
+        "fields": [
+          "owner",
+          "kind",
+          "expression",
+          "name"
+        ]
       }
-    },
-    "sysml.CheckFinal": {
-      "outcome": {
-        "status": "typed",
-        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
-      },
-      "values": {
-        "status": "typed",
-        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
-      },
-      "witness": {
-        "status": "typed",
-        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
+    ],
+    "sysml.AddSatisfyEdit": [
+      {
+        "status": "deferred",
+        "fields": [
+          "owner",
+          "requirement",
+          "satisfying_feature",
+          "is_asserted",
+          "is_negated"
+        ]
       }
-    },
-    "sysml.CheckSearch": {
-      "states": {
-        "status": "typed",
-        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
-      },
-      "moves": {
-        "status": "typed",
-        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
-      },
-      "max_depth": {
-        "status": "typed",
-        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
-      },
-      "bounds_hit": {
-        "status": "typed",
-        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
-      },
-      "horizon": {
-        "status": "typed",
-        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
-      },
-      "horizon_set": {
-        "status": "typed",
-        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
-      },
-      "mass_bounded": {
-        "status": "typed",
-        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
-      },
-      "notes": {
-        "status": "typed",
-        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
-      },
-      "scope": {
-        "status": "typed",
-        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
-      },
-      "status": {
-        "status": "typed",
-        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
+    ],
+    "sysml.AddSequenceEdit": [
+      {
+        "status": "deferred",
+        "fields": [
+          "owner",
+          "keyword",
+          "ref",
+          "member_kind",
+          "member_name",
+          "type",
+          "after",
+          "condition",
+          "value",
+          "target",
+          "via",
+          "until",
+          "body",
+          "else_body",
+          "multiplicity",
+          "parameter"
+        ]
       }
-    },
-    "sysml.CheckViolation": {
-      "kind": {
-        "status": "typed",
-        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
-      },
-      "property": {
-        "status": "typed",
-        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
-      },
-      "error": {
-        "status": "typed",
-        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
-      },
-      "depth": {
-        "status": "typed",
-        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
-      },
-      "probability": {
-        "status": "typed",
-        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
-      },
-      "witness": {
-        "status": "typed",
-        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
-      },
-      "text": {
-        "status": "typed",
-        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
+    ],
+    "sysml.AddTransitionEdit": [
+      {
+        "status": "deferred",
+        "fields": [
+          "owner",
+          "name",
+          "source",
+          "target",
+          "trigger",
+          "guard",
+          "effect",
+          "initial"
+        ]
       }
-    },
-    "sysml.CheckWitness": {
-      "schedule": {
-        "status": "typed",
-        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
-      },
-      "draws": {
-        "status": "typed",
-        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
-      },
-      "choices": {
-        "status": "typed",
-        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
-      },
-      "inputs": {
-        "status": "typed",
-        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
-      },
-      "file_name": {
-        "status": "typed",
-        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
-      },
-      "file_content": {
-        "status": "typed",
-        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding"
+    ],
+    "sysml.AddVerifyEdit": [
+      {
+        "status": "deferred",
+        "fields": [
+          "owner",
+          "requirement"
+        ]
       }
-    },
-    "sysml.CompareResultsRequest": {
-      "model_hash": "deferred",
-      "results": "deferred",
-      "actions": "deferred",
-      "runs": "deferred",
-      "seed": "deferred",
-      "draws": "deferred",
-      "clock_step": "deferred",
-      "observe": "deferred",
-      "engine": "deferred"
-    },
-    "sysml.CompareResultsResponse": {
-      "configurations": "deferred",
-      "source": "deferred",
-      "error": "deferred",
-      "diagnostics": "deferred",
-      "failure_reason": "deferred",
-      "engine": "deferred",
-      "strength": "deferred",
-      "bounds": "deferred"
-    },
-    "sysml.ComparedDistribution": {
-      "count": "deferred",
-      "min": "deferred",
-      "mean": "deferred",
-      "p50": "deferred",
-      "p90": "deferred",
-      "max": "deferred",
-      "deviation": "deferred"
-    },
-    "sysml.Complex": {
-      "real": {
-        "status": "typed",
-        "test": "ValueArmTests.ComplexArm"
-      },
-      "imaginary": {
-        "status": "typed",
-        "test": "ValueArmTests.ComplexArm"
+    ],
+    "sysml.AppliedEdit": [
+      {
+        "status": "deferred",
+        "fields": [
+          "operation_index",
+          "target",
+          "offset",
+          "length",
+          "old_text",
+          "new_text",
+          "document"
+        ]
       }
-    },
-    "sysml.CompositeConstraint": {
-      "operator": "deferred",
-      "constraint": "deferred"
-    },
-    "sysml.ConfigurationComparison": {
-      "id": "deferred",
-      "name": "deferred",
-      "behavior": "deferred",
-      "target": "deferred",
-      "result_location": "deferred",
-      "status": "deferred",
-      "unresolved": "deferred",
-      "stored_runs": "deferred",
-      "stored_snapshots": "deferred",
-      "runs": "deferred",
-      "completed": "deferred",
-      "draws": "deferred",
-      "seed": "deferred",
-      "clock_step": "deferred",
-      "rows": "deferred",
-      "instances": "deferred",
-      "observables": "deferred",
-      "errors": "deferred",
-      "notes": "deferred",
-      "lines": "deferred"
-    },
-    "sysml.Constraint": {
-      "primitive": "deferred",
-      "composite": "deferred"
-    },
-    "sysml.ConvertRequest": {
-      "file_path": {
-        "status": "typed",
-        "test": "ModelConversionTests.ConvertSendsEverySourceAndOptionAndReadsEveryField"
-      },
-      "content": {
-        "status": "typed",
-        "test": "ModelConversionTests.ConvertSendsEverySourceAndOptionAndReadsEveryField"
-      },
-      "model_hash": {
-        "status": "typed",
-        "test": "ModelConversionTests.ConvertSendsEverySourceAndOptionAndReadsEveryField"
-      },
-      "from_format": {
-        "status": "typed",
-        "test": "ModelConversionTests.ConvertSendsEverySourceAndOptionAndReadsEveryField"
-      },
-      "to_format": {
-        "status": "typed",
-        "test": "ModelConversionTests.ConvertSendsEverySourceAndOptionAndReadsEveryField"
-      },
-      "tolerate_syntax_errors": {
-        "status": "typed",
-        "test": "ModelConversionTests.ConvertSendsEverySourceAndOptionAndReadsEveryField"
-      },
-      "id_form": {
-        "status": "typed",
-        "test": "ModelConversionTests.ConvertSendsEverySourceAndOptionAndReadsEveryField"
-      },
-      "documents": {
-        "status": "typed",
-        "test": "ModelConversionTests.ConvertSendsEverySourceAndOptionAndReadsEveryField"
-      },
-      "compact": {
-        "status": "typed",
-        "test": "ModelConversionTests.ConvertSendsEverySourceAndOptionAndReadsEveryField"
-      },
-      "omit_derived": {
-        "status": "typed",
-        "test": "ModelConversionTests.ConvertSendsEverySourceAndOptionAndReadsEveryField"
-      },
-      "keep_derived": {
-        "status": "typed",
-        "test": "ModelConversionTests.ConvertSendsEverySourceAndOptionAndReadsEveryField"
-      },
-      "include_check_diagnostics": {
-        "status": "typed",
-        "test": "ModelConversionTests.ConvertSendsEverySourceAndOptionAndReadsEveryField"
+    ],
+    "sysml.ApplyEditsRequest": [
+      {
+        "status": "deferred",
+        "fields": [
+          "model_hash",
+          "operations",
+          "document",
+          "accept_documents"
+        ]
       }
-    },
-    "sysml.ConvertResponse": {
-      "content": {
-        "status": "typed",
-        "test": "ModelConversionTests.ConvertSendsEverySourceAndOptionAndReadsEveryField"
-      },
-      "from_format": {
-        "status": "typed",
-        "test": "ModelConversionTests.ConvertSendsEverySourceAndOptionAndReadsEveryField"
-      },
-      "to_format": {
-        "status": "typed",
-        "test": "ModelConversionTests.ConvertSendsEverySourceAndOptionAndReadsEveryField"
-      },
-      "error": {
-        "status": "typed",
-        "test": "ModelConversionTests.AConversionNotMadeIsAConversionExceptionKeepingItsFormatsAndAMalformedAnswerIsRefused"
-      },
-      "diagnostics": {
-        "status": "typed",
-        "test": "ModelConversionTests.ConvertSendsEverySourceAndOptionAndReadsEveryField"
-      },
-      "experimental": {
-        "status": "typed",
-        "test": "ModelConversionTests.ConvertSendsEverySourceAndOptionAndReadsEveryField"
-      },
-      "experimental_notice": {
-        "status": "typed",
-        "test": "ModelConversionTests.ConvertSendsEverySourceAndOptionAndReadsEveryField"
+    ],
+    "sysml.ApplyEditsResponse": [
+      {
+        "status": "deferred",
+        "fields": [
+          "content",
+          "applied",
+          "error",
+          "failure",
+          "diagnostics",
+          "referring_elements",
+          "documents",
+          "referrers"
+        ]
       }
-    },
-    "sysml.DataImport": {
-      "name": "deferred",
-      "content": "deferred",
-      "import_format": "deferred",
-      "import_map": "deferred"
-    },
-    "sysml.DeleteEdit": {
-      "target": "deferred",
-      "cascade": "deferred"
-    },
-    "sysml.Diagnostic": {
-      "severity": {
+    ],
+    "sysml.Array": [
+      {
         "status": "typed",
-        "test": "ModelParseTests.EveryFieldOfADiagnosticIsRead"
-      },
-      "message": {
-        "status": "typed",
-        "test": "ModelParseTests.EveryFieldOfADiagnosticIsRead"
-      },
-      "span": {
-        "status": "typed",
-        "test": "ModelParseTests.EveryFieldOfADiagnosticIsRead"
-      },
-      "code": {
-        "status": "typed",
-        "test": "ModelParseTests.EveryFieldOfADiagnosticIsRead"
-      },
-      "order_dependent": {
-        "status": "typed",
-        "test": "ModelParseTests.EveryFieldOfADiagnosticIsRead"
-      },
-      "independent": {
-        "status": "typed",
-        "test": "ModelParseTests.EveryFieldOfADiagnosticIsRead"
+        "test": "ValueArmTests.ArrayArm",
+        "fields": [
+          "dimensions",
+          "elements"
+        ]
       }
-    },
-    "sysml.DiagnosticsRequest": {
-      "model_hash": {
+    ],
+    "sysml.AttributeInfo": [
+      {
         "status": "typed",
-        "test": "ModelEvaluateTests.GetDiagnosticsSendsTheLintSelectionAndReadsTheAnswer"
-      },
-      "disable_lint": {
-        "status": "typed",
-        "test": "ModelEvaluateTests.GetDiagnosticsSendsTheLintSelectionAndReadsTheAnswer"
-      },
-      "enable_lint": {
-        "status": "typed",
-        "test": "ModelEvaluateTests.GetDiagnosticsSendsTheLintSelectionAndReadsTheAnswer"
+        "test": "ModelSymbolTests.SymbolAsyncReadsEveryFieldOfTheSymbol",
+        "fields": [
+          "name",
+          "type",
+          "value",
+          "unit"
+        ]
       }
-    },
-    "sysml.DiagnosticsResponse": {
-      "diagnostics": {
+    ],
+    "sysml.Bound": [
+      {
         "status": "typed",
-        "test": "ModelEvaluateTests.GetDiagnosticsSendsTheLintSelectionAndReadsTheAnswer"
-      },
-      "error": {
-        "status": "typed",
-        "test": "ModelEvaluateTests.GetDiagnosticsSendsTheLintSelectionAndReadsTheAnswer"
+        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding",
+        "fields": [
+          "name",
+          "limit",
+          "reached"
+        ]
       }
-    },
-    "sysml.DocumentEvent": {
-      "kind": {
+    ],
+    "sysml.CalcOutput": [
+      {
         "status": "typed",
-        "test": "ModelExecutionTests.ExecuteStateSendsItsEventsAndTraceAndReadsTheTraceItAnswers"
-      },
-      "time": {
-        "status": "typed",
-        "test": "ModelExecutionTests.ExecuteStateSendsItsEventsAndTraceAndReadsTheTraceItAnswers"
-      },
-      "object": {
-        "status": "typed",
-        "test": "ModelExecutionTests.ExecuteStateSendsItsEventsAndTraceAndReadsTheTraceItAnswers"
-      },
-      "machine": {
-        "status": "typed",
-        "test": "ModelExecutionTests.ExecuteStateSendsItsEventsAndTraceAndReadsTheTraceItAnswers"
-      },
-      "state": {
-        "status": "typed",
-        "test": "ModelExecutionTests.ExecuteStateSendsItsEventsAndTraceAndReadsTheTraceItAnswers"
-      },
-      "from": {
-        "status": "typed",
-        "test": "ModelExecutionTests.ExecuteStateSendsItsEventsAndTraceAndReadsTheTraceItAnswers"
-      },
-      "to": {
-        "status": "typed",
-        "test": "ModelExecutionTests.ExecuteStateSendsItsEventsAndTraceAndReadsTheTraceItAnswers"
-      },
-      "target": {
-        "status": "typed",
-        "test": "ModelExecutionTests.ExecuteStateSendsItsEventsAndTraceAndReadsTheTraceItAnswers"
-      },
-      "event": {
-        "status": "typed",
-        "test": "ModelExecutionTests.ExecuteStateSendsItsEventsAndTraceAndReadsTheTraceItAnswers"
-      },
-      "payload": {
-        "status": "typed",
-        "test": "ModelExecutionTests.ExecuteStateSendsItsEventsAndTraceAndReadsTheTraceItAnswers"
-      },
-      "alternatives": {
-        "status": "typed",
-        "test": "ModelExecutionTests.ExecuteStateSendsItsEventsAndTraceAndReadsTheTraceItAnswers"
-      },
-      "taken": {
-        "status": "typed",
-        "test": "ModelExecutionTests.ExecuteStateSendsItsEventsAndTraceAndReadsTheTraceItAnswers"
-      },
-      "text": {
-        "status": "typed",
-        "test": "ModelExecutionTests.ExecuteStateSendsItsEventsAndTraceAndReadsTheTraceItAnswers"
+        "test": "ModelAnalysisTests.CalcSendsItsArgumentsInOrderAndReadsTheValueOutputsAndStanding",
+        "fields": [
+          "name",
+          "value"
+        ]
       }
-    },
-    "sysml.DocumentObject": {
-      "instance_id": {
+    ],
+    "sysml.CaseEvaluation": [
+      {
         "status": "typed",
-        "test": "DocumentValueTests.EachArmIsReadAsTheServiceSentIt"
-      },
-      "path": {
-        "status": "typed",
-        "test": "DocumentValueTests.EachArmIsReadAsTheServiceSentIt"
-      },
-      "element": {
-        "status": "typed",
-        "test": "DocumentValueTests.EachArmIsReadAsTheServiceSentIt"
+        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun",
+        "fields": [
+          "function_id",
+          "arguments",
+          "result",
+          "error",
+          "selected",
+          "tied"
+        ]
       }
-    },
-    "sysml.DocumentQueryBinding": {
-      "parameter": "deferred",
-      "values": "deferred"
-    },
-    "sysml.DocumentQueryCell": {
-      "values": "deferred"
-    },
-    "sysml.DocumentQueryColumn": {
-      "name": "deferred"
-    },
-    "sysml.DocumentQueryRow": {
-      "element": "deferred",
-      "cells": "deferred"
-    },
-    "sysml.DocumentState": {
-      "object": {
-        "status": "typed",
-        "test": "DocumentValueTests.EachArmIsReadAsTheServiceSentIt"
-      },
-      "machine": {
-        "status": "typed",
-        "test": "DocumentValueTests.EachArmIsReadAsTheServiceSentIt"
-      },
-      "name": {
-        "status": "typed",
-        "test": "DocumentValueTests.EachArmIsReadAsTheServiceSentIt"
-      },
-      "state_path": {
-        "status": "typed",
-        "test": "DocumentValueTests.EachArmIsReadAsTheServiceSentIt"
-      },
-      "state": {
-        "status": "typed",
-        "test": "DocumentValueTests.EachArmIsReadAsTheServiceSentIt"
-      },
-      "region": {
-        "status": "typed",
-        "test": "DocumentValueTests.EachArmIsReadAsTheServiceSentIt"
-      },
-      "enclosing": {
-        "status": "typed",
-        "test": "DocumentValueTests.EachArmIsReadAsTheServiceSentIt"
+    ],
+    "sysml.CaseStatistic": [
+      {
+        "status": "deferred",
+        "fields": [
+          "statistic",
+          "of",
+          "tool",
+          "run",
+          "difference"
+        ]
       }
-    },
-    "sysml.DocumentValue": {
-      "element_id": {
-        "status": "typed",
-        "test": "DocumentValueTests.EachArmIsReadAsTheServiceSentIt"
-      },
-      "string_value": {
-        "status": "typed",
-        "test": "DocumentValueTests.EachArmIsReadAsTheServiceSentIt"
-      },
-      "int_value": {
-        "status": "typed",
-        "test": "DocumentValueTests.EachArmIsReadAsTheServiceSentIt"
-      },
-      "real_value": {
-        "status": "typed",
-        "test": "DocumentValueTests.EachArmIsReadAsTheServiceSentIt"
-      },
-      "bool_value": {
-        "status": "typed",
-        "test": "DocumentValueTests.EachArmIsReadAsTheServiceSentIt"
-      },
-      "infinity": {
-        "status": "typed",
-        "test": "DocumentValueTests.EachArmIsReadAsTheServiceSentIt"
-      },
-      "quantity": {
-        "status": "typed",
-        "test": "DocumentValueTests.EachArmIsReadAsTheServiceSentIt"
-      },
-      "verdict": {
-        "status": "typed",
-        "test": "DocumentValueTests.EachArmIsReadAsTheServiceSentIt"
-      },
-      "object": {
-        "status": "typed",
-        "test": "DocumentValueTests.EachArmIsReadAsTheServiceSentIt"
-      },
-      "state": {
-        "status": "typed",
-        "test": "DocumentValueTests.EachArmIsReadAsTheServiceSentIt"
-      },
-      "event": {
-        "status": "typed",
-        "test": "DocumentValueTests.EachArmIsReadAsTheServiceSentIt"
-      },
-      "big_int_value": {
-        "status": "typed",
-        "test": "DocumentValueTests.EachArmIsReadAsTheServiceSentIt"
-      },
-      "rational_value": {
-        "status": "typed",
-        "test": "DocumentValueTests.EachArmIsReadAsTheServiceSentIt"
-      },
-      "element_type": {
-        "status": "typed",
-        "test": "DocumentValueTests.EachArmIsReadAsTheServiceSentIt"
+    ],
+    "sysml.CaseStatistics": [
+      {
+        "status": "deferred",
+        "fields": [
+          "analysis",
+          "rows",
+          "notes"
+        ]
       }
-    },
-    "sysml.DocumentVerdict": {
-      "assertion": {
+    ],
+    "sysml.CheckBehaviorRequest": [
+      {
         "status": "typed",
-        "test": "DocumentValueTests.EachArmIsReadAsTheServiceSentIt"
+        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding",
+        "fields": [
+          "model_hash",
+          "action_symbol_id",
+          "inputs",
+          "performer_symbol_id",
+          "check_property",
+          "check_diverge",
+          "check_input",
+          "check_assume",
+          "check_witness",
+          "check_depth",
+          "check_states",
+          "check_unroll",
+          "check_timeout",
+          "engine"
+        ]
       },
-      "kind": {
+      {
         "status": "typed",
-        "test": "DocumentValueTests.EachArmIsReadAsTheServiceSentIt"
-      },
-      "text": {
-        "status": "typed",
-        "test": "DocumentValueTests.EachArmIsReadAsTheServiceSentIt"
-      },
-      "path": {
-        "status": "typed",
-        "test": "DocumentValueTests.EachArmIsReadAsTheServiceSentIt"
-      },
-      "verdict": {
-        "status": "typed",
-        "test": "DocumentValueTests.EachArmIsReadAsTheServiceSentIt"
-      },
-      "condition": {
-        "status": "typed",
-        "test": "DocumentValueTests.EachArmIsReadAsTheServiceSentIt"
-      },
-      "reason": {
-        "status": "typed",
-        "test": "DocumentValueTests.EachArmIsReadAsTheServiceSentIt"
-      },
-      "verification": {
-        "status": "typed",
-        "test": "DocumentValueTests.EachArmIsReadAsTheServiceSentIt"
+        "test": "ModelCheckTests.CheckStateSendsTheMachineAndAHoldingCheckIsAVerdict",
+        "fields": [
+          "state_machine_symbol_id"
+        ]
       }
-    },
-    "sysml.EditOperation": {
-      "set_value": "deferred",
-      "rename": "deferred",
-      "add_member": "deferred",
-      "delete": "deferred",
-      "move": "deferred",
-      "add_connection": "deferred",
-      "add_satisfy": "deferred",
-      "add_requirement_constraint": "deferred",
-      "add_transition": "deferred",
-      "add_import": "deferred",
-      "add_documentation": "deferred",
-      "add_verify": "deferred",
-      "add_metadata": "deferred",
-      "add_sequence": "deferred",
-      "add_metadata_prefix": "deferred",
-      "add_comment": "deferred",
-      "add_note": "deferred"
-    },
-    "sysml.EditedDocument": {
-      "name": {
+    ],
+    "sysml.CheckBehaviorResponse": [
+      {
         "status": "typed",
-        "test": "ModelRunsTests.RecordRunSendsEveryOptionAndAnswersANewModelLeavingTheOldOneAsItWas"
+        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding",
+        "fields": [
+          "verdict",
+          "lines",
+          "search",
+          "violations",
+          "divergences",
+          "finals",
+          "claim",
+          "free_inputs",
+          "assumptions",
+          "witness",
+          "contrast",
+          "engine",
+          "strength",
+          "bounds",
+          "reason"
+        ]
       },
-      "content": {
+      {
         "status": "typed",
-        "test": "ModelRunsTests.RecordRunSendsEveryOptionAndAnswersANewModelLeavingTheOldOneAsItWas"
+        "test": "ModelCheckTests.ACheckRefusedInBandIsACheckExceptionKeepingThePartialAnswer",
+        "fields": [
+          "error"
+        ]
       }
-    },
-    "sysml.EngineInfo": {
-      "name": {
+    ],
+    "sysml.CheckDivergence": [
+      {
         "status": "typed",
-        "test": "ModelAnalysisTests.ListEnginesSendsTheProbeAndReadsEveryFieldOfEveryEngine"
-      },
-      "authority": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.ListEnginesSendsTheProbeAndReadsEveryFieldOfEveryEngine"
-      },
-      "answers": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.ListEnginesSendsTheProbeAndReadsEveryFieldOfEveryEngine"
-      },
-      "bounds": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.ListEnginesSendsTheProbeAndReadsEveryFieldOfEveryEngine"
-      },
-      "process": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.ListEnginesSendsTheProbeAndReadsEveryFieldOfEveryEngine"
-      },
-      "process_found": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.ListEnginesSendsTheProbeAndReadsEveryFieldOfEveryEngine"
-      },
-      "ready": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.ListEnginesSendsTheProbeAndReadsEveryFieldOfEveryEngine"
-      },
-      "unavailable": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.ListEnginesSendsTheProbeAndReadsEveryFieldOfEveryEngine"
-      },
-      "kind": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.ListEnginesSendsTheProbeAndReadsEveryFieldOfEveryEngine"
-      },
-      "protocol": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.ListEnginesSendsTheProbeAndReadsEveryFieldOfEveryEngine"
-      },
-      "source": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.ListEnginesSendsTheProbeAndReadsEveryFieldOfEveryEngine"
-      },
-      "command": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.ListEnginesSendsTheProbeAndReadsEveryFieldOfEveryEngine"
-      },
-      "version": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.ListEnginesSendsTheProbeAndReadsEveryFieldOfEveryEngine"
-      },
-      "served": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.ListEnginesSendsTheProbeAndReadsEveryFieldOfEveryEngine"
+        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding",
+        "fields": [
+          "feature",
+          "values"
+        ]
       }
-    },
-    "sysml.EnumLiteral": {
-      "literal_id": {
+    ],
+    "sysml.CheckDivergentValue": [
+      {
         "status": "typed",
-        "test": "ValueArmTests.EnumLiteralArm"
-      },
-      "enumeration_id": {
-        "status": "typed",
-        "test": "ValueArmTests.EnumLiteralArm"
-      },
-      "name": {
-        "status": "typed",
-        "test": "ValueArmTests.EnumLiteralArm"
-      },
-      "value": {
-        "status": "typed",
-        "test": "ValueArmTests.EnumLiteralArm"
+        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding",
+        "fields": [
+          "value",
+          "witness"
+        ]
       }
-    },
-    "sysml.EvaluateCalcRequest": {
-      "model_hash": {
+    ],
+    "sysml.CheckFinal": [
+      {
         "status": "typed",
-        "test": "ModelAnalysisTests.CalcSendsItsArgumentsInOrderAndReadsTheValueOutputsAndStanding"
-      },
-      "symbol_id": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.CalcSendsItsArgumentsInOrderAndReadsTheValueOutputsAndStanding"
-      },
-      "arguments": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.CalcSendsItsArgumentsInOrderAndReadsTheValueOutputsAndStanding"
-      },
-      "engine": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.CalcSendsItsArgumentsInOrderAndReadsTheValueOutputsAndStanding"
+        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding",
+        "fields": [
+          "outcome",
+          "values",
+          "witness"
+        ]
       }
-    },
-    "sysml.EvaluateCalcResponse": {
-      "result": {
+    ],
+    "sysml.CheckSearch": [
+      {
         "status": "typed",
-        "test": "ModelAnalysisTests.CalcSendsItsArgumentsInOrderAndReadsTheValueOutputsAndStanding"
-      },
-      "outputs": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.CalcSendsItsArgumentsInOrderAndReadsTheValueOutputsAndStanding"
-      },
-      "error": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.ACalcThatFailsIsAVerificationExceptionAndAnAnswerOfNeitherOrBothIsMalformed"
-      },
-      "diagnostics": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.CalcSendsItsArgumentsInOrderAndReadsTheValueOutputsAndStanding"
-      },
-      "failure_reason": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.ACalcThatFailsIsAVerificationExceptionAndAnAnswerOfNeitherOrBothIsMalformed"
-      },
-      "engine": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.CalcSendsItsArgumentsInOrderAndReadsTheValueOutputsAndStanding"
-      },
-      "strength": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.CalcSendsItsArgumentsInOrderAndReadsTheValueOutputsAndStanding"
-      },
-      "bounds": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.CalcSendsItsArgumentsInOrderAndReadsTheValueOutputsAndStanding"
+        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding",
+        "fields": [
+          "states",
+          "moves",
+          "max_depth",
+          "bounds_hit",
+          "horizon",
+          "horizon_set",
+          "mass_bounded",
+          "notes",
+          "scope",
+          "status"
+        ]
       }
-    },
-    "sysml.EvaluateRequest": {
-      "model_hash": {
+    ],
+    "sysml.CheckViolation": [
+      {
         "status": "typed",
-        "test": "ModelEvaluateTests.EvalSendsTheExpressionAndItsScopeAndReadsTheValue"
-      },
-      "expression": {
-        "status": "typed",
-        "test": "ModelEvaluateTests.EvalSendsTheExpressionAndItsScopeAndReadsTheValue"
-      },
-      "context_symbol_id": {
-        "status": "typed",
-        "test": "ModelEvaluateTests.EvalSendsTheExpressionAndItsScopeAndReadsTheValue"
-      },
-      "subject_symbol_id": {
-        "status": "typed",
-        "test": "ModelEvaluateTests.EvalSendsTheExpressionAndItsScopeAndReadsTheValue"
+        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding",
+        "fields": [
+          "kind",
+          "property",
+          "error",
+          "depth",
+          "probability",
+          "witness",
+          "text"
+        ]
       }
-    },
-    "sysml.EvaluateResponse": {
-      "result": {
+    ],
+    "sysml.CheckWitness": [
+      {
         "status": "typed",
-        "test": "ModelEvaluateTests.EvalSendsTheExpressionAndItsScopeAndReadsTheValue"
-      },
-      "error": {
-        "status": "typed",
-        "test": "ModelEvaluateTests.AnEvaluationFailureIsInBandAndAnAnswerOfNeitherOrOfAnUnknownKindIsRefused"
-      },
-      "diagnostics": {
-        "status": "typed",
-        "test": "ModelEvaluateTests.EvalSendsTheExpressionAndItsScopeAndReadsTheValue"
+        "test": "ModelCheckTests.CheckActionSendsEveryOptionAndReadsEveryFinding",
+        "fields": [
+          "schedule",
+          "draws",
+          "choices",
+          "inputs",
+          "file_name",
+          "file_content"
+        ]
       }
-    },
-    "sysml.ExecuteActionRequest": {
-      "model_hash": {
-        "status": "typed",
-        "test": "ModelExecutionTests.ExecuteActionSendsEveryOptionAndReadsEveryFieldOfTheRun"
-      },
-      "action_symbol_id": {
-        "status": "typed",
-        "test": "ModelExecutionTests.ExecuteActionSendsEveryOptionAndReadsEveryFieldOfTheRun"
-      },
-      "inputs": {
-        "status": "typed",
-        "test": "ModelExecutionTests.ExecuteActionSendsEveryOptionAndReadsEveryFieldOfTheRun"
-      },
-      "schedule": {
-        "status": "typed",
-        "test": "ModelExecutionTests.ExecuteActionSendsEveryOptionAndReadsEveryFieldOfTheRun"
-      },
-      "performer_symbol_id": {
-        "status": "typed",
-        "test": "ModelExecutionTests.ExecuteActionSendsEveryOptionAndReadsEveryFieldOfTheRun"
-      },
-      "advance": {
-        "status": "typed",
-        "test": "ModelExecutionTests.ExecuteActionSendsEveryOptionAndReadsEveryFieldOfTheRun"
-      },
-      "seed": {
-        "status": "typed",
-        "test": "ModelExecutionTests.ExecuteActionSendsEveryOptionAndReadsEveryFieldOfTheRun"
-      },
-      "draws": {
-        "status": "typed",
-        "test": "ModelExecutionTests.ExecuteActionSendsEveryOptionAndReadsEveryFieldOfTheRun"
-      },
-      "clock_step": {
-        "status": "typed",
-        "test": "ModelExecutionTests.ExecuteActionSendsEveryOptionAndReadsEveryFieldOfTheRun"
+    ],
+    "sysml.CompareResultsRequest": [
+      {
+        "status": "deferred",
+        "fields": [
+          "model_hash",
+          "results",
+          "actions",
+          "runs",
+          "seed",
+          "draws",
+          "clock_step",
+          "observe",
+          "engine"
+        ]
       }
-    },
-    "sysml.ExecuteActionResponse": {
-      "outputs": {
-        "status": "typed",
-        "test": "ModelExecutionTests.ExecuteActionSendsEveryOptionAndReadsEveryFieldOfTheRun"
-      },
-      "error": {
-        "status": "typed",
-        "test": "ModelExecutionTests.AFailedRunIsAnExecutionExceptionKeepingItsClockTraceAndDiagnostics"
-      },
-      "diagnostics": {
-        "status": "typed",
-        "test": "ModelExecutionTests.ExecuteActionSendsEveryOptionAndReadsEveryFieldOfTheRun"
-      },
-      "outcomes": {
-        "status": "typed",
-        "test": "ModelExecutionTests.ExploreSendsExploreUnlessABudgetIsNamedAndReadsEveryOutcome"
-      },
-      "exploration": {
-        "status": "typed",
-        "test": "ModelExecutionTests.ExploreSendsExploreUnlessABudgetIsNamedAndReadsEveryOutcome"
-      },
-      "final_time": {
-        "status": "typed",
-        "test": "ModelExecutionTests.ExecuteActionSendsEveryOptionAndReadsEveryFieldOfTheRun"
-      },
-      "performer_attributes": {
-        "status": "typed",
-        "test": "ModelExecutionTests.ExecuteActionSendsEveryOptionAndReadsEveryFieldOfTheRun"
-      },
-      "order_dependent": {
-        "status": "typed",
-        "test": "ModelExecutionTests.ExecuteActionSendsEveryOptionAndReadsEveryFieldOfTheRun"
+    ],
+    "sysml.CompareResultsResponse": [
+      {
+        "status": "deferred",
+        "fields": [
+          "configurations",
+          "source",
+          "error",
+          "diagnostics",
+          "failure_reason",
+          "engine",
+          "strength",
+          "bounds"
+        ]
       }
-    },
-    "sysml.ExecuteStateRequest": {
-      "model_hash": {
-        "status": "typed",
-        "test": "ModelExecutionTests.ExecuteStateSendsItsEventsAndTraceAndReadsTheTraceItAnswers"
-      },
-      "state_machine_symbol_id": {
-        "status": "typed",
-        "test": "ModelExecutionTests.ExecuteStateSendsItsEventsAndTraceAndReadsTheTraceItAnswers"
-      },
-      "events": {
-        "status": "typed",
-        "test": "ModelExecutionTests.ExecuteStateSendsItsEventsAndTraceAndReadsTheTraceItAnswers"
-      },
-      "schedule": {
-        "status": "typed",
-        "test": "ModelExecutionTests.ExecuteStateSendsItsEventsAndTraceAndReadsTheTraceItAnswers"
-      },
-      "performer_symbol_id": {
-        "status": "typed",
-        "test": "ModelExecutionTests.ExecuteStateSendsItsEventsAndTraceAndReadsTheTraceItAnswers"
-      },
-      "trace": {
-        "status": "typed",
-        "test": "ModelExecutionTests.ExecuteStateSendsItsEventsAndTraceAndReadsTheTraceItAnswers"
-      },
-      "advance": {
-        "status": "typed",
-        "test": "ModelExecutionTests.ExecuteStateSendsItsEventsAndTraceAndReadsTheTraceItAnswers"
-      },
-      "seed": {
-        "status": "typed",
-        "test": "ModelExecutionTests.ExecuteStateSendsItsEventsAndTraceAndReadsTheTraceItAnswers"
-      },
-      "draws": {
-        "status": "typed",
-        "test": "ModelExecutionTests.ExecuteStateSendsItsEventsAndTraceAndReadsTheTraceItAnswers"
-      },
-      "clock_step": {
-        "status": "typed",
-        "test": "ModelExecutionTests.ExecuteStateSendsItsEventsAndTraceAndReadsTheTraceItAnswers"
+    ],
+    "sysml.ComparedDistribution": [
+      {
+        "status": "deferred",
+        "fields": [
+          "count",
+          "min",
+          "mean",
+          "p50",
+          "p90",
+          "max",
+          "deviation"
+        ]
       }
-    },
-    "sysml.ExecuteStateResponse": {
-      "states_visited": {
+    ],
+    "sysml.Complex": [
+      {
         "status": "typed",
-        "test": "ModelExecutionTests.ExecuteStateSendsItsEventsAndTraceAndReadsTheTraceItAnswers"
-      },
-      "final_context": {
-        "status": "typed",
-        "test": "ModelExecutionTests.ExecuteStateSendsItsEventsAndTraceAndReadsTheTraceItAnswers"
-      },
-      "error": {
-        "status": "typed",
-        "test": "ModelExecutionTests.AFailedRunIsAnExecutionExceptionKeepingItsClockTraceAndDiagnostics"
-      },
-      "diagnostics": {
-        "status": "typed",
-        "test": "ModelExecutionTests.ExecuteStateSendsItsEventsAndTraceAndReadsTheTraceItAnswers"
-      },
-      "outcomes": {
-        "status": "typed",
-        "test": "ModelExecutionTests.ExploreSendsExploreUnlessABudgetIsNamedAndReadsEveryOutcome"
-      },
-      "exploration": {
-        "status": "typed",
-        "test": "ModelExecutionTests.ExploreSendsExploreUnlessABudgetIsNamedAndReadsEveryOutcome"
-      },
-      "final_time": {
-        "status": "typed",
-        "test": "ModelExecutionTests.ExecuteStateSendsItsEventsAndTraceAndReadsTheTraceItAnswers"
-      },
-      "trace": {
-        "status": "typed",
-        "test": "ModelExecutionTests.ExecuteStateSendsItsEventsAndTraceAndReadsTheTraceItAnswers"
-      },
-      "trace_dropped": {
-        "status": "typed",
-        "test": "ModelExecutionTests.ExecuteStateSendsItsEventsAndTraceAndReadsTheTraceItAnswers"
-      },
-      "order_dependent": {
-        "status": "typed",
-        "test": "ModelExecutionTests.ExecuteStateSendsItsEventsAndTraceAndReadsTheTraceItAnswers"
+        "test": "ValueArmTests.ComplexArm",
+        "fields": [
+          "real",
+          "imaginary"
+        ]
       }
-    },
-    "sysml.ExplorationStatus": {
-      "complete": {
+    ],
+    "sysml.CompositeConstraint": [
+      {
         "status": "typed",
-        "test": "ModelExecutionTests.ExploreSendsExploreUnlessABudgetIsNamedAndReadsEveryOutcome"
-      },
-      "runs": {
-        "status": "typed",
-        "test": "ModelExecutionTests.ExploreSendsExploreUnlessABudgetIsNamedAndReadsEveryOutcome"
-      },
-      "budgets_hit": {
-        "status": "typed",
-        "test": "ModelExecutionTests.ExploreSendsExploreUnlessABudgetIsNamedAndReadsEveryOutcome"
-      },
-      "runs_budget": {
-        "status": "typed",
-        "test": "ModelExecutionTests.ExploreSendsExploreUnlessABudgetIsNamedAndReadsEveryOutcome"
-      },
-      "depth_budget": {
-        "status": "typed",
-        "test": "ModelExecutionTests.ExploreSendsExploreUnlessABudgetIsNamedAndReadsEveryOutcome"
-      },
-      "probabilities_lower_bound": {
-        "status": "typed",
-        "test": "ModelExecutionTests.ExploreSendsExploreUnlessABudgetIsNamedAndReadsEveryOutcome"
-      },
-      "failed_linearizations": {
-        "status": "typed",
-        "test": "ModelExecutionTests.ExploreSendsExploreUnlessABudgetIsNamedAndReadsEveryOutcome"
-      },
-      "unenumerated": {
-        "status": "typed",
-        "test": "ModelExecutionTests.ExploreSendsExploreUnlessABudgetIsNamedAndReadsEveryOutcome"
+        "test": "ModelQueryDocsTests.QuerySendsTheStructuredQueryAndReadsEveryElement",
+        "fields": [
+          "operator",
+          "constraint"
+        ]
       }
-    },
-    "sysml.ExportGraphsRequest": {
-      "model_hash": "deferred",
-      "subject": "deferred"
-    },
-    "sysml.ExportGraphsResponse": {
-      "content": "deferred",
-      "version": "deferred",
-      "subject": "deferred"
-    },
-    "sysml.FeatureValue": {
-      "feature_name": {
-        "status": "typed",
-        "test": "ModelEvaluateTests.InstantiateReadsTheObjectGraphAndResolvesItsReferences"
-      },
-      "value": {
-        "status": "typed",
-        "test": "ModelEvaluateTests.InstantiateReadsTheObjectGraphAndResolvesItsReferences"
-      },
-      "values": {
-        "status": "typed",
-        "test": "ModelEvaluateTests.InstantiateReadsTheObjectGraphAndResolvesItsReferences"
-      },
-      "materialized": {
-        "status": "typed",
-        "test": "ModelEvaluateTests.InstantiateReadsTheObjectGraphAndResolvesItsReferences"
-      },
-      "error": {
-        "status": "typed",
-        "test": "ModelEvaluateTests.InstantiateReadsTheObjectGraphAndResolvesItsReferences"
-      },
-      "order_dependent": {
-        "status": "typed",
-        "test": "ModelEvaluateTests.InstantiateReadsTheObjectGraphAndResolvesItsReferences"
+    ],
+    "sysml.ConfigurationComparison": [
+      {
+        "status": "deferred",
+        "fields": [
+          "id",
+          "name",
+          "behavior",
+          "target",
+          "result_location",
+          "status",
+          "unresolved",
+          "stored_runs",
+          "stored_snapshots",
+          "runs",
+          "completed",
+          "draws",
+          "seed",
+          "clock_step",
+          "rows",
+          "instances",
+          "observables",
+          "errors",
+          "notes",
+          "lines"
+        ]
       }
-    },
-    "sysml.Function": {
-      "calc_id": {
+    ],
+    "sysml.Constraint": [
+      {
         "status": "typed",
-        "test": "ValueArmTests.FunctionArm"
-      },
-      "self_id": {
-        "status": "typed",
-        "test": "ValueArmTests.FunctionArm"
+        "test": "ModelQueryDocsTests.QuerySendsTheStructuredQueryAndReadsEveryElement",
+        "fields": [
+          "primitive",
+          "composite"
+        ]
       }
-    },
-    "sysml.GetSymbolRequest": {
-      "model_hash": {
+    ],
+    "sysml.ConvertRequest": [
+      {
         "status": "typed",
-        "test": "ModelSymbolTests.SymbolAsyncReadsEveryFieldOfTheSymbol"
-      },
-      "symbol_id": {
-        "status": "typed",
-        "test": "ModelSymbolTests.SymbolAsyncReadsEveryFieldOfTheSymbol"
+        "test": "ModelConversionTests.ConvertSendsEverySourceAndOptionAndReadsEveryField",
+        "fields": [
+          "file_path",
+          "content",
+          "model_hash",
+          "from_format",
+          "to_format",
+          "tolerate_syntax_errors",
+          "id_form",
+          "documents",
+          "compact",
+          "omit_derived",
+          "keep_derived",
+          "include_check_diagnostics"
+        ]
       }
-    },
-    "sysml.ImportDataRequest": {
-      "model_hash": "deferred",
-      "imports": "deferred",
-      "import_as": "deferred",
-      "import_dry_run": "deferred",
-      "accept_documents": "deferred"
-    },
-    "sysml.ImportDataResponse": {
-      "files": "deferred",
-      "documents": "deferred",
-      "content": "deferred",
-      "model_hash": "deferred",
-      "error": "deferred",
-      "diagnostics": "deferred"
-    },
-    "sysml.ImportedFile": {
-      "name": "deferred",
-      "values": "deferred",
-      "elements": "deferred",
-      "assignments": "deferred"
-    },
-    "sysml.ImportedValue": {
-      "element": "deferred",
-      "feature": "deferred",
-      "value": "deferred",
-      "redefines": "deferred",
-      "where": "deferred",
-      "description": "deferred"
-    },
-    "sysml.Instance": {
-      "id": {
+    ],
+    "sysml.ConvertResponse": [
+      {
         "status": "typed",
-        "test": "ModelEvaluateTests.InstantiateReadsTheObjectGraphAndResolvesItsReferences"
+        "test": "ModelConversionTests.ConvertSendsEverySourceAndOptionAndReadsEveryField",
+        "fields": [
+          "content",
+          "from_format",
+          "to_format",
+          "diagnostics",
+          "experimental",
+          "experimental_notice"
+        ]
       },
-      "type_symbol_id": {
+      {
         "status": "typed",
-        "test": "ModelEvaluateTests.InstantiateReadsTheObjectGraphAndResolvesItsReferences"
-      },
-      "feature_values": {
-        "status": "typed",
-        "test": "ModelEvaluateTests.InstantiateReadsTheObjectGraphAndResolvesItsReferences"
+        "test": "ModelConversionTests.AConversionNotMadeIsAConversionExceptionKeepingItsFormatsAndAMalformedAnswerIsRefused",
+        "fields": [
+          "error"
+        ]
       }
-    },
-    "sysml.InstantiateRequest": {
-      "model_hash": {
-        "status": "typed",
-        "test": "ModelEvaluateTests.InstantiateReadsTheObjectGraphAndResolvesItsReferences"
-      },
-      "symbol_id": {
-        "status": "typed",
-        "test": "ModelEvaluateTests.InstantiateReadsTheObjectGraphAndResolvesItsReferences"
+    ],
+    "sysml.DataImport": [
+      {
+        "status": "deferred",
+        "fields": [
+          "name",
+          "content",
+          "import_format",
+          "import_map"
+        ]
       }
-    },
-    "sysml.InstantiateResponse": {
-      "instance": {
-        "status": "typed",
-        "test": "ModelEvaluateTests.InstantiateReadsTheObjectGraphAndResolvesItsReferences"
-      },
-      "error": {
-        "status": "typed",
-        "test": "ModelEvaluateTests.AnInstantiationFailureIsInBandAndAMalformedAnswerNamesWhereItIs"
-      },
-      "diagnostics": {
-        "status": "typed",
-        "test": "ModelEvaluateTests.InstantiateReadsTheObjectGraphAndResolvesItsReferences"
-      },
-      "instances": {
-        "status": "typed",
-        "test": "ModelEvaluateTests.InstantiateReadsTheObjectGraphAndResolvesItsReferences"
+    ],
+    "sysml.DeleteEdit": [
+      {
+        "status": "deferred",
+        "fields": [
+          "target",
+          "cascade"
+        ]
       }
-    },
-    "sysml.ListEnginesRequest": {
-      "probe": {
+    ],
+    "sysml.Diagnostic": [
+      {
         "status": "typed",
-        "test": "ModelAnalysisTests.ListEnginesSendsTheProbeAndReadsEveryFieldOfEveryEngine"
+        "test": "ModelParseTests.EveryFieldOfADiagnosticIsRead",
+        "fields": [
+          "severity",
+          "message",
+          "span",
+          "code",
+          "order_dependent",
+          "independent"
+        ]
       }
-    },
-    "sysml.ListEnginesResponse": {
-      "engines": {
+    ],
+    "sysml.DiagnosticsRequest": [
+      {
         "status": "typed",
-        "test": "ModelAnalysisTests.ListEnginesSendsTheProbeAndReadsEveryFieldOfEveryEngine"
+        "test": "ModelEvaluateTests.GetDiagnosticsSendsTheLintSelectionAndReadsTheAnswer",
+        "fields": [
+          "model_hash",
+          "disable_lint",
+          "enable_lint"
+        ]
       }
-    },
-    "sysml.MeasurementRef": {
-      "unit": {
+    ],
+    "sysml.DiagnosticsResponse": [
+      {
         "status": "typed",
-        "test": "ValueArmTests.MeasurementRefArm"
-      },
-      "unit_term": {
-        "status": "typed",
-        "test": "ValueArmTests.MeasurementRefArm"
-      },
-      "unit_id": {
-        "status": "typed",
-        "test": "ValueArmTests.MeasurementRefArm"
+        "test": "ModelEvaluateTests.GetDiagnosticsSendsTheLintSelectionAndReadsTheAnswer",
+        "fields": [
+          "diagnostics",
+          "error"
+        ]
       }
-    },
-    "sysml.MetadataFeatureValue": {
-      "feature": "deferred",
-      "value": "deferred"
-    },
-    "sysml.Metaobject": {
-      "element_id": {
+    ],
+    "sysml.DocumentEvent": [
+      {
         "status": "typed",
-        "test": "ValueArmTests.MetaobjectArm"
-      },
-      "metaclass_id": {
-        "status": "typed",
-        "test": "ValueArmTests.MetaobjectArm"
+        "test": "ModelExecutionTests.ExecuteStateSendsItsEventsAndTraceAndReadsTheTraceItAnswers",
+        "fields": [
+          "kind",
+          "time",
+          "object",
+          "machine",
+          "state",
+          "from",
+          "to",
+          "target",
+          "event",
+          "payload",
+          "alternatives",
+          "taken",
+          "text"
+        ]
       }
-    },
-    "sysml.MigrateRequest": {
-      "file_path": {
+    ],
+    "sysml.DocumentObject": [
+      {
         "status": "typed",
-        "test": "ModelConversionTests.MigrateSendsEverySourceAndOptionAndReadsEveryField"
-      },
-      "content": {
-        "status": "typed",
-        "test": "ModelConversionTests.MigrateSendsEverySourceAndOptionAndReadsEveryField"
-      },
-      "from_format": {
-        "status": "typed",
-        "test": "ModelConversionTests.MigrateSendsEverySourceAndOptionAndReadsEveryField"
-      },
-      "to_format": {
-        "status": "typed",
-        "test": "ModelConversionTests.MigrateSendsEverySourceAndOptionAndReadsEveryField"
-      },
-      "report": {
-        "status": "typed",
-        "test": "ModelConversionTests.MigrateSendsEverySourceAndOptionAndReadsEveryField"
-      },
-      "results": {
-        "status": "typed",
-        "test": "ModelConversionTests.MigrateSendsEverySourceAndOptionAndReadsEveryField"
-      },
-      "layout_path": {
-        "status": "typed",
-        "test": "ModelConversionTests.MigrateSendsEverySourceAndOptionAndReadsEveryField"
-      },
-      "layout_content": {
-        "status": "typed",
-        "test": "ModelConversionTests.MigrateSendsEverySourceAndOptionAndReadsEveryField"
-      },
-      "image_base_url": {
-        "status": "typed",
-        "test": "ModelConversionTests.MigrateSendsEverySourceAndOptionAndReadsEveryField"
-      },
-      "strict": {
-        "status": "typed",
-        "test": "ModelConversionTests.MigrateSendsEverySourceAndOptionAndReadsEveryField"
+        "test": "DocumentValueTests.EachArmIsReadAsTheServiceSentIt",
+        "fields": [
+          "instance_id",
+          "path",
+          "element"
+        ]
       }
-    },
-    "sysml.MigrateResponse": {
-      "content": {
+    ],
+    "sysml.DocumentQueryBinding": [
+      {
         "status": "typed",
-        "test": "ModelConversionTests.MigrateSendsEverySourceAndOptionAndReadsEveryField"
-      },
-      "from_format": {
-        "status": "typed",
-        "test": "ModelConversionTests.MigrateSendsEverySourceAndOptionAndReadsEveryField"
-      },
-      "to_format": {
-        "status": "typed",
-        "test": "ModelConversionTests.MigrateSendsEverySourceAndOptionAndReadsEveryField"
-      },
-      "error": {
-        "status": "typed",
-        "test": "ModelConversionTests.AMigrationNotMadeIsAMigrationExceptionAndAMalformedAnswerIsRefused"
-      },
-      "experimental": {
-        "status": "typed",
-        "test": "ModelConversionTests.MigrateSendsEverySourceAndOptionAndReadsEveryField"
-      },
-      "experimental_notice": {
-        "status": "typed",
-        "test": "ModelConversionTests.MigrateSendsEverySourceAndOptionAndReadsEveryField"
-      },
-      "report": {
-        "status": "typed",
-        "test": "ModelConversionTests.MigrateSendsEverySourceAndOptionAndReadsEveryField"
-      },
-      "results": {
-        "status": "typed",
-        "test": "ModelConversionTests.MigrateSendsEverySourceAndOptionAndReadsEveryField"
-      },
-      "files": {
-        "status": "typed",
-        "test": "ModelConversionTests.MigrateSendsEverySourceAndOptionAndReadsEveryField"
+        "test": "ModelQueryDocsTests.RunDocumentQuerySendsEveryBindingInOrderAndReadsEveryRow",
+        "fields": [
+          "parameter",
+          "values"
+        ]
       }
-    },
-    "sysml.MigrationEntry": {
-      "id": {
+    ],
+    "sysml.DocumentQueryCell": [
+      {
         "status": "typed",
-        "test": "ModelConversionTests.MigrateSendsEverySourceAndOptionAndReadsEveryField"
-      },
-      "kind": {
-        "status": "typed",
-        "test": "ModelConversionTests.MigrateSendsEverySourceAndOptionAndReadsEveryField"
-      },
-      "name": {
-        "status": "typed",
-        "test": "ModelConversionTests.MigrateSendsEverySourceAndOptionAndReadsEveryField"
-      },
-      "target": {
-        "status": "typed",
-        "test": "ModelConversionTests.MigrateSendsEverySourceAndOptionAndReadsEveryField"
-      },
-      "verdict": {
-        "status": "typed",
-        "test": "ModelConversionTests.MigrateSendsEverySourceAndOptionAndReadsEveryField"
-      },
-      "note": {
-        "status": "typed",
-        "test": "ModelConversionTests.MigrateSendsEverySourceAndOptionAndReadsEveryField"
+        "test": "ModelQueryDocsTests.RunDocumentQuerySendsEveryBindingInOrderAndReadsEveryRow",
+        "fields": [
+          "values"
+        ]
       }
-    },
-    "sysml.MigrationFile": {
-      "path": {
+    ],
+    "sysml.DocumentQueryColumn": [
+      {
         "status": "typed",
-        "test": "ModelConversionTests.MigrateSendsEverySourceAndOptionAndReadsEveryField"
-      },
-      "content": {
-        "status": "typed",
-        "test": "ModelConversionTests.MigrateSendsEverySourceAndOptionAndReadsEveryField"
+        "test": "ModelQueryDocsTests.RunDocumentQuerySendsEveryBindingInOrderAndReadsEveryRow",
+        "fields": [
+          "name"
+        ]
       }
-    },
-    "sysml.MigrationReport": {
-      "source": {
+    ],
+    "sysml.DocumentQueryRow": [
+      {
         "status": "typed",
-        "test": "ModelConversionTests.MigrateSendsEverySourceAndOptionAndReadsEveryField"
-      },
-      "exporter": {
-        "status": "typed",
-        "test": "ModelConversionTests.MigrateSendsEverySourceAndOptionAndReadsEveryField"
-      },
-      "summary": {
-        "status": "typed",
-        "test": "ModelConversionTests.MigrateSendsEverySourceAndOptionAndReadsEveryField"
-      },
-      "mapped": {
-        "status": "typed",
-        "test": "ModelConversionTests.MigrateSendsEverySourceAndOptionAndReadsEveryField"
-      },
-      "approximated": {
-        "status": "typed",
-        "test": "ModelConversionTests.MigrateSendsEverySourceAndOptionAndReadsEveryField"
-      },
-      "unmapped": {
-        "status": "typed",
-        "test": "ModelConversionTests.MigrateSendsEverySourceAndOptionAndReadsEveryField"
-      },
-      "skipped": {
-        "status": "typed",
-        "test": "ModelConversionTests.MigrateSendsEverySourceAndOptionAndReadsEveryField"
-      },
-      "entries": {
-        "status": "typed",
-        "test": "ModelConversionTests.MigrateSendsEverySourceAndOptionAndReadsEveryField"
-      },
-      "text": {
-        "status": "typed",
-        "test": "ModelConversionTests.MigrateSendsEverySourceAndOptionAndReadsEveryField"
+        "test": "ModelQueryDocsTests.RunDocumentQuerySendsEveryBindingInOrderAndReadsEveryRow",
+        "fields": [
+          "element",
+          "cells"
+        ]
       }
-    },
-    "sysml.MoveEdit": {
-      "target": "deferred",
-      "owner": "deferred"
-    },
-    "sysml.MultiplicityInfo": {
-      "lower": {
+    ],
+    "sysml.DocumentState": [
+      {
         "status": "typed",
-        "test": "ValueArmTests.UndeterminedArm"
-      },
-      "upper": {
-        "status": "typed",
-        "test": "ValueArmTests.UndeterminedArm"
+        "test": "DocumentValueTests.EachArmIsReadAsTheServiceSentIt",
+        "fields": [
+          "object",
+          "machine",
+          "name",
+          "state_path",
+          "state",
+          "region",
+          "enclosing"
+        ]
       }
-    },
-    "sysml.ObservableComparison": {
-      "stored": "deferred",
-      "feature": "deferred",
-      "unit": "deferred",
-      "tool": "deferred",
-      "pooled": "deferred",
-      "unstored": "deferred",
-      "run": "deferred",
-      "produced": "deferred",
-      "compared": "deferred",
-      "difference": "deferred",
-      "declared": "deferred",
-      "notes": "deferred"
-    },
-    "sysml.ObservablePair": {
-      "stored": "deferred",
-      "feature": "deferred"
-    },
-    "sysml.Outcome": {
-      "outputs": {
+    ],
+    "sysml.DocumentValue": [
+      {
         "status": "typed",
-        "test": "ModelExecutionTests.ExploreSendsExploreUnlessABudgetIsNamedAndReadsEveryOutcome"
-      },
-      "final_state": {
-        "status": "typed",
-        "test": "ModelExecutionTests.ExploreSendsExploreUnlessABudgetIsNamedAndReadsEveryOutcome"
-      },
-      "states_visited": {
-        "status": "typed",
-        "test": "ModelExecutionTests.ExploreSendsExploreUnlessABudgetIsNamedAndReadsEveryOutcome"
-      },
-      "error": {
-        "status": "typed",
-        "test": "ModelExecutionTests.ExploreSendsExploreUnlessABudgetIsNamedAndReadsEveryOutcome"
-      },
-      "linearizations": {
-        "status": "typed",
-        "test": "ModelExecutionTests.ExploreSendsExploreUnlessABudgetIsNamedAndReadsEveryOutcome"
-      },
-      "witness": {
-        "status": "typed",
-        "test": "ModelExecutionTests.ExploreSendsExploreUnlessABudgetIsNamedAndReadsEveryOutcome"
-      },
-      "diagnostics": {
-        "status": "typed",
-        "test": "ModelExecutionTests.ExploreSendsExploreUnlessABudgetIsNamedAndReadsEveryOutcome"
-      },
-      "probability": {
-        "status": "typed",
-        "test": "ModelExecutionTests.ExploreSendsExploreUnlessABudgetIsNamedAndReadsEveryOutcome"
-      },
-      "probability_range": {
-        "status": "typed",
-        "test": "ModelExecutionTests.ExploreSendsExploreUnlessABudgetIsNamedAndReadsEveryOutcome"
+        "test": "DocumentValueTests.EachArmIsReadAsTheServiceSentIt",
+        "fields": [
+          "element_id",
+          "string_value",
+          "int_value",
+          "real_value",
+          "bool_value",
+          "infinity",
+          "quantity",
+          "verdict",
+          "object",
+          "state",
+          "event",
+          "big_int_value",
+          "rational_value",
+          "element_type"
+        ]
       }
-    },
-    "sysml.ParseFileRequest": {
-      "file_path": {
+    ],
+    "sysml.DocumentVerdict": [
+      {
         "status": "typed",
-        "test": "ModelParseTests.LoadSendsThePathAloneAndReadsTheParse"
-      },
-      "content": {
+        "test": "DocumentValueTests.EachArmIsReadAsTheServiceSentIt",
+        "fields": [
+          "assertion",
+          "kind",
+          "text",
+          "path",
+          "verdict",
+          "condition",
+          "reason",
+          "verification"
+        ]
+      }
+    ],
+    "sysml.EditOperation": [
+      {
+        "status": "deferred",
+        "fields": [
+          "set_value",
+          "rename",
+          "add_member",
+          "delete",
+          "move",
+          "add_connection",
+          "add_satisfy",
+          "add_requirement_constraint",
+          "add_transition",
+          "add_import",
+          "add_documentation",
+          "add_verify",
+          "add_metadata",
+          "add_sequence",
+          "add_metadata_prefix",
+          "add_comment",
+          "add_note"
+        ]
+      }
+    ],
+    "sysml.EditedDocument": [
+      {
         "status": "typed",
-        "test": "ModelParseTests.LoadContentSendsTheContentAndItsLanguage"
+        "test": "ModelRunsTests.RecordRunSendsEveryOptionAndAnswersANewModelLeavingTheOldOneAsItWas",
+        "fields": [
+          "name",
+          "content"
+        ]
+      }
+    ],
+    "sysml.EngineInfo": [
+      {
+        "status": "typed",
+        "test": "ModelAnalysisTests.ListEnginesSendsTheProbeAndReadsEveryFieldOfEveryEngine",
+        "fields": [
+          "name",
+          "authority",
+          "answers",
+          "bounds",
+          "process",
+          "process_found",
+          "ready",
+          "unavailable",
+          "kind",
+          "protocol",
+          "source",
+          "command",
+          "version",
+          "served"
+        ]
+      }
+    ],
+    "sysml.EnumLiteral": [
+      {
+        "status": "typed",
+        "test": "ValueArmTests.EnumLiteralArm",
+        "fields": [
+          "literal_id",
+          "enumeration_id",
+          "name",
+          "value"
+        ]
+      }
+    ],
+    "sysml.EvaluateCalcRequest": [
+      {
+        "status": "typed",
+        "test": "ModelAnalysisTests.CalcSendsItsArgumentsInOrderAndReadsTheValueOutputsAndStanding",
+        "fields": [
+          "model_hash",
+          "symbol_id",
+          "arguments",
+          "engine"
+        ]
+      }
+    ],
+    "sysml.EvaluateCalcResponse": [
+      {
+        "status": "typed",
+        "test": "ModelAnalysisTests.CalcSendsItsArgumentsInOrderAndReadsTheValueOutputsAndStanding",
+        "fields": [
+          "result",
+          "outputs",
+          "diagnostics",
+          "engine",
+          "strength",
+          "bounds"
+        ]
       },
-      "content_hash": {
+      {
+        "status": "typed",
+        "test": "ModelAnalysisTests.ACalcThatFailsIsAVerificationExceptionAndAnAnswerOfNeitherOrBothIsMalformed",
+        "fields": [
+          "error",
+          "failure_reason"
+        ]
+      }
+    ],
+    "sysml.EvaluateRequest": [
+      {
+        "status": "typed",
+        "test": "ModelEvaluateTests.EvalSendsTheExpressionAndItsScopeAndReadsTheValue",
+        "fields": [
+          "model_hash",
+          "expression",
+          "context_symbol_id",
+          "subject_symbol_id"
+        ]
+      }
+    ],
+    "sysml.EvaluateResponse": [
+      {
+        "status": "typed",
+        "test": "ModelEvaluateTests.EvalSendsTheExpressionAndItsScopeAndReadsTheValue",
+        "fields": [
+          "result",
+          "diagnostics"
+        ]
+      },
+      {
+        "status": "typed",
+        "test": "ModelEvaluateTests.AnEvaluationFailureIsInBandAndAnAnswerOfNeitherOrOfAnUnknownKindIsRefused",
+        "fields": [
+          "error"
+        ]
+      }
+    ],
+    "sysml.ExecuteActionRequest": [
+      {
+        "status": "typed",
+        "test": "ModelExecutionTests.ExecuteActionSendsEveryOptionAndReadsEveryFieldOfTheRun",
+        "fields": [
+          "model_hash",
+          "action_symbol_id",
+          "inputs",
+          "schedule",
+          "performer_symbol_id",
+          "advance",
+          "seed",
+          "draws",
+          "clock_step"
+        ]
+      }
+    ],
+    "sysml.ExecuteActionResponse": [
+      {
+        "status": "typed",
+        "test": "ModelExecutionTests.ExecuteActionSendsEveryOptionAndReadsEveryFieldOfTheRun",
+        "fields": [
+          "outputs",
+          "diagnostics",
+          "final_time",
+          "performer_attributes",
+          "order_dependent"
+        ]
+      },
+      {
+        "status": "typed",
+        "test": "ModelExecutionTests.AFailedRunIsAnExecutionExceptionKeepingItsClockTraceAndDiagnostics",
+        "fields": [
+          "error"
+        ]
+      },
+      {
+        "status": "typed",
+        "test": "ModelExecutionTests.ExploreSendsExploreUnlessABudgetIsNamedAndReadsEveryOutcome",
+        "fields": [
+          "outcomes",
+          "exploration"
+        ]
+      }
+    ],
+    "sysml.ExecuteStateRequest": [
+      {
+        "status": "typed",
+        "test": "ModelExecutionTests.ExecuteStateSendsItsEventsAndTraceAndReadsTheTraceItAnswers",
+        "fields": [
+          "model_hash",
+          "state_machine_symbol_id",
+          "events",
+          "schedule",
+          "performer_symbol_id",
+          "trace",
+          "advance",
+          "seed",
+          "draws",
+          "clock_step"
+        ]
+      }
+    ],
+    "sysml.ExecuteStateResponse": [
+      {
+        "status": "typed",
+        "test": "ModelExecutionTests.ExecuteStateSendsItsEventsAndTraceAndReadsTheTraceItAnswers",
+        "fields": [
+          "states_visited",
+          "final_context",
+          "diagnostics",
+          "final_time",
+          "trace",
+          "trace_dropped",
+          "order_dependent"
+        ]
+      },
+      {
+        "status": "typed",
+        "test": "ModelExecutionTests.AFailedRunIsAnExecutionExceptionKeepingItsClockTraceAndDiagnostics",
+        "fields": [
+          "error"
+        ]
+      },
+      {
+        "status": "typed",
+        "test": "ModelExecutionTests.ExploreSendsExploreUnlessABudgetIsNamedAndReadsEveryOutcome",
+        "fields": [
+          "outcomes",
+          "exploration"
+        ]
+      }
+    ],
+    "sysml.ExplorationStatus": [
+      {
+        "status": "typed",
+        "test": "ModelExecutionTests.ExploreSendsExploreUnlessABudgetIsNamedAndReadsEveryOutcome",
+        "fields": [
+          "complete",
+          "runs",
+          "budgets_hit",
+          "runs_budget",
+          "depth_budget",
+          "probabilities_lower_bound",
+          "failed_linearizations",
+          "unenumerated"
+        ]
+      }
+    ],
+    "sysml.ExportGraphsRequest": [
+      {
+        "status": "deferred",
+        "fields": [
+          "model_hash",
+          "subject"
+        ]
+      }
+    ],
+    "sysml.ExportGraphsResponse": [
+      {
+        "status": "deferred",
+        "fields": [
+          "content",
+          "version",
+          "subject"
+        ]
+      }
+    ],
+    "sysml.FeatureValue": [
+      {
+        "status": "typed",
+        "test": "ModelEvaluateTests.InstantiateReadsTheObjectGraphAndResolvesItsReferences",
+        "fields": [
+          "feature_name",
+          "value",
+          "values",
+          "materialized",
+          "error",
+          "order_dependent"
+        ]
+      }
+    ],
+    "sysml.Function": [
+      {
+        "status": "typed",
+        "test": "ValueArmTests.FunctionArm",
+        "fields": [
+          "calc_id",
+          "self_id"
+        ]
+      }
+    ],
+    "sysml.GetSymbolRequest": [
+      {
+        "status": "typed",
+        "test": "ModelSymbolTests.SymbolAsyncReadsEveryFieldOfTheSymbol",
+        "fields": [
+          "model_hash",
+          "symbol_id"
+        ]
+      }
+    ],
+    "sysml.ImportDataRequest": [
+      {
+        "status": "deferred",
+        "fields": [
+          "model_hash",
+          "imports",
+          "import_as",
+          "import_dry_run",
+          "accept_documents"
+        ]
+      }
+    ],
+    "sysml.ImportDataResponse": [
+      {
+        "status": "deferred",
+        "fields": [
+          "files",
+          "documents",
+          "content",
+          "model_hash",
+          "error",
+          "diagnostics"
+        ]
+      }
+    ],
+    "sysml.ImportedFile": [
+      {
+        "status": "deferred",
+        "fields": [
+          "name",
+          "values",
+          "elements",
+          "assignments"
+        ]
+      }
+    ],
+    "sysml.ImportedValue": [
+      {
+        "status": "deferred",
+        "fields": [
+          "element",
+          "feature",
+          "value",
+          "redefines",
+          "where",
+          "description"
+        ]
+      }
+    ],
+    "sysml.Instance": [
+      {
+        "status": "typed",
+        "test": "ModelEvaluateTests.InstantiateReadsTheObjectGraphAndResolvesItsReferences",
+        "fields": [
+          "id",
+          "type_symbol_id",
+          "feature_values"
+        ]
+      }
+    ],
+    "sysml.InstantiateRequest": [
+      {
+        "status": "typed",
+        "test": "ModelEvaluateTests.InstantiateReadsTheObjectGraphAndResolvesItsReferences",
+        "fields": [
+          "model_hash",
+          "symbol_id"
+        ]
+      }
+    ],
+    "sysml.InstantiateResponse": [
+      {
+        "status": "typed",
+        "test": "ModelEvaluateTests.InstantiateReadsTheObjectGraphAndResolvesItsReferences",
+        "fields": [
+          "instance",
+          "diagnostics",
+          "instances"
+        ]
+      },
+      {
+        "status": "typed",
+        "test": "ModelEvaluateTests.AnInstantiationFailureIsInBandAndAMalformedAnswerNamesWhereItIs",
+        "fields": [
+          "error"
+        ]
+      }
+    ],
+    "sysml.ListEnginesRequest": [
+      {
+        "status": "typed",
+        "test": "ModelAnalysisTests.ListEnginesSendsTheProbeAndReadsEveryFieldOfEveryEngine",
+        "fields": [
+          "probe"
+        ]
+      }
+    ],
+    "sysml.ListEnginesResponse": [
+      {
+        "status": "typed",
+        "test": "ModelAnalysisTests.ListEnginesSendsTheProbeAndReadsEveryFieldOfEveryEngine",
+        "fields": [
+          "engines"
+        ]
+      }
+    ],
+    "sysml.MeasurementRef": [
+      {
+        "status": "typed",
+        "test": "ValueArmTests.MeasurementRefArm",
+        "fields": [
+          "unit",
+          "unit_term",
+          "unit_id"
+        ]
+      }
+    ],
+    "sysml.MetadataFeatureValue": [
+      {
+        "status": "deferred",
+        "fields": [
+          "feature",
+          "value"
+        ]
+      }
+    ],
+    "sysml.Metaobject": [
+      {
+        "status": "typed",
+        "test": "ValueArmTests.MetaobjectArm",
+        "fields": [
+          "element_id",
+          "metaclass_id"
+        ]
+      }
+    ],
+    "sysml.MigrateRequest": [
+      {
+        "status": "typed",
+        "test": "ModelConversionTests.MigrateSendsEverySourceAndOptionAndReadsEveryField",
+        "fields": [
+          "file_path",
+          "content",
+          "from_format",
+          "to_format",
+          "report",
+          "results",
+          "layout_path",
+          "layout_content",
+          "image_base_url",
+          "strict"
+        ]
+      }
+    ],
+    "sysml.MigrateResponse": [
+      {
+        "status": "typed",
+        "test": "ModelConversionTests.MigrateSendsEverySourceAndOptionAndReadsEveryField",
+        "fields": [
+          "content",
+          "from_format",
+          "to_format",
+          "experimental",
+          "experimental_notice",
+          "report",
+          "results",
+          "files"
+        ]
+      },
+      {
+        "status": "typed",
+        "test": "ModelConversionTests.AMigrationNotMadeIsAMigrationExceptionAndAMalformedAnswerIsRefused",
+        "fields": [
+          "error"
+        ]
+      }
+    ],
+    "sysml.MigrationEntry": [
+      {
+        "status": "typed",
+        "test": "ModelConversionTests.MigrateSendsEverySourceAndOptionAndReadsEveryField",
+        "fields": [
+          "id",
+          "kind",
+          "name",
+          "target",
+          "verdict",
+          "note"
+        ]
+      }
+    ],
+    "sysml.MigrationFile": [
+      {
+        "status": "typed",
+        "test": "ModelConversionTests.MigrateSendsEverySourceAndOptionAndReadsEveryField",
+        "fields": [
+          "path",
+          "content"
+        ]
+      }
+    ],
+    "sysml.MigrationReport": [
+      {
+        "status": "typed",
+        "test": "ModelConversionTests.MigrateSendsEverySourceAndOptionAndReadsEveryField",
+        "fields": [
+          "source",
+          "exporter",
+          "summary",
+          "mapped",
+          "approximated",
+          "unmapped",
+          "skipped",
+          "entries",
+          "text"
+        ]
+      }
+    ],
+    "sysml.MoveEdit": [
+      {
+        "status": "deferred",
+        "fields": [
+          "target",
+          "owner"
+        ]
+      }
+    ],
+    "sysml.MultiplicityInfo": [
+      {
+        "status": "typed",
+        "test": "ValueArmTests.UndeterminedArm",
+        "fields": [
+          "lower",
+          "upper"
+        ]
+      }
+    ],
+    "sysml.ObservableComparison": [
+      {
+        "status": "deferred",
+        "fields": [
+          "stored",
+          "feature",
+          "unit",
+          "tool",
+          "pooled",
+          "unstored",
+          "run",
+          "produced",
+          "compared",
+          "difference",
+          "declared",
+          "notes"
+        ]
+      }
+    ],
+    "sysml.ObservablePair": [
+      {
+        "status": "deferred",
+        "fields": [
+          "stored",
+          "feature"
+        ]
+      }
+    ],
+    "sysml.Outcome": [
+      {
+        "status": "typed",
+        "test": "ModelExecutionTests.ExploreSendsExploreUnlessABudgetIsNamedAndReadsEveryOutcome",
+        "fields": [
+          "outputs",
+          "final_state",
+          "states_visited",
+          "error",
+          "linearizations",
+          "witness",
+          "diagnostics",
+          "probability",
+          "probability_range"
+        ]
+      }
+    ],
+    "sysml.ParseFileRequest": [
+      {
+        "status": "typed",
+        "test": "ModelParseTests.LoadSendsThePathAloneAndReadsTheParse",
+        "fields": [
+          "file_path"
+        ]
+      },
+      {
+        "status": "typed",
+        "test": "ModelParseTests.LoadContentSendsTheContentAndItsLanguage",
+        "fields": [
+          "content",
+          "language",
+          "strict_conformance"
+        ]
+      },
+      {
         "status": "unsupported",
         "reason": "Deprecated, and ignored by the service, which keys its cache by the source it read; the client never sends it.",
-        "test": "ModelParseTests.LoadSendsThePathAloneAndReadsTheParse"
-      },
-      "language": {
-        "status": "typed",
-        "test": "ModelParseTests.LoadContentSendsTheContentAndItsLanguage"
-      },
-      "strict_conformance": {
-        "status": "typed",
-        "test": "ModelParseTests.LoadContentSendsTheContentAndItsLanguage"
+        "test": "ModelParseTests.LoadSendsThePathAloneAndReadsTheParse",
+        "fields": [
+          "content_hash"
+        ]
       }
-    },
-    "sysml.ParseFileResponse": {
-      "model_hash": {
+    ],
+    "sysml.ParseFileResponse": [
+      {
         "status": "typed",
-        "test": "ModelParseTests.LoadSendsThePathAloneAndReadsTheParse"
+        "test": "ModelParseTests.LoadSendsThePathAloneAndReadsTheParse",
+        "fields": [
+          "model_hash",
+          "root",
+          "diagnostics"
+        ]
       },
-      "root": {
+      {
         "status": "typed",
-        "test": "ModelParseTests.LoadSendsThePathAloneAndReadsTheParse"
-      },
-      "diagnostics": {
-        "status": "typed",
-        "test": "ModelParseTests.LoadSendsThePathAloneAndReadsTheParse"
-      },
-      "error": {
-        "status": "typed",
-        "test": "ModelParseTests.AnInBandParseFailureIsAModelExceptionAndAnAnswerWithoutAHashIsMalformed"
+        "test": "ModelParseTests.AnInBandParseFailureIsAModelExceptionAndAnAnswerWithoutAHashIsMalformed",
+        "fields": [
+          "error"
+        ]
       }
-    },
-    "sysml.ParseSourcesRequest": {
-      "documents": {
+    ],
+    "sysml.ParseSourcesRequest": [
+      {
         "status": "typed",
-        "test": "ModelParseTests.ParseSourcesSendsEveryDocumentAndReadsEveryRoot"
-      },
-      "strict_conformance": {
-        "status": "typed",
-        "test": "ModelParseTests.ParseSourcesSendsEveryDocumentAndReadsEveryRoot"
-      },
-      "base_model_hash": {
-        "status": "typed",
-        "test": "ModelParseTests.ParseSourcesSendsEveryDocumentAndReadsEveryRoot"
+        "test": "ModelParseTests.ParseSourcesSendsEveryDocumentAndReadsEveryRoot",
+        "fields": [
+          "documents",
+          "strict_conformance",
+          "base_model_hash"
+        ]
       }
-    },
-    "sysml.ParseSourcesResponse": {
-      "model_hash": {
+    ],
+    "sysml.ParseSourcesResponse": [
+      {
         "status": "typed",
-        "test": "ModelParseTests.ParseSourcesSendsEveryDocumentAndReadsEveryRoot"
+        "test": "ModelParseTests.ParseSourcesSendsEveryDocumentAndReadsEveryRoot",
+        "fields": [
+          "model_hash",
+          "roots",
+          "diagnostics",
+          "affected"
+        ]
       },
-      "roots": {
+      {
         "status": "typed",
-        "test": "ModelParseTests.ParseSourcesSendsEveryDocumentAndReadsEveryRoot"
-      },
-      "diagnostics": {
-        "status": "typed",
-        "test": "ModelParseTests.ParseSourcesSendsEveryDocumentAndReadsEveryRoot"
-      },
-      "error": {
-        "status": "typed",
-        "test": "ModelParseTests.AnInBandParseFailureIsAModelExceptionAndAnAnswerWithoutAHashIsMalformed"
-      },
-      "affected": {
-        "status": "typed",
-        "test": "ModelParseTests.ParseSourcesSendsEveryDocumentAndReadsEveryRoot"
+        "test": "ModelParseTests.AnInBandParseFailureIsAModelExceptionAndAnAnswerWithoutAHashIsMalformed",
+        "fields": [
+          "error"
+        ]
       }
-    },
-    "sysml.PrimitiveConstraint": {
-      "inverse": "deferred",
-      "property": "deferred",
-      "operator": "deferred",
-      "value": "deferred"
-    },
-    "sysml.ProbabilityRange": {
-      "min": {
+    ],
+    "sysml.PrimitiveConstraint": [
+      {
         "status": "typed",
-        "test": "ModelExecutionTests.ExploreSendsExploreUnlessABudgetIsNamedAndReadsEveryOutcome"
-      },
-      "max": {
-        "status": "typed",
-        "test": "ModelExecutionTests.ExploreSendsExploreUnlessABudgetIsNamedAndReadsEveryOutcome"
+        "test": "ModelQueryDocsTests.QuerySendsTheStructuredQueryAndReadsEveryElement",
+        "fields": [
+          "inverse",
+          "property",
+          "operator",
+          "value"
+        ]
       }
-    },
-    "sysml.Quantity": {
-      "int_magnitude": {
+    ],
+    "sysml.ProbabilityRange": [
+      {
         "status": "typed",
-        "test": "ValueArmTests.QuantityArm"
-      },
-      "real_magnitude": {
-        "status": "typed",
-        "test": "ValueArmTests.QuantityArm"
-      },
-      "big_int_magnitude": {
-        "status": "typed",
-        "test": "ValueArmTests.QuantityArm"
-      },
-      "rational_magnitude": {
-        "status": "typed",
-        "test": "ValueArmTests.QuantityArm"
-      },
-      "unit": {
-        "status": "typed",
-        "test": "ValueArmTests.QuantityArm"
-      },
-      "unit_term": {
-        "status": "typed",
-        "test": "ValueArmTests.QuantityArm"
+        "test": "ModelExecutionTests.ExploreSendsExploreUnlessABudgetIsNamedAndReadsEveryOutcome",
+        "fields": [
+          "min",
+          "max"
+        ]
       }
-    },
-    "sysml.Query": {
-      "scope": "deferred",
-      "select": "deferred",
-      "where": "deferred"
-    },
-    "sysml.QueryRequest": {
-      "model_hash": "deferred",
-      "query": "deferred",
-      "oslc_query": "deferred"
-    },
-    "sysml.QueryResponse": {
-      "elements": "deferred"
-    },
-    "sysml.QueryResultElement": {
-      "id": "deferred",
-      "type": "deferred",
-      "properties": "deferred"
-    },
-    "sysml.Rational": {
-      "numerator": {
+    ],
+    "sysml.Quantity": [
+      {
         "status": "typed",
-        "test": "ValueArmTests.RationalArm"
-      },
-      "denominator": {
-        "status": "typed",
-        "test": "ValueArmTests.RationalArm"
+        "test": "ValueArmTests.QuantityArm",
+        "fields": [
+          "int_magnitude",
+          "real_magnitude",
+          "big_int_magnitude",
+          "rational_magnitude",
+          "unit",
+          "unit_term"
+        ]
       }
-    },
-    "sysml.RecordRunRequest": {
-      "model_hash": {
+    ],
+    "sysml.Query": [
+      {
         "status": "typed",
-        "test": "ModelRunsTests.RecordRunSendsEveryOptionAndAnswersANewModelLeavingTheOldOneAsItWas"
-      },
-      "analysis_symbol_id": {
-        "status": "typed",
-        "test": "ModelRunsTests.RecordRunSendsEveryOptionAndAnswersANewModelLeavingTheOldOneAsItWas"
-      },
-      "subject_symbol_id": {
-        "status": "typed",
-        "test": "ModelRunsTests.RecordRunSendsEveryOptionAndAnswersANewModelLeavingTheOldOneAsItWas"
-      },
-      "arguments": {
-        "status": "typed",
-        "test": "ModelRunsTests.RecordRunSendsEveryOptionAndAnswersANewModelLeavingTheOldOneAsItWas"
-      },
-      "named_arguments": {
-        "status": "typed",
-        "test": "ModelRunsTests.RecordRunSendsEveryOptionAndAnswersANewModelLeavingTheOldOneAsItWas"
-      },
-      "engine": {
-        "status": "typed",
-        "test": "ModelRunsTests.RecordRunSendsEveryOptionAndAnswersANewModelLeavingTheOldOneAsItWas"
-      },
-      "record_into": {
-        "status": "typed",
-        "test": "ModelRunsTests.RecordRunSendsEveryOptionAndAnswersANewModelLeavingTheOldOneAsItWas"
-      },
-      "ranges": {
-        "status": "typed",
-        "test": "ModelRunsTests.RecordRunSendsEveryOptionAndAnswersANewModelLeavingTheOldOneAsItWas"
-      },
-      "runs": {
-        "status": "typed",
-        "test": "ModelRunsTests.RecordRunSendsEveryOptionAndAnswersANewModelLeavingTheOldOneAsItWas"
-      },
-      "seed": {
-        "status": "typed",
-        "test": "ModelRunsTests.RecordRunSendsEveryOptionAndAnswersANewModelLeavingTheOldOneAsItWas"
-      },
-      "accept_documents": {
-        "status": "typed",
-        "test": "ModelRunsTests.RecordRunSendsEveryOptionAndAnswersANewModelLeavingTheOldOneAsItWas"
+        "test": "ModelQueryDocsTests.QuerySendsTheStructuredQueryAndReadsEveryElement",
+        "fields": [
+          "scope",
+          "select",
+          "where"
+        ]
       }
-    },
-    "sysml.RecordRunResponse": {
-      "run": {
+    ],
+    "sysml.QueryRequest": [
+      {
         "status": "typed",
-        "test": "ModelRunsTests.RecordRunSendsEveryOptionAndAnswersANewModelLeavingTheOldOneAsItWas"
+        "test": "ModelQueryDocsTests.QuerySendsTheStructuredQueryAndReadsEveryElement",
+        "fields": [
+          "model_hash",
+          "query"
+        ]
       },
-      "sweep": {
+      {
         "status": "typed",
-        "test": "ModelRunsTests.RecordRunSendsEveryOptionAndAnswersANewModelLeavingTheOldOneAsItWas"
-      },
-      "sample": {
-        "status": "typed",
-        "test": "ModelRunsTests.RecordRunSendsEveryOptionAndAnswersANewModelLeavingTheOldOneAsItWas"
-      },
-      "package": {
-        "status": "typed",
-        "test": "ModelRunsTests.RecordRunSendsEveryOptionAndAnswersANewModelLeavingTheOldOneAsItWas"
-      },
-      "definition": {
-        "status": "typed",
-        "test": "ModelRunsTests.RecordRunSendsEveryOptionAndAnswersANewModelLeavingTheOldOneAsItWas"
-      },
-      "records": {
-        "status": "typed",
-        "test": "ModelRunsTests.RecordRunSendsEveryOptionAndAnswersANewModelLeavingTheOldOneAsItWas"
-      },
-      "source": {
-        "status": "typed",
-        "test": "ModelRunsTests.RecordRunSendsEveryOptionAndAnswersANewModelLeavingTheOldOneAsItWas"
-      },
-      "content": {
-        "status": "typed",
-        "test": "ModelRunsTests.RecordRunSendsEveryOptionAndAnswersANewModelLeavingTheOldOneAsItWas"
-      },
-      "documents": {
-        "status": "typed",
-        "test": "ModelRunsTests.RecordRunSendsEveryOptionAndAnswersANewModelLeavingTheOldOneAsItWas"
-      },
-      "skipped": {
-        "status": "typed",
-        "test": "ModelRunsTests.RecordRunSendsEveryOptionAndAnswersANewModelLeavingTheOldOneAsItWas"
-      },
-      "reasons": {
-        "status": "typed",
-        "test": "ModelRunsTests.RecordRunSendsEveryOptionAndAnswersANewModelLeavingTheOldOneAsItWas"
-      },
-      "error": {
-        "status": "typed",
-        "test": "ModelRunsTests.ARecordingNotMadeIsARecordExceptionKeepingTheRunsAndWhetherTheyFailed"
-      },
-      "failure_reason": {
-        "status": "typed",
-        "test": "ModelRunsTests.ARecordingNotMadeIsARecordExceptionKeepingTheRunsAndWhetherTheyFailed"
-      },
-      "diagnostics": {
-        "status": "typed",
-        "test": "ModelRunsTests.RecordRunSendsEveryOptionAndAnswersANewModelLeavingTheOldOneAsItWas"
-      },
-      "model_hash": {
-        "status": "typed",
-        "test": "ModelRunsTests.RecordRunSendsEveryOptionAndAnswersANewModelLeavingTheOldOneAsItWas"
+        "test": "ModelQueryDocsTests.OslcTextIsSentAloneAndGatedBehindTheQueryCapability",
+        "fields": [
+          "oslc_query"
+        ]
       }
-    },
-    "sysml.Referrer": {
-      "name": "deferred",
-      "document": "deferred"
-    },
-    "sysml.RenameEdit": {
-      "target": "deferred",
-      "new_name": "deferred"
-    },
-    "sysml.RenderCanvas": {
-      "unit": "deferred",
-      "width": "deferred",
-      "height": "deferred",
-      "has_size": "deferred"
-    },
-    "sysml.RenderDocumentRequest": {
-      "model_hash": "deferred",
-      "document_id": "deferred",
-      "form": "deferred"
-    },
-    "sysml.RenderDocumentResponse": {
-      "markdown": "deferred",
-      "html": "deferred",
-      "file_name": "deferred"
-    },
-    "sysml.RenderEdge": {
-      "from": "deferred",
-      "to": "deferred",
-      "from_port": "deferred",
-      "to_port": "deferred",
-      "label": "deferred",
-      "name": "deferred",
-      "kind": "deferred",
-      "origin": "deferred",
-      "route": "deferred",
-      "style": "deferred"
-    },
-    "sysml.RenderGeometry": {
-      "x": "deferred",
-      "y": "deferred",
-      "width": "deferred",
-      "height": "deferred",
-      "has_size": "deferred",
-      "collapsed": "deferred",
-      "unplaced": "deferred"
-    },
-    "sysml.RenderNode": {
-      "id": "deferred",
-      "kind": "deferred",
-      "name": "deferred",
-      "name_synthesized": "deferred",
-      "type": "deferred",
-      "detail": "deferred",
-      "text": "deferred",
-      "stand_in": "deferred",
-      "parent": "deferred",
-      "ports": "deferred",
-      "origin": "deferred",
-      "geometry": "deferred",
-      "style": "deferred"
-    },
-    "sysml.RenderNote": {
-      "text": "deferred",
-      "anchor": "deferred",
-      "edge_from": "deferred",
-      "edge_to": "deferred",
-      "x": "deferred",
-      "y": "deferred",
-      "width": "deferred",
-      "height": "deferred",
-      "has_size": "deferred",
-      "origin": "deferred"
-    },
-    "sysml.RenderPoint": {
-      "x": "deferred",
-      "y": "deferred"
-    },
-    "sysml.RenderPort": {
-      "id": "deferred",
-      "name": "deferred",
-      "type": "deferred",
-      "direction": "deferred"
-    },
-    "sysml.RenderRow": {
-      "cells": "deferred",
-      "origin": "deferred"
-    },
-    "sysml.RenderStyle": {
-      "fill": "deferred",
-      "line": "deferred",
-      "text": "deferred",
-      "font": "deferred",
-      "font_size": "deferred",
-      "bold": "deferred",
-      "italic": "deferred"
-    },
-    "sysml.RenderViewRequest": {
-      "model_hash": "deferred",
-      "view": "deferred",
-      "ports": "deferred",
-      "show": "deferred",
-      "depth": "deferred"
-    },
-    "sysml.RenderViewResponse": {
-      "view": "deferred",
-      "kind": "deferred",
-      "stated": "deferred",
-      "nodes": "deferred",
-      "edges": "deferred",
-      "columns": "deferred",
-      "rows": "deferred",
-      "canvas": "deferred",
-      "notes": "deferred",
-      "notices": "deferred",
-      "shown": "deferred"
-    },
-    "sysml.RunAnalysisRequest": {
-      "model_hash": {
+    ],
+    "sysml.QueryResponse": [
+      {
         "status": "typed",
-        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
-      },
-      "symbol_id": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
-      },
-      "subject_symbol_id": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
-      },
-      "arguments": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
-      },
-      "named_arguments": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
-      },
-      "schedule": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
-      },
-      "engine": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
-      },
-      "tool_dry_run": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
+        "test": "ModelQueryDocsTests.QuerySendsTheStructuredQueryAndReadsEveryElement",
+        "fields": [
+          "elements"
+        ]
       }
-    },
-    "sysml.RunAnalysisResponse": {
-      "outputs": {
+    ],
+    "sysml.QueryResultElement": [
+      {
         "status": "typed",
-        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
-      },
-      "verdicts": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
-      },
-      "instances": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
-      },
-      "error": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.AFailedAnalysisIsAnAnalysisExceptionKeepingThePartialRun"
-      },
-      "diagnostics": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
-      },
-      "failure_reason": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.AFailedAnalysisIsAnAnalysisExceptionKeepingThePartialRun"
-      },
-      "verification_verdicts": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
-      },
-      "outcomes": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.ExploreAnalysisSendsExploreUnlessAScheduleOrTheExploreEngineIsNamedAndReadsTheStanding"
-      },
-      "exploration": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.ExploreAnalysisSendsExploreUnlessAScheduleOrTheExploreEngineIsNamedAndReadsTheStanding"
-      },
-      "evaluations": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
-      },
-      "engine": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
-      },
-      "strength": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
-      },
-      "bounds": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
-      },
-      "tool_dry_run": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
+        "test": "ModelQueryDocsTests.QuerySendsTheStructuredQueryAndReadsEveryElement",
+        "fields": [
+          "id",
+          "type",
+          "properties"
+        ]
       }
-    },
-    "sysml.RunCountedValue": {
-      "value": {
+    ],
+    "sysml.Rational": [
+      {
         "status": "typed",
-        "test": "ModelRunsTests.ActionRunsSendEveryOptionAndReadEveryFieldOfTheTable"
-      },
-      "count": {
-        "status": "typed",
-        "test": "ModelRunsTests.ActionRunsSendEveryOptionAndReadEveryFieldOfTheTable"
+        "test": "ValueArmTests.RationalArm",
+        "fields": [
+          "numerator",
+          "denominator"
+        ]
       }
-    },
-    "sysml.RunDistribution": {
-      "name": {
+    ],
+    "sysml.RecordRunRequest": [
+      {
         "status": "typed",
-        "test": "ModelRunsTests.ActionRunsSendEveryOptionAndReadEveryFieldOfTheTable"
-      },
-      "unit": {
-        "status": "typed",
-        "test": "ModelRunsTests.ActionRunsSendEveryOptionAndReadEveryFieldOfTheTable"
-      },
-      "count": {
-        "status": "typed",
-        "test": "ModelRunsTests.ActionRunsSendEveryOptionAndReadEveryFieldOfTheTable"
-      },
-      "numeric": {
-        "status": "typed",
-        "test": "ModelRunsTests.ActionRunsSendEveryOptionAndReadEveryFieldOfTheTable"
-      },
-      "min": {
-        "status": "typed",
-        "test": "ModelRunsTests.ActionRunsSendEveryOptionAndReadEveryFieldOfTheTable"
-      },
-      "max": {
-        "status": "typed",
-        "test": "ModelRunsTests.ActionRunsSendEveryOptionAndReadEveryFieldOfTheTable"
-      },
-      "mean": {
-        "status": "typed",
-        "test": "ModelRunsTests.ActionRunsSendEveryOptionAndReadEveryFieldOfTheTable"
-      },
-      "deviation": {
-        "status": "typed",
-        "test": "ModelRunsTests.ActionRunsSendEveryOptionAndReadEveryFieldOfTheTable"
-      },
-      "percentiles": {
-        "status": "typed",
-        "test": "ModelRunsTests.ActionRunsSendEveryOptionAndReadEveryFieldOfTheTable"
-      },
-      "histogram": {
-        "status": "typed",
-        "test": "ModelRunsTests.ActionRunsSendEveryOptionAndReadEveryFieldOfTheTable"
-      },
-      "values": {
-        "status": "typed",
-        "test": "ModelRunsTests.ActionRunsSendEveryOptionAndReadEveryFieldOfTheTable"
+        "test": "ModelRunsTests.RecordRunSendsEveryOptionAndAnswersANewModelLeavingTheOldOneAsItWas",
+        "fields": [
+          "model_hash",
+          "analysis_symbol_id",
+          "subject_symbol_id",
+          "arguments",
+          "named_arguments",
+          "engine",
+          "record_into",
+          "ranges",
+          "runs",
+          "seed",
+          "accept_documents"
+        ]
       }
-    },
-    "sysml.RunDocumentQueryRequest": {
-      "model_hash": "deferred",
-      "query_id": "deferred",
-      "bindings": "deferred"
-    },
-    "sysml.RunDocumentQueryResponse": {
-      "columns": "deferred",
-      "rows": "deferred"
-    },
-    "sysml.RunHistogramBin": {
-      "low": {
+    ],
+    "sysml.RecordRunResponse": [
+      {
         "status": "typed",
-        "test": "ModelRunsTests.ActionRunsSendEveryOptionAndReadEveryFieldOfTheTable"
+        "test": "ModelRunsTests.RecordRunSendsEveryOptionAndAnswersANewModelLeavingTheOldOneAsItWas",
+        "fields": [
+          "run",
+          "sweep",
+          "sample",
+          "package",
+          "definition",
+          "records",
+          "source",
+          "content",
+          "documents",
+          "skipped",
+          "reasons",
+          "diagnostics",
+          "model_hash"
+        ]
       },
-      "high": {
+      {
         "status": "typed",
-        "test": "ModelRunsTests.ActionRunsSendEveryOptionAndReadEveryFieldOfTheTable"
-      },
-      "count": {
-        "status": "typed",
-        "test": "ModelRunsTests.ActionRunsSendEveryOptionAndReadEveryFieldOfTheTable"
+        "test": "ModelRunsTests.ARecordingNotMadeIsARecordExceptionKeepingTheRunsAndWhetherTheyFailed",
+        "fields": [
+          "error",
+          "failure_reason"
+        ]
       }
-    },
-    "sysml.RunPercentile": {
-      "percentile": {
-        "status": "typed",
-        "test": "ModelRunsTests.ActionRunsSendEveryOptionAndReadEveryFieldOfTheTable"
-      },
-      "value": {
-        "status": "typed",
-        "test": "ModelRunsTests.ActionRunsSendEveryOptionAndReadEveryFieldOfTheTable"
+    ],
+    "sysml.Referrer": [
+      {
+        "status": "deferred",
+        "fields": [
+          "name",
+          "document"
+        ]
       }
-    },
-    "sysml.RunRunsRequest": {
-      "model_hash": {
-        "status": "typed",
-        "test": "ModelRunsTests.ActionRunsSendEveryOptionAndReadEveryFieldOfTheTable"
-      },
-      "action_symbol_id": {
-        "status": "typed",
-        "test": "ModelRunsTests.ActionRunsSendEveryOptionAndReadEveryFieldOfTheTable"
-      },
-      "analysis_symbol_id": {
-        "status": "typed",
-        "test": "ModelRunsTests.MonteCarloRunsSendTheCasesOptionsAndReadItsConclusion"
-      },
-      "inputs": {
-        "status": "typed",
-        "test": "ModelRunsTests.ActionRunsSendEveryOptionAndReadEveryFieldOfTheTable"
-      },
-      "performer_symbol_id": {
-        "status": "typed",
-        "test": "ModelRunsTests.ActionRunsSendEveryOptionAndReadEveryFieldOfTheTable"
-      },
-      "subject_symbol_id": {
-        "status": "typed",
-        "test": "ModelRunsTests.MonteCarloRunsSendTheCasesOptionsAndReadItsConclusion"
-      },
-      "arguments": {
-        "status": "typed",
-        "test": "ModelRunsTests.MonteCarloRunsSendTheCasesOptionsAndReadItsConclusion"
-      },
-      "named_arguments": {
-        "status": "typed",
-        "test": "ModelRunsTests.MonteCarloRunsSendTheCasesOptionsAndReadItsConclusion"
-      },
-      "runs": {
-        "status": "typed",
-        "test": "ModelRunsTests.ActionRunsSendEveryOptionAndReadEveryFieldOfTheTable"
-      },
-      "seed": {
-        "status": "typed",
-        "test": "ModelRunsTests.ActionRunsSendEveryOptionAndReadEveryFieldOfTheTable"
-      },
-      "draws": {
-        "status": "typed",
-        "test": "ModelRunsTests.ActionRunsSendEveryOptionAndReadEveryFieldOfTheTable"
-      },
-      "clock_step": {
-        "status": "typed",
-        "test": "ModelRunsTests.ActionRunsSendEveryOptionAndReadEveryFieldOfTheTable"
-      },
-      "observe": {
-        "status": "typed",
-        "test": "ModelRunsTests.ActionRunsSendEveryOptionAndReadEveryFieldOfTheTable"
-      },
-      "engine": {
-        "status": "typed",
-        "test": "ModelRunsTests.ActionRunsSendEveryOptionAndReadEveryFieldOfTheTable"
+    ],
+    "sysml.RenameEdit": [
+      {
+        "status": "deferred",
+        "fields": [
+          "target",
+          "new_name"
+        ]
       }
-    },
-    "sysml.RunRunsResponse": {
-      "rows": {
+    ],
+    "sysml.RenderCanvas": [
+      {
         "status": "typed",
-        "test": "ModelRunsTests.ActionRunsSendEveryOptionAndReadEveryFieldOfTheTable"
-      },
-      "observables": {
-        "status": "typed",
-        "test": "ModelRunsTests.ActionRunsSendEveryOptionAndReadEveryFieldOfTheTable"
-      },
-      "distributions": {
-        "status": "typed",
-        "test": "ModelRunsTests.ActionRunsSendEveryOptionAndReadEveryFieldOfTheTable"
-      },
-      "lines": {
-        "status": "typed",
-        "test": "ModelRunsTests.ActionRunsSendEveryOptionAndReadEveryFieldOfTheTable"
-      },
-      "outputs": {
-        "status": "typed",
-        "test": "ModelRunsTests.MonteCarloRunsSendTheCasesOptionsAndReadItsConclusion"
-      },
-      "verdicts": {
-        "status": "typed",
-        "test": "ModelRunsTests.MonteCarloRunsSendTheCasesOptionsAndReadItsConclusion"
-      },
-      "unconcluded": {
-        "status": "typed",
-        "test": "ModelRunsTests.MonteCarloRunsSendTheCasesOptionsAndReadItsConclusion"
-      },
-      "error": {
-        "status": "typed",
-        "test": "ModelRunsTests.RunsTheServiceCouldNotTableAreARunsExceptionKeepingTheTableAndAMalformedAnswerIsRefused"
-      },
-      "diagnostics": {
-        "status": "typed",
-        "test": "ModelRunsTests.ActionRunsSendEveryOptionAndReadEveryFieldOfTheTable"
-      },
-      "failure_reason": {
-        "status": "typed",
-        "test": "ModelRunsTests.RunsTheServiceCouldNotTableAreARunsExceptionKeepingTheTableAndAMalformedAnswerIsRefused"
-      },
-      "instances": {
-        "status": "typed",
-        "test": "ModelRunsTests.ActionRunsSendEveryOptionAndReadEveryFieldOfTheTable"
-      },
-      "engine": {
-        "status": "typed",
-        "test": "ModelRunsTests.ActionRunsSendEveryOptionAndReadEveryFieldOfTheTable"
-      },
-      "strength": {
-        "status": "typed",
-        "test": "ModelRunsTests.ActionRunsSendEveryOptionAndReadEveryFieldOfTheTable"
-      },
-      "bounds": {
-        "status": "typed",
-        "test": "ModelRunsTests.ActionRunsSendEveryOptionAndReadEveryFieldOfTheTable"
-      },
-      "seed": {
-        "status": "typed",
-        "test": "ModelRunsTests.ActionRunsSendEveryOptionAndReadEveryFieldOfTheTable"
+        "test": "ModelQueryDocsTests.RenderViewSendsEveryOptionAndReadsEveryFieldOfTheRendering",
+        "fields": [
+          "unit",
+          "width",
+          "height",
+          "has_size"
+        ]
       }
-    },
-    "sysml.RunSweepRequest": {
-      "model_hash": {
+    ],
+    "sysml.RenderDocumentRequest": [
+      {
         "status": "typed",
-        "test": "ModelAnalysisTests.RunSweepSendsEveryRangeAndOptionAndReadsEveryRow"
-      },
-      "symbol_id": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.RunSweepSendsEveryRangeAndOptionAndReadsEveryRow"
-      },
-      "subject_symbol_id": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.RunSweepSendsEveryRangeAndOptionAndReadsEveryRow"
-      },
-      "arguments": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.RunSweepSendsEveryRangeAndOptionAndReadsEveryRow"
-      },
-      "named_arguments": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.RunSweepSendsEveryRangeAndOptionAndReadsEveryRow"
-      },
-      "ranges": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.RunSweepSendsEveryRangeAndOptionAndReadsEveryRow"
-      },
-      "samples": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.RunSweepSendsEveryRangeAndOptionAndReadsEveryRow"
-      },
-      "seed": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.RunSweepSendsEveryRangeAndOptionAndReadsEveryRow"
-      },
-      "engine": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.RunSweepSendsEveryRangeAndOptionAndReadsEveryRow"
+        "test": "ModelQueryDocsTests.RenderDocumentSendsTheFormAndReadsTheContentAndFileName",
+        "fields": [
+          "model_hash",
+          "document_id",
+          "form"
+        ]
       }
-    },
-    "sysml.RunSweepResponse": {
-      "rows": {
+    ],
+    "sysml.RenderDocumentResponse": [
+      {
         "status": "typed",
-        "test": "ModelAnalysisTests.RunSweepSendsEveryRangeAndOptionAndReadsEveryRow"
-      },
-      "parameters": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.RunSweepSendsEveryRangeAndOptionAndReadsEveryRow"
-      },
-      "sampled": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.RunSweepSendsEveryRangeAndOptionAndReadsEveryRow"
-      },
-      "seed": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.RunSweepSendsEveryRangeAndOptionAndReadsEveryRow"
-      },
-      "error": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.ASweepThatMadeNoRunIsAVerificationExceptionAndOneAnsweringRowsBesideIsMalformed"
-      },
-      "diagnostics": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.RunSweepSendsEveryRangeAndOptionAndReadsEveryRow"
-      },
-      "failure_reason": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.ASweepThatMadeNoRunIsAVerificationExceptionAndOneAnsweringRowsBesideIsMalformed"
-      },
-      "instances": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.RunSweepSendsEveryRangeAndOptionAndReadsEveryRow"
-      },
-      "engine": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.RunSweepSendsEveryRangeAndOptionAndReadsEveryRow"
-      },
-      "strength": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.RunSweepSendsEveryRangeAndOptionAndReadsEveryRow"
-      },
-      "bounds": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.RunSweepSendsEveryRangeAndOptionAndReadsEveryRow"
+        "test": "ModelQueryDocsTests.RenderDocumentSendsTheFormAndReadsTheContentAndFileName",
+        "fields": [
+          "markdown",
+          "html",
+          "file_name"
+        ]
       }
-    },
-    "sysml.SelfCheckApplication": {
-      "constraint": {
+    ],
+    "sysml.RenderEdge": [
+      {
         "status": "typed",
-        "test": "ModelRunsTests.SelfCheckSendsTheRulePackagesAndReadsEveryFindingAndCount"
-      },
-      "count": {
-        "status": "typed",
-        "test": "ModelRunsTests.SelfCheckSendsTheRulePackagesAndReadsEveryFindingAndCount"
+        "test": "ModelQueryDocsTests.RenderViewSendsEveryOptionAndReadsEveryFieldOfTheRendering",
+        "fields": [
+          "from",
+          "to",
+          "from_port",
+          "to_port",
+          "label",
+          "name",
+          "kind",
+          "origin",
+          "route",
+          "style"
+        ]
       }
-    },
-    "sysml.SelfCheckFinding": {
-      "status": {
+    ],
+    "sysml.RenderGeometry": [
+      {
         "status": "typed",
-        "test": "ModelRunsTests.SelfCheckSendsTheRulePackagesAndReadsEveryFindingAndCount"
-      },
-      "subject": {
-        "status": "typed",
-        "test": "ModelRunsTests.SelfCheckSendsTheRulePackagesAndReadsEveryFindingAndCount"
-      },
-      "location": {
-        "status": "typed",
-        "test": "ModelRunsTests.SelfCheckSendsTheRulePackagesAndReadsEveryFindingAndCount"
-      },
-      "constraint": {
-        "status": "typed",
-        "test": "ModelRunsTests.SelfCheckSendsTheRulePackagesAndReadsEveryFindingAndCount"
-      },
-      "element": {
-        "status": "typed",
-        "test": "ModelRunsTests.SelfCheckSendsTheRulePackagesAndReadsEveryFindingAndCount"
-      },
-      "message": {
-        "status": "typed",
-        "test": "ModelRunsTests.SelfCheckSendsTheRulePackagesAndReadsEveryFindingAndCount"
-      },
-      "line": {
-        "status": "typed",
-        "test": "ModelRunsTests.SelfCheckSendsTheRulePackagesAndReadsEveryFindingAndCount"
+        "test": "ModelQueryDocsTests.RenderViewSendsEveryOptionAndReadsEveryFieldOfTheRendering",
+        "fields": [
+          "x",
+          "y",
+          "width",
+          "height",
+          "has_size",
+          "collapsed",
+          "unplaced"
+        ]
       }
-    },
-    "sysml.SelfCheckRequest": {
-      "model_hash": {
+    ],
+    "sysml.RenderNode": [
+      {
         "status": "typed",
-        "test": "ModelRunsTests.SelfCheckSendsTheRulePackagesAndReadsEveryFindingAndCount"
-      },
-      "self_check_package": {
-        "status": "typed",
-        "test": "ModelRunsTests.SelfCheckSendsTheRulePackagesAndReadsEveryFindingAndCount"
+        "test": "ModelQueryDocsTests.RenderViewSendsEveryOptionAndReadsEveryFieldOfTheRendering",
+        "fields": [
+          "id",
+          "kind",
+          "name",
+          "name_synthesized",
+          "type",
+          "detail",
+          "text",
+          "stand_in",
+          "parent",
+          "ports",
+          "origin",
+          "geometry",
+          "style"
+        ]
       }
-    },
-    "sysml.SelfCheckResponse": {
-      "status": {
+    ],
+    "sysml.RenderNote": [
+      {
         "status": "typed",
-        "test": "ModelRunsTests.SelfCheckSendsTheRulePackagesAndReadsEveryFindingAndCount"
-      },
-      "findings": {
-        "status": "typed",
-        "test": "ModelRunsTests.SelfCheckSendsTheRulePackagesAndReadsEveryFindingAndCount"
-      },
-      "elements": {
-        "status": "typed",
-        "test": "ModelRunsTests.SelfCheckSendsTheRulePackagesAndReadsEveryFindingAndCount"
-      },
-      "checks": {
-        "status": "typed",
-        "test": "ModelRunsTests.SelfCheckSendsTheRulePackagesAndReadsEveryFindingAndCount"
-      },
-      "violations": {
-        "status": "typed",
-        "test": "ModelRunsTests.SelfCheckSendsTheRulePackagesAndReadsEveryFindingAndCount"
-      },
-      "unevaluated": {
-        "status": "typed",
-        "test": "ModelRunsTests.SelfCheckSendsTheRulePackagesAndReadsEveryFindingAndCount"
-      },
-      "evaluation_errors": {
-        "status": "typed",
-        "test": "ModelRunsTests.SelfCheckSendsTheRulePackagesAndReadsEveryFindingAndCount"
-      },
-      "applications": {
-        "status": "typed",
-        "test": "ModelRunsTests.SelfCheckSendsTheRulePackagesAndReadsEveryFindingAndCount"
-      },
-      "summary": {
-        "status": "typed",
-        "test": "ModelRunsTests.SelfCheckSendsTheRulePackagesAndReadsEveryFindingAndCount"
-      },
-      "error": {
-        "status": "typed",
-        "test": "ModelRunsTests.ASelfCheckThatCannotStartIsAModelExceptionAndAMalformedAnswerIsRefused"
-      },
-      "diagnostics": {
-        "status": "typed",
-        "test": "ModelRunsTests.SelfCheckSendsTheRulePackagesAndReadsEveryFindingAndCount"
+        "test": "ModelQueryDocsTests.RenderViewSendsEveryOptionAndReadsEveryFieldOfTheRendering",
+        "fields": [
+          "text",
+          "anchor",
+          "edge_from",
+          "edge_to",
+          "x",
+          "y",
+          "width",
+          "height",
+          "has_size",
+          "origin"
+        ]
       }
-    },
-    "sysml.ServerInfoRequest": {},
-    "sysml.ServerInfoResponse": {
-      "version": {
+    ],
+    "sysml.RenderPoint": [
+      {
         "status": "typed",
-        "test": "ConnectionOpenTests.OpeningAsksTheServiceOnceAndKeepsItsAnswer"
-      },
-      "capabilities": {
-        "status": "typed",
-        "test": "ConnectionOpenTests.OpeningAsksTheServiceOnceAndKeepsItsAnswer"
+        "test": "ModelQueryDocsTests.RenderViewSendsEveryOptionAndReadsEveryFieldOfTheRendering",
+        "fields": [
+          "x",
+          "y"
+        ]
       }
-    },
-    "sysml.SetValueEdit": {
-      "target": "deferred",
-      "value": "deferred"
-    },
-    "sysml.SourceDocument": {
-      "file_path": {
+    ],
+    "sysml.RenderPort": [
+      {
         "status": "typed",
-        "test": "ModelParseTests.ParseSourcesSendsEveryDocumentAndReadsEveryRoot"
-      },
-      "content": {
-        "status": "typed",
-        "test": "ModelParseTests.ParseSourcesSendsEveryDocumentAndReadsEveryRoot"
-      },
-      "language": {
-        "status": "typed",
-        "test": "ModelParseTests.ParseSourcesSendsEveryDocumentAndReadsEveryRoot"
-      },
-      "name": {
-        "status": "typed",
-        "test": "ModelParseTests.ParseSourcesSendsEveryDocumentAndReadsEveryRoot"
+        "test": "ModelQueryDocsTests.RenderViewSendsEveryOptionAndReadsEveryFieldOfTheRendering",
+        "fields": [
+          "id",
+          "name",
+          "type",
+          "direction"
+        ]
       }
-    },
-    "sysml.Span": {
-      "file": {
+    ],
+    "sysml.RenderRow": [
+      {
         "status": "typed",
-        "test": "ModelParseTests.EveryFieldOfADiagnosticIsRead"
-      },
-      "start_line": {
-        "status": "typed",
-        "test": "ModelParseTests.EveryFieldOfADiagnosticIsRead"
-      },
-      "start_col": {
-        "status": "typed",
-        "test": "ModelParseTests.EveryFieldOfADiagnosticIsRead"
-      },
-      "end_line": {
-        "status": "typed",
-        "test": "ModelParseTests.EveryFieldOfADiagnosticIsRead"
-      },
-      "end_col": {
-        "status": "typed",
-        "test": "ModelParseTests.EveryFieldOfADiagnosticIsRead"
+        "test": "ModelQueryDocsTests.RenderViewSendsEveryOptionAndReadsEveryFieldOfTheRendering",
+        "fields": [
+          "cells",
+          "origin"
+        ]
       }
-    },
-    "sysml.Specialization": {
-      "kind": {
+    ],
+    "sysml.RenderStyle": [
+      {
         "status": "typed",
-        "test": "ModelSymbolTests.SymbolAsyncReadsEveryFieldOfTheSymbol"
-      },
-      "declared": {
-        "status": "typed",
-        "test": "ModelSymbolTests.SymbolAsyncReadsEveryFieldOfTheSymbol"
-      },
-      "target_id": {
-        "status": "typed",
-        "test": "ModelSymbolTests.SymbolAsyncReadsEveryFieldOfTheSymbol"
-      },
-      "target_kind": {
-        "status": "typed",
-        "test": "ModelSymbolTests.SymbolAsyncReadsEveryFieldOfTheSymbol"
+        "test": "ModelQueryDocsTests.RenderViewSendsEveryOptionAndReadsEveryFieldOfTheRendering",
+        "fields": [
+          "fill",
+          "line",
+          "text",
+          "font",
+          "font_size",
+          "bold",
+          "italic"
+        ]
       }
-    },
-    "sysml.StatisticDifference": {
-      "min": "deferred",
-      "mean": "deferred",
-      "p50": "deferred",
-      "p90": "deferred",
-      "max": "deferred"
-    },
-    "sysml.SweepRange": {
-      "parameter": {
+    ],
+    "sysml.RenderViewRequest": [
+      {
         "status": "typed",
-        "test": "ModelAnalysisTests.RunSweepSendsEveryRangeAndOptionAndReadsEveryRow"
-      },
-      "start": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.RunSweepSendsEveryRangeAndOptionAndReadsEveryRow"
-      },
-      "end": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.RunSweepSendsEveryRangeAndOptionAndReadsEveryRow"
-      },
-      "step": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.RunSweepSendsEveryRangeAndOptionAndReadsEveryRow"
+        "test": "ModelQueryDocsTests.RenderViewSendsEveryOptionAndReadsEveryFieldOfTheRendering",
+        "fields": [
+          "model_hash",
+          "view",
+          "ports",
+          "show",
+          "depth"
+        ]
       }
-    },
-    "sysml.SweepRow": {
-      "inputs": {
+    ],
+    "sysml.RenderViewResponse": [
+      {
         "status": "typed",
-        "test": "ModelAnalysisTests.RunSweepSendsEveryRangeAndOptionAndReadsEveryRow"
-      },
-      "outputs": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.RunSweepSendsEveryRangeAndOptionAndReadsEveryRow"
-      },
-      "verdicts": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.RunSweepSendsEveryRangeAndOptionAndReadsEveryRow"
-      },
-      "elapsed_micros": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.RunSweepSendsEveryRangeAndOptionAndReadsEveryRow"
-      },
-      "error": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.RunSweepSendsEveryRangeAndOptionAndReadsEveryRow"
-      },
-      "failure_reason": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.RunSweepSendsEveryRangeAndOptionAndReadsEveryRow"
-      },
-      "evaluations": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.RunSweepSendsEveryRangeAndOptionAndReadsEveryRow"
+        "test": "ModelQueryDocsTests.RenderViewSendsEveryOptionAndReadsEveryFieldOfTheRendering",
+        "fields": [
+          "view",
+          "kind",
+          "stated",
+          "nodes",
+          "edges",
+          "columns",
+          "rows",
+          "canvas",
+          "notes",
+          "notices",
+          "shown"
+        ]
       }
-    },
-    "sysml.SymbolInfo": {
-      "id": {
+    ],
+    "sysml.RunAnalysisRequest": [
+      {
         "status": "typed",
-        "test": "ModelSymbolTests.SymbolAsyncReadsEveryFieldOfTheSymbol"
-      },
-      "name": {
-        "status": "typed",
-        "test": "ModelSymbolTests.SymbolAsyncReadsEveryFieldOfTheSymbol"
-      },
-      "kind": {
-        "status": "typed",
-        "test": "ModelSymbolTests.SymbolAsyncReadsEveryFieldOfTheSymbol"
-      },
-      "metadata": {
-        "status": "typed",
-        "test": "ModelSymbolTests.SymbolAsyncReadsEveryFieldOfTheSymbol"
-      },
-      "child_ids": {
-        "status": "typed",
-        "test": "ModelSymbolTests.SymbolAsyncReadsEveryFieldOfTheSymbol"
-      },
-      "attributes": {
-        "status": "typed",
-        "test": "ModelSymbolTests.SymbolAsyncReadsEveryFieldOfTheSymbol"
-      },
-      "type_info": {
-        "status": "typed",
-        "test": "ModelSymbolTests.SymbolAsyncReadsEveryFieldOfTheSymbol"
-      },
-      "multiplicity": {
-        "status": "typed",
-        "test": "ModelSymbolTests.SymbolAsyncReadsEveryFieldOfTheSymbol"
-      },
-      "specializations": {
-        "status": "typed",
-        "test": "ModelSymbolTests.SymbolAsyncReadsEveryFieldOfTheSymbol"
-      },
-      "withheld_library_attributes": {
-        "status": "typed",
-        "test": "ModelSymbolTests.SymbolAsyncReadsEveryFieldOfTheSymbol"
+        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun",
+        "fields": [
+          "model_hash",
+          "symbol_id",
+          "subject_symbol_id",
+          "arguments",
+          "named_arguments",
+          "schedule",
+          "engine",
+          "tool_dry_run"
+        ]
       }
-    },
-    "sysml.SymbolResponse": {
-      "symbol": {
+    ],
+    "sysml.RunAnalysisResponse": [
+      {
         "status": "typed",
-        "test": "ModelSymbolTests.SymbolAsyncReadsEveryFieldOfTheSymbol"
+        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun",
+        "fields": [
+          "outputs",
+          "verdicts",
+          "instances",
+          "diagnostics",
+          "verification_verdicts",
+          "evaluations",
+          "engine",
+          "strength",
+          "bounds",
+          "tool_dry_run"
+        ]
       },
-      "error": {
+      {
         "status": "typed",
-        "test": "ModelSymbolTests.ASymbolTheModelLacksIsNotFoundInBandAndAnAnswerOfNeitherIsMalformed"
+        "test": "ModelAnalysisTests.AFailedAnalysisIsAnAnalysisExceptionKeepingThePartialRun",
+        "fields": [
+          "error",
+          "failure_reason"
+        ]
+      },
+      {
+        "status": "typed",
+        "test": "ModelAnalysisTests.ExploreAnalysisSendsExploreUnlessAScheduleOrTheExploreEngineIsNamedAndReadsTheStanding",
+        "fields": [
+          "outcomes",
+          "exploration"
+        ]
       }
-    },
-    "sysml.TensorQuantity": {
-      "dimensions": {
+    ],
+    "sysml.RunCountedValue": [
+      {
         "status": "typed",
-        "test": "ValueArmTests.TensorQuantityArm"
-      },
-      "components": {
-        "status": "typed",
-        "test": "ValueArmTests.TensorQuantityArm"
+        "test": "ModelRunsTests.ActionRunsSendEveryOptionAndReadEveryFieldOfTheTable",
+        "fields": [
+          "value",
+          "count"
+        ]
       }
-    },
-    "sysml.ToolDryRun": {
-      "action": {
+    ],
+    "sysml.RunDistribution": [
+      {
         "status": "typed",
-        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
-      },
-      "tool": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
-      },
-      "version": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
-      },
-      "manifest": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
-      },
-      "executable": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
-      },
-      "protocol": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
-      },
-      "args": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
-      },
-      "env": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
-      },
-      "cwd": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
-      },
-      "stdin": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
-      },
-      "stdin_data": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
-      },
-      "input_file": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
-      },
-      "output_dir": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
-      },
-      "inputs": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
-      },
-      "outputs": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
-      },
-      "reply_source": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
-      },
-      "lines": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
+        "test": "ModelRunsTests.ActionRunsSendEveryOptionAndReadEveryFieldOfTheTable",
+        "fields": [
+          "name",
+          "unit",
+          "count",
+          "numeric",
+          "min",
+          "max",
+          "mean",
+          "deviation",
+          "percentiles",
+          "histogram",
+          "values"
+        ]
       }
-    },
-    "sysml.ToolDryRunFile": {
-      "name": {
+    ],
+    "sysml.RunDocumentQueryRequest": [
+      {
         "status": "typed",
-        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
-      },
-      "format": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
-      },
-      "data": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
+        "test": "ModelQueryDocsTests.RunDocumentQuerySendsEveryBindingInOrderAndReadsEveryRow",
+        "fields": [
+          "model_hash",
+          "query_id",
+          "bindings"
+        ]
       }
-    },
-    "sysml.ToolDryRunInput": {
-      "variable": {
+    ],
+    "sysml.RunDocumentQueryResponse": [
+      {
         "status": "typed",
-        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
-      },
-      "parameter": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
-      },
-      "value": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
-      },
-      "unit": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
+        "test": "ModelQueryDocsTests.RunDocumentQuerySendsEveryBindingInOrderAndReadsEveryRow",
+        "fields": [
+          "columns",
+          "rows"
+        ]
       }
-    },
-    "sysml.ToolDryRunOutput": {
-      "variable": {
+    ],
+    "sysml.RunHistogramBin": [
+      {
         "status": "typed",
-        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
-      },
-      "parameter": {
-        "status": "typed",
-        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun"
+        "test": "ModelRunsTests.ActionRunsSendEveryOptionAndReadEveryFieldOfTheTable",
+        "fields": [
+          "low",
+          "high",
+          "count"
+        ]
       }
-    },
-    "sysml.TypeInfo": {
-      "declared": {
+    ],
+    "sysml.RunPercentile": [
+      {
         "status": "typed",
-        "test": "ModelSymbolTests.SymbolAsyncReadsEveryFieldOfTheSymbol"
-      },
-      "resolved_id": {
-        "status": "typed",
-        "test": "ModelSymbolTests.SymbolAsyncReadsEveryFieldOfTheSymbol"
-      },
-      "resolved_kind": {
-        "status": "typed",
-        "test": "ModelSymbolTests.SymbolAsyncReadsEveryFieldOfTheSymbol"
-      },
-      "primitive": {
-        "status": "typed",
-        "test": "ModelSymbolTests.SymbolAsyncReadsEveryFieldOfTheSymbol"
-      },
-      "primitive_source": {
-        "status": "typed",
-        "test": "ModelSymbolTests.SymbolAsyncReadsEveryFieldOfTheSymbol"
-      },
-      "quantity": {
-        "status": "typed",
-        "test": "ModelSymbolTests.SymbolAsyncReadsEveryFieldOfTheSymbol"
-      },
-      "unit": {
-        "status": "typed",
-        "test": "ModelSymbolTests.SymbolAsyncReadsEveryFieldOfTheSymbol"
+        "test": "ModelRunsTests.ActionRunsSendEveryOptionAndReadEveryFieldOfTheTable",
+        "fields": [
+          "percentile",
+          "value"
+        ]
       }
-    },
-    "sysml.Undetermined": {
-      "reason": {
+    ],
+    "sysml.RunRunsRequest": [
+      {
         "status": "typed",
-        "test": "ValueArmTests.UndeterminedArm"
+        "test": "ModelRunsTests.ActionRunsSendEveryOptionAndReadEveryFieldOfTheTable",
+        "fields": [
+          "model_hash",
+          "action_symbol_id",
+          "inputs",
+          "performer_symbol_id",
+          "runs",
+          "seed",
+          "draws",
+          "clock_step",
+          "observe",
+          "engine"
+        ]
       },
-      "count": {
+      {
         "status": "typed",
-        "test": "ValueArmTests.UndeterminedArm"
+        "test": "ModelRunsTests.MonteCarloRunsSendTheCasesOptionsAndReadItsConclusion",
+        "fields": [
+          "analysis_symbol_id",
+          "subject_symbol_id",
+          "arguments",
+          "named_arguments"
+        ]
       }
-    },
-    "sysml.UnitFactor": {
-      "unit_id": {
+    ],
+    "sysml.RunRunsResponse": [
+      {
         "status": "typed",
-        "test": "ValueArmTests.QuantityArm"
+        "test": "ModelRunsTests.ActionRunsSendEveryOptionAndReadEveryFieldOfTheTable",
+        "fields": [
+          "rows",
+          "observables",
+          "distributions",
+          "lines",
+          "diagnostics",
+          "instances",
+          "engine",
+          "strength",
+          "bounds",
+          "seed"
+        ]
       },
-      "exponent": {
+      {
         "status": "typed",
-        "test": "ValueArmTests.QuantityArm"
+        "test": "ModelRunsTests.MonteCarloRunsSendTheCasesOptionsAndReadItsConclusion",
+        "fields": [
+          "outputs",
+          "verdicts",
+          "unconcluded"
+        ]
+      },
+      {
+        "status": "typed",
+        "test": "ModelRunsTests.RunsTheServiceCouldNotTableAreARunsExceptionKeepingTheTableAndAMalformedAnswerIsRefused",
+        "fields": [
+          "error",
+          "failure_reason"
+        ]
       }
-    },
-    "sysml.UnitTerm": {
-      "scale_num": {
+    ],
+    "sysml.RunSweepRequest": [
+      {
         "status": "typed",
-        "test": "ValueArmTests.QuantityArm"
-      },
-      "scale_den": {
-        "status": "typed",
-        "test": "ValueArmTests.QuantityArm"
-      },
-      "factors": {
-        "status": "typed",
-        "test": "ValueArmTests.QuantityArm"
+        "test": "ModelAnalysisTests.RunSweepSendsEveryRangeAndOptionAndReadsEveryRow",
+        "fields": [
+          "model_hash",
+          "symbol_id",
+          "subject_symbol_id",
+          "arguments",
+          "named_arguments",
+          "ranges",
+          "samples",
+          "seed",
+          "engine"
+        ]
       }
-    },
-    "sysml.ValidateInstanceRequest": {
-      "model_hash": {
+    ],
+    "sysml.RunSweepResponse": [
+      {
         "status": "typed",
-        "test": "ModelVerificationTests.ValidateInstanceReadsTheSummaryEveryVerdictAndTheObjectsReached"
+        "test": "ModelAnalysisTests.RunSweepSendsEveryRangeAndOptionAndReadsEveryRow",
+        "fields": [
+          "rows",
+          "parameters",
+          "sampled",
+          "seed",
+          "diagnostics",
+          "instances",
+          "engine",
+          "strength",
+          "bounds"
+        ]
       },
-      "symbol_id": {
+      {
         "status": "typed",
-        "test": "ModelVerificationTests.ValidateInstanceReadsTheSummaryEveryVerdictAndTheObjectsReached"
-      },
-      "engine": {
-        "status": "typed",
-        "test": "ModelVerificationTests.ValidateInstanceReadsTheSummaryEveryVerdictAndTheObjectsReached"
+        "test": "ModelAnalysisTests.ASweepThatMadeNoRunIsAVerificationExceptionAndOneAnsweringRowsBesideIsMalformed",
+        "fields": [
+          "error",
+          "failure_reason"
+        ]
       }
-    },
-    "sysml.ValidateInstanceResponse": {
-      "verdicts": {
+    ],
+    "sysml.SelfCheckApplication": [
+      {
         "status": "typed",
-        "test": "ModelVerificationTests.ValidateInstanceReadsTheSummaryEveryVerdictAndTheObjectsReached"
-      },
-      "summary": {
-        "status": "typed",
-        "test": "ModelVerificationTests.ValidateInstanceReadsTheSummaryEveryVerdictAndTheObjectsReached"
-      },
-      "instances": {
-        "status": "typed",
-        "test": "ModelVerificationTests.ValidateInstanceReadsTheSummaryEveryVerdictAndTheObjectsReached"
-      },
-      "error": {
-        "status": "typed",
-        "test": "ModelVerificationTests.AVerificationTheServiceCouldNotAnswerIsAVerificationExceptionKeepingWhatItReported"
-      },
-      "diagnostics": {
-        "status": "typed",
-        "test": "ModelVerificationTests.ValidateInstanceReadsTheSummaryEveryVerdictAndTheObjectsReached"
-      },
-      "failure_reason": {
-        "status": "typed",
-        "test": "ModelVerificationTests.AVerificationTheServiceCouldNotAnswerIsAVerificationExceptionKeepingWhatItReported"
-      },
-      "verification_verdicts": {
-        "status": "typed",
-        "test": "ModelVerificationTests.ValidateInstanceReadsTheSummaryEveryVerdictAndTheObjectsReached"
-      },
-      "bounded": {
-        "status": "typed",
-        "test": "ModelVerificationTests.ValidateInstanceReadsTheSummaryEveryVerdictAndTheObjectsReached"
+        "test": "ModelRunsTests.SelfCheckSendsTheRulePackagesAndReadsEveryFindingAndCount",
+        "fields": [
+          "constraint",
+          "count"
+        ]
       }
-    },
-    "sysml.Value": {
-      "int_value": {
+    ],
+    "sysml.SelfCheckFinding": [
+      {
         "status": "typed",
-        "test": "ValueArmTests.IntegerArm"
-      },
-      "real_value": {
-        "status": "typed",
-        "test": "ValueArmTests.RealArm"
-      },
-      "bool_value": {
-        "status": "typed",
-        "test": "ValueArmTests.BooleanArm"
-      },
-      "string_value": {
-        "status": "typed",
-        "test": "ValueArmTests.TextArm"
-      },
-      "instance_id": {
-        "status": "typed",
-        "test": "ValueArmTests.InstanceRefArm"
-      },
-      "sequence": {
-        "status": "typed",
-        "test": "ValueArmTests.SequenceArm"
-      },
-      "null": {
-        "status": "typed",
-        "test": "ValueArmTests.NullArm"
-      },
-      "quantity": {
-        "status": "typed",
-        "test": "ValueArmTests.QuantityArm"
-      },
-      "enum_literal": {
-        "status": "typed",
-        "test": "ValueArmTests.EnumLiteralArm"
-      },
-      "unset": {
-        "status": "typed",
-        "test": "ValueArmTests.UnsetArm"
-      },
-      "complex": {
-        "status": "typed",
-        "test": "ValueArmTests.ComplexArm"
-      },
-      "array": {
-        "status": "typed",
-        "test": "ValueArmTests.ArrayArm"
-      },
-      "vector": {
-        "status": "typed",
-        "test": "ValueArmTests.VectorArm"
-      },
-      "vector_quantity": {
-        "status": "typed",
-        "test": "ValueArmTests.VectorQuantityArm"
-      },
-      "measurement_ref": {
-        "status": "typed",
-        "test": "ValueArmTests.MeasurementRefArm"
-      },
-      "infinity": {
-        "status": "typed",
-        "test": "ValueArmTests.InfinityArm"
-      },
-      "function": {
-        "status": "typed",
-        "test": "ValueArmTests.FunctionArm"
-      },
-      "set": {
-        "status": "typed",
-        "test": "ValueArmTests.SetArm"
-      },
-      "tensor_quantity": {
-        "status": "typed",
-        "test": "ValueArmTests.TensorQuantityArm"
-      },
-      "metaobject": {
-        "status": "typed",
-        "test": "ValueArmTests.MetaobjectArm"
-      },
-      "undetermined": {
-        "status": "typed",
-        "test": "ValueArmTests.UndeterminedArm"
-      },
-      "big_int_value": {
-        "status": "typed",
-        "test": "ValueArmTests.BigIntegerArm"
-      },
-      "rational_value": {
-        "status": "typed",
-        "test": "ValueArmTests.RationalArm"
+        "test": "ModelRunsTests.SelfCheckSendsTheRulePackagesAndReadsEveryFindingAndCount",
+        "fields": [
+          "status",
+          "subject",
+          "location",
+          "constraint",
+          "element",
+          "message",
+          "line"
+        ]
       }
-    },
-    "sysml.ValueSequence": {
-      "elements": {
+    ],
+    "sysml.SelfCheckRequest": [
+      {
         "status": "typed",
-        "test": "ValueArmTests.SequenceArm"
+        "test": "ModelRunsTests.SelfCheckSendsTheRulePackagesAndReadsEveryFindingAndCount",
+        "fields": [
+          "model_hash",
+          "self_check_package"
+        ]
       }
-    },
-    "sysml.ValueSet": {
-      "elements": {
+    ],
+    "sysml.SelfCheckResponse": [
+      {
         "status": "typed",
-        "test": "ValueArmTests.SetArm"
+        "test": "ModelRunsTests.SelfCheckSendsTheRulePackagesAndReadsEveryFindingAndCount",
+        "fields": [
+          "status",
+          "findings",
+          "elements",
+          "checks",
+          "violations",
+          "unevaluated",
+          "evaluation_errors",
+          "applications",
+          "summary",
+          "diagnostics"
+        ]
+      },
+      {
+        "status": "typed",
+        "test": "ModelRunsTests.ASelfCheckThatCannotStartIsAModelExceptionAndAMalformedAnswerIsRefused",
+        "fields": [
+          "error"
+        ]
       }
-    },
-    "sysml.Vector": {
-      "components": {
+    ],
+    "sysml.ServerInfoRequest": [],
+    "sysml.ServerInfoResponse": [
+      {
         "status": "typed",
-        "test": "ValueArmTests.VectorArm"
+        "test": "ConnectionOpenTests.OpeningAsksTheServiceOnceAndKeepsItsAnswer",
+        "fields": [
+          "version",
+          "capabilities"
+        ]
       }
-    },
-    "sysml.VectorQuantity": {
-      "components": {
-        "status": "typed",
-        "test": "ValueArmTests.VectorQuantityArm"
+    ],
+    "sysml.SetValueEdit": [
+      {
+        "status": "deferred",
+        "fields": [
+          "target",
+          "value"
+        ]
       }
-    },
-    "sysml.Verdict": {
-      "kind": {
+    ],
+    "sysml.SourceDocument": [
+      {
         "status": "typed",
-        "test": "ModelVerificationTests.VerifyConstraintSendsEveryOptionAndReadsEveryFieldOfTheVerdict"
-      },
-      "element_id": {
-        "status": "typed",
-        "test": "ModelVerificationTests.VerifyConstraintSendsEveryOptionAndReadsEveryFieldOfTheVerdict"
-      },
-      "element": {
-        "status": "typed",
-        "test": "ModelVerificationTests.VerifyConstraintSendsEveryOptionAndReadsEveryFieldOfTheVerdict"
-      },
-      "holds": {
-        "status": "typed",
-        "test": "ModelVerificationTests.VerifyConstraintSendsEveryOptionAndReadsEveryFieldOfTheVerdict"
-      },
-      "condition": {
-        "status": "typed",
-        "test": "ModelVerificationTests.VerifyConstraintSendsEveryOptionAndReadsEveryFieldOfTheVerdict"
-      },
-      "instance_id": {
-        "status": "typed",
-        "test": "ModelVerificationTests.VerifyConstraintSendsEveryOptionAndReadsEveryFieldOfTheVerdict"
-      },
-      "instance_type_id": {
-        "status": "typed",
-        "test": "ModelVerificationTests.VerifyConstraintSendsEveryOptionAndReadsEveryFieldOfTheVerdict"
-      },
-      "error": {
-        "status": "typed",
-        "test": "ModelVerificationTests.VerifyConstraintSendsEveryOptionAndReadsEveryFieldOfTheVerdict"
-      },
-      "failure_reason": {
-        "status": "typed",
-        "test": "ModelVerificationTests.VerifyConstraintSendsEveryOptionAndReadsEveryFieldOfTheVerdict"
-      },
-      "requirement_id": {
-        "status": "typed",
-        "test": "ModelVerificationTests.VerifyConstraintSendsEveryOptionAndReadsEveryFieldOfTheVerdict"
-      },
-      "engine": {
-        "status": "typed",
-        "test": "ModelVerificationTests.VerifyConstraintSendsEveryOptionAndReadsEveryFieldOfTheVerdict"
-      },
-      "strength": {
-        "status": "typed",
-        "test": "ModelVerificationTests.VerifyConstraintSendsEveryOptionAndReadsEveryFieldOfTheVerdict"
-      },
-      "bounds": {
-        "status": "typed",
-        "test": "ModelVerificationTests.VerifyConstraintSendsEveryOptionAndReadsEveryFieldOfTheVerdict"
-      },
-      "instance_path": {
-        "status": "typed",
-        "test": "ModelVerificationTests.VerifyConstraintSendsEveryOptionAndReadsEveryFieldOfTheVerdict"
-      },
-      "question": {
-        "status": "typed",
-        "test": "ModelVerificationTests.VerifyConstraintSendsEveryOptionAndReadsEveryFieldOfTheVerdict"
-      },
-      "status": {
-        "status": "typed",
-        "test": "ModelVerificationTests.VerifyConstraintSendsEveryOptionAndReadsEveryFieldOfTheVerdict"
-      },
-      "witness": {
-        "status": "typed",
-        "test": "ModelVerificationTests.VerifyConstraintSendsEveryOptionAndReadsEveryFieldOfTheVerdict"
+        "test": "ModelParseTests.ParseSourcesSendsEveryDocumentAndReadsEveryRoot",
+        "fields": [
+          "file_path",
+          "content",
+          "language",
+          "name"
+        ]
       }
-    },
-    "sysml.VerificationVerdict": {
-      "case_id": {
+    ],
+    "sysml.Span": [
+      {
         "status": "typed",
-        "test": "ModelVerificationTests.VerifyRequirementReadsTheVerificationVerdictsBesideItsVerdict"
-      },
-      "kind": {
-        "status": "typed",
-        "test": "ModelVerificationTests.VerifyRequirementReadsTheVerificationVerdictsBesideItsVerdict"
-      },
-      "detail": {
-        "status": "typed",
-        "test": "ModelVerificationTests.VerifyRequirementReadsTheVerificationVerdictsBesideItsVerdict"
-      },
-      "subcase": {
-        "status": "typed",
-        "test": "ModelVerificationTests.VerifyRequirementReadsTheVerificationVerdictsBesideItsVerdict"
-      },
-      "requirement_id": {
-        "status": "typed",
-        "test": "ModelVerificationTests.VerifyRequirementReadsTheVerificationVerdictsBesideItsVerdict"
-      },
-      "instance_id": {
-        "status": "typed",
-        "test": "ModelVerificationTests.VerifyRequirementReadsTheVerificationVerdictsBesideItsVerdict"
-      },
-      "instance_type_id": {
-        "status": "typed",
-        "test": "ModelVerificationTests.VerifyRequirementReadsTheVerificationVerdictsBesideItsVerdict"
+        "test": "ModelParseTests.EveryFieldOfADiagnosticIsRead",
+        "fields": [
+          "file",
+          "start_line",
+          "start_col",
+          "end_line",
+          "end_col"
+        ]
       }
-    },
-    "sysml.VerifyConstraintRequest": {
-      "model_hash": {
+    ],
+    "sysml.Specialization": [
+      {
         "status": "typed",
-        "test": "ModelVerificationTests.VerifyConstraintSendsEveryOptionAndReadsEveryFieldOfTheVerdict"
-      },
-      "symbol_id": {
-        "status": "typed",
-        "test": "ModelVerificationTests.VerifyConstraintSendsEveryOptionAndReadsEveryFieldOfTheVerdict"
-      },
-      "subject_symbol_id": {
-        "status": "typed",
-        "test": "ModelVerificationTests.VerifyConstraintSendsEveryOptionAndReadsEveryFieldOfTheVerdict"
-      },
-      "engine": {
-        "status": "typed",
-        "test": "ModelVerificationTests.VerifyConstraintSendsEveryOptionAndReadsEveryFieldOfTheVerdict"
-      },
-      "question": {
-        "status": "typed",
-        "test": "ModelVerificationTests.VerifyConstraintSendsEveryOptionAndReadsEveryFieldOfTheVerdict"
-      },
-      "arguments": {
-        "status": "typed",
-        "test": "ModelVerificationTests.VerifyConstraintSendsEveryOptionAndReadsEveryFieldOfTheVerdict"
-      },
-      "named_arguments": {
-        "status": "typed",
-        "test": "ModelVerificationTests.VerifyConstraintSendsEveryOptionAndReadsEveryFieldOfTheVerdict"
+        "test": "ModelSymbolTests.SymbolAsyncReadsEveryFieldOfTheSymbol",
+        "fields": [
+          "kind",
+          "declared",
+          "target_id",
+          "target_kind"
+        ]
       }
-    },
-    "sysml.VerifyConstraintResponse": {
-      "verdict": {
-        "status": "typed",
-        "test": "ModelVerificationTests.VerifyConstraintSendsEveryOptionAndReadsEveryFieldOfTheVerdict"
-      },
-      "instances": {
-        "status": "typed",
-        "test": "ModelVerificationTests.VerifyConstraintSendsEveryOptionAndReadsEveryFieldOfTheVerdict"
-      },
-      "error": {
-        "status": "typed",
-        "test": "ModelVerificationTests.AVerificationTheServiceCouldNotAnswerIsAVerificationExceptionKeepingWhatItReported"
-      },
-      "diagnostics": {
-        "status": "typed",
-        "test": "ModelVerificationTests.VerifyConstraintSendsEveryOptionAndReadsEveryFieldOfTheVerdict"
+    ],
+    "sysml.StatisticDifference": [
+      {
+        "status": "deferred",
+        "fields": [
+          "min",
+          "mean",
+          "p50",
+          "p90",
+          "max"
+        ]
       }
-    },
-    "sysml.VerifyRequirementRequest": {
-      "model_hash": {
+    ],
+    "sysml.SweepRange": [
+      {
         "status": "typed",
-        "test": "ConformanceAdapterTests.EachRpcSendsTheScenarioRequestThroughItsTypedCallAndRendersTheWholeAnswer"
-      },
-      "symbol_id": {
-        "status": "typed",
-        "test": "ConformanceAdapterTests.EachRpcSendsTheScenarioRequestThroughItsTypedCallAndRendersTheWholeAnswer"
-      },
-      "subject_symbol_id": {
-        "status": "typed",
-        "test": "ConformanceAdapterTests.EachRpcSendsTheScenarioRequestThroughItsTypedCallAndRendersTheWholeAnswer"
-      },
-      "engine": {
-        "status": "typed",
-        "test": "ConformanceAdapterTests.EachRpcSendsTheScenarioRequestThroughItsTypedCallAndRendersTheWholeAnswer"
-      },
-      "question": {
-        "status": "typed",
-        "test": "ConformanceAdapterTests.EachRpcSendsTheScenarioRequestThroughItsTypedCallAndRendersTheWholeAnswer"
-      },
-      "arguments": {
-        "status": "typed",
-        "test": "ConformanceAdapterTests.EachRpcSendsTheScenarioRequestThroughItsTypedCallAndRendersTheWholeAnswer"
-      },
-      "named_arguments": {
-        "status": "typed",
-        "test": "ConformanceAdapterTests.EachRpcSendsTheScenarioRequestThroughItsTypedCallAndRendersTheWholeAnswer"
+        "test": "ModelAnalysisTests.RunSweepSendsEveryRangeAndOptionAndReadsEveryRow",
+        "fields": [
+          "parameter",
+          "start",
+          "end",
+          "step"
+        ]
       }
-    },
-    "sysml.VerifyRequirementResponse": {
-      "verdict": {
+    ],
+    "sysml.SweepRow": [
+      {
         "status": "typed",
-        "test": "ModelVerificationTests.VerifyRequirementReadsTheVerificationVerdictsBesideItsVerdict"
-      },
-      "instances": {
-        "status": "typed",
-        "test": "ModelVerificationTests.VerifyRequirementReadsTheVerificationVerdictsBesideItsVerdict"
-      },
-      "error": {
-        "status": "typed",
-        "test": "ModelVerificationTests.AVerificationTheServiceCouldNotAnswerIsAVerificationExceptionKeepingWhatItReported"
-      },
-      "diagnostics": {
-        "status": "typed",
-        "test": "ModelVerificationTests.VerifyRequirementReadsTheVerificationVerdictsBesideItsVerdict"
-      },
-      "verification_verdicts": {
-        "status": "typed",
-        "test": "ModelVerificationTests.VerifyRequirementReadsTheVerificationVerdictsBesideItsVerdict"
+        "test": "ModelAnalysisTests.RunSweepSendsEveryRangeAndOptionAndReadsEveryRow",
+        "fields": [
+          "inputs",
+          "outputs",
+          "verdicts",
+          "elapsed_micros",
+          "error",
+          "failure_reason",
+          "evaluations"
+        ]
       }
-    },
-    "sysml.VerifySatisfactionRequest": {
-      "model_hash": {
+    ],
+    "sysml.SymbolInfo": [
+      {
         "status": "typed",
-        "test": "ModelVerificationTests.VerifySatisfactionSendsTheScopeAndQuestionAndReadsEveryVerdict"
-      },
-      "symbol_id": {
-        "status": "typed",
-        "test": "ModelVerificationTests.VerifySatisfactionSendsTheScopeAndQuestionAndReadsEveryVerdict"
-      },
-      "engine": {
-        "status": "typed",
-        "test": "ModelVerificationTests.VerifySatisfactionSendsTheScopeAndQuestionAndReadsEveryVerdict"
-      },
-      "question": {
-        "status": "typed",
-        "test": "ModelVerificationTests.VerifySatisfactionSendsTheScopeAndQuestionAndReadsEveryVerdict"
+        "test": "ModelSymbolTests.SymbolAsyncReadsEveryFieldOfTheSymbol",
+        "fields": [
+          "id",
+          "name",
+          "kind",
+          "metadata",
+          "child_ids",
+          "attributes",
+          "type_info",
+          "multiplicity",
+          "specializations",
+          "withheld_library_attributes"
+        ]
       }
-    },
-    "sysml.VerifySatisfactionResponse": {
-      "verdicts": {
+    ],
+    "sysml.SymbolResponse": [
+      {
         "status": "typed",
-        "test": "ModelVerificationTests.VerifySatisfactionSendsTheScopeAndQuestionAndReadsEveryVerdict"
+        "test": "ModelSymbolTests.SymbolAsyncReadsEveryFieldOfTheSymbol",
+        "fields": [
+          "symbol"
+        ]
       },
-      "instances": {
+      {
         "status": "typed",
-        "test": "ModelVerificationTests.VerifySatisfactionSendsTheScopeAndQuestionAndReadsEveryVerdict"
-      },
-      "error": {
-        "status": "typed",
-        "test": "ModelVerificationTests.AVerificationTheServiceCouldNotAnswerIsAVerificationExceptionKeepingWhatItReported"
-      },
-      "diagnostics": {
-        "status": "typed",
-        "test": "ModelVerificationTests.VerifySatisfactionSendsTheScopeAndQuestionAndReadsEveryVerdict"
-      },
-      "failure_reason": {
-        "status": "typed",
-        "test": "ModelVerificationTests.AVerificationTheServiceCouldNotAnswerIsAVerificationExceptionKeepingWhatItReported"
-      },
-      "verification_verdicts": {
-        "status": "typed",
-        "test": "ModelVerificationTests.VerifySatisfactionSendsTheScopeAndQuestionAndReadsEveryVerdict"
+        "test": "ModelSymbolTests.ASymbolTheModelLacksIsNotFoundInBandAndAnAnswerOfNeitherIsMalformed",
+        "fields": [
+          "error"
+        ]
       }
-    },
-    "sysml.WitnessAssignment": {
-      "feature": {
+    ],
+    "sysml.TensorQuantity": [
+      {
         "status": "typed",
-        "test": "ModelVerificationTests.VerifyConstraintSendsEveryOptionAndReadsEveryFieldOfTheVerdict"
-      },
-      "value": {
-        "status": "typed",
-        "test": "ModelVerificationTests.VerifyConstraintSendsEveryOptionAndReadsEveryFieldOfTheVerdict"
-      },
-      "unit": {
-        "status": "typed",
-        "test": "ModelVerificationTests.VerifyConstraintSendsEveryOptionAndReadsEveryFieldOfTheVerdict"
-      },
-      "exact": {
-        "status": "typed",
-        "test": "ModelVerificationTests.VerifyConstraintSendsEveryOptionAndReadsEveryFieldOfTheVerdict"
+        "test": "ValueArmTests.TensorQuantityArm",
+        "fields": [
+          "dimensions",
+          "components"
+        ]
       }
-    }
+    ],
+    "sysml.ToolDryRun": [
+      {
+        "status": "typed",
+        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun",
+        "fields": [
+          "action",
+          "tool",
+          "version",
+          "manifest",
+          "executable",
+          "protocol",
+          "args",
+          "env",
+          "cwd",
+          "stdin",
+          "stdin_data",
+          "input_file",
+          "output_dir",
+          "inputs",
+          "outputs",
+          "reply_source",
+          "lines"
+        ]
+      }
+    ],
+    "sysml.ToolDryRunFile": [
+      {
+        "status": "typed",
+        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun",
+        "fields": [
+          "name",
+          "format",
+          "data"
+        ]
+      }
+    ],
+    "sysml.ToolDryRunInput": [
+      {
+        "status": "typed",
+        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun",
+        "fields": [
+          "variable",
+          "parameter",
+          "value",
+          "unit"
+        ]
+      }
+    ],
+    "sysml.ToolDryRunOutput": [
+      {
+        "status": "typed",
+        "test": "ModelAnalysisTests.RunAnalysisSendsEveryOptionAndReadsEveryFieldOfTheRun",
+        "fields": [
+          "variable",
+          "parameter"
+        ]
+      }
+    ],
+    "sysml.TypeInfo": [
+      {
+        "status": "typed",
+        "test": "ModelSymbolTests.SymbolAsyncReadsEveryFieldOfTheSymbol",
+        "fields": [
+          "declared",
+          "resolved_id",
+          "resolved_kind",
+          "primitive",
+          "primitive_source",
+          "quantity",
+          "unit"
+        ]
+      }
+    ],
+    "sysml.Undetermined": [
+      {
+        "status": "typed",
+        "test": "ValueArmTests.UndeterminedArm",
+        "fields": [
+          "reason",
+          "count"
+        ]
+      }
+    ],
+    "sysml.UnitFactor": [
+      {
+        "status": "typed",
+        "test": "ValueArmTests.QuantityArm",
+        "fields": [
+          "unit_id",
+          "exponent"
+        ]
+      }
+    ],
+    "sysml.UnitTerm": [
+      {
+        "status": "typed",
+        "test": "ValueArmTests.QuantityArm",
+        "fields": [
+          "scale_num",
+          "scale_den",
+          "factors"
+        ]
+      }
+    ],
+    "sysml.ValidateInstanceRequest": [
+      {
+        "status": "typed",
+        "test": "ModelVerificationTests.ValidateInstanceReadsTheSummaryEveryVerdictAndTheObjectsReached",
+        "fields": [
+          "model_hash",
+          "symbol_id",
+          "engine"
+        ]
+      }
+    ],
+    "sysml.ValidateInstanceResponse": [
+      {
+        "status": "typed",
+        "test": "ModelVerificationTests.ValidateInstanceReadsTheSummaryEveryVerdictAndTheObjectsReached",
+        "fields": [
+          "verdicts",
+          "summary",
+          "instances",
+          "diagnostics",
+          "verification_verdicts",
+          "bounded"
+        ]
+      },
+      {
+        "status": "typed",
+        "test": "ModelVerificationTests.AVerificationTheServiceCouldNotAnswerIsAVerificationExceptionKeepingWhatItReported",
+        "fields": [
+          "error",
+          "failure_reason"
+        ]
+      }
+    ],
+    "sysml.Value": [
+      {
+        "status": "typed",
+        "test": "ValueArmTests.IntegerArm",
+        "fields": [
+          "int_value"
+        ]
+      },
+      {
+        "status": "typed",
+        "test": "ValueArmTests.RealArm",
+        "fields": [
+          "real_value"
+        ]
+      },
+      {
+        "status": "typed",
+        "test": "ValueArmTests.BooleanArm",
+        "fields": [
+          "bool_value"
+        ]
+      },
+      {
+        "status": "typed",
+        "test": "ValueArmTests.TextArm",
+        "fields": [
+          "string_value"
+        ]
+      },
+      {
+        "status": "typed",
+        "test": "ValueArmTests.InstanceRefArm",
+        "fields": [
+          "instance_id"
+        ]
+      },
+      {
+        "status": "typed",
+        "test": "ValueArmTests.SequenceArm",
+        "fields": [
+          "sequence"
+        ]
+      },
+      {
+        "status": "typed",
+        "test": "ValueArmTests.NullArm",
+        "fields": [
+          "null"
+        ]
+      },
+      {
+        "status": "typed",
+        "test": "ValueArmTests.QuantityArm",
+        "fields": [
+          "quantity"
+        ]
+      },
+      {
+        "status": "typed",
+        "test": "ValueArmTests.EnumLiteralArm",
+        "fields": [
+          "enum_literal"
+        ]
+      },
+      {
+        "status": "typed",
+        "test": "ValueArmTests.UnsetArm",
+        "fields": [
+          "unset"
+        ]
+      },
+      {
+        "status": "typed",
+        "test": "ValueArmTests.ComplexArm",
+        "fields": [
+          "complex"
+        ]
+      },
+      {
+        "status": "typed",
+        "test": "ValueArmTests.ArrayArm",
+        "fields": [
+          "array"
+        ]
+      },
+      {
+        "status": "typed",
+        "test": "ValueArmTests.VectorArm",
+        "fields": [
+          "vector"
+        ]
+      },
+      {
+        "status": "typed",
+        "test": "ValueArmTests.VectorQuantityArm",
+        "fields": [
+          "vector_quantity"
+        ]
+      },
+      {
+        "status": "typed",
+        "test": "ValueArmTests.MeasurementRefArm",
+        "fields": [
+          "measurement_ref"
+        ]
+      },
+      {
+        "status": "typed",
+        "test": "ValueArmTests.InfinityArm",
+        "fields": [
+          "infinity"
+        ]
+      },
+      {
+        "status": "typed",
+        "test": "ValueArmTests.FunctionArm",
+        "fields": [
+          "function"
+        ]
+      },
+      {
+        "status": "typed",
+        "test": "ValueArmTests.SetArm",
+        "fields": [
+          "set"
+        ]
+      },
+      {
+        "status": "typed",
+        "test": "ValueArmTests.TensorQuantityArm",
+        "fields": [
+          "tensor_quantity"
+        ]
+      },
+      {
+        "status": "typed",
+        "test": "ValueArmTests.MetaobjectArm",
+        "fields": [
+          "metaobject"
+        ]
+      },
+      {
+        "status": "typed",
+        "test": "ValueArmTests.UndeterminedArm",
+        "fields": [
+          "undetermined"
+        ]
+      },
+      {
+        "status": "typed",
+        "test": "ValueArmTests.BigIntegerArm",
+        "fields": [
+          "big_int_value"
+        ]
+      },
+      {
+        "status": "typed",
+        "test": "ValueArmTests.RationalArm",
+        "fields": [
+          "rational_value"
+        ]
+      }
+    ],
+    "sysml.ValueSequence": [
+      {
+        "status": "typed",
+        "test": "ValueArmTests.SequenceArm",
+        "fields": [
+          "elements"
+        ]
+      }
+    ],
+    "sysml.ValueSet": [
+      {
+        "status": "typed",
+        "test": "ValueArmTests.SetArm",
+        "fields": [
+          "elements"
+        ]
+      }
+    ],
+    "sysml.Vector": [
+      {
+        "status": "typed",
+        "test": "ValueArmTests.VectorArm",
+        "fields": [
+          "components"
+        ]
+      }
+    ],
+    "sysml.VectorQuantity": [
+      {
+        "status": "typed",
+        "test": "ValueArmTests.VectorQuantityArm",
+        "fields": [
+          "components"
+        ]
+      }
+    ],
+    "sysml.Verdict": [
+      {
+        "status": "typed",
+        "test": "ModelVerificationTests.VerifyConstraintSendsEveryOptionAndReadsEveryFieldOfTheVerdict",
+        "fields": [
+          "kind",
+          "element_id",
+          "element",
+          "holds",
+          "condition",
+          "instance_id",
+          "instance_type_id",
+          "error",
+          "failure_reason",
+          "requirement_id",
+          "engine",
+          "strength",
+          "bounds",
+          "instance_path",
+          "question",
+          "status",
+          "witness"
+        ]
+      }
+    ],
+    "sysml.VerificationVerdict": [
+      {
+        "status": "typed",
+        "test": "ModelVerificationTests.VerifyRequirementReadsTheVerificationVerdictsBesideItsVerdict",
+        "fields": [
+          "case_id",
+          "kind",
+          "detail",
+          "subcase",
+          "requirement_id",
+          "instance_id",
+          "instance_type_id"
+        ]
+      }
+    ],
+    "sysml.VerifyConstraintRequest": [
+      {
+        "status": "typed",
+        "test": "ModelVerificationTests.VerifyConstraintSendsEveryOptionAndReadsEveryFieldOfTheVerdict",
+        "fields": [
+          "model_hash",
+          "symbol_id",
+          "subject_symbol_id",
+          "engine",
+          "question",
+          "arguments",
+          "named_arguments"
+        ]
+      }
+    ],
+    "sysml.VerifyConstraintResponse": [
+      {
+        "status": "typed",
+        "test": "ModelVerificationTests.VerifyConstraintSendsEveryOptionAndReadsEveryFieldOfTheVerdict",
+        "fields": [
+          "verdict",
+          "instances",
+          "diagnostics"
+        ]
+      },
+      {
+        "status": "typed",
+        "test": "ModelVerificationTests.AVerificationTheServiceCouldNotAnswerIsAVerificationExceptionKeepingWhatItReported",
+        "fields": [
+          "error"
+        ]
+      }
+    ],
+    "sysml.VerifyRequirementRequest": [
+      {
+        "status": "typed",
+        "test": "ConformanceAdapterTests.EachRpcSendsTheScenarioRequestThroughItsTypedCallAndRendersTheWholeAnswer",
+        "fields": [
+          "model_hash",
+          "symbol_id",
+          "subject_symbol_id",
+          "engine",
+          "question",
+          "arguments",
+          "named_arguments"
+        ]
+      }
+    ],
+    "sysml.VerifyRequirementResponse": [
+      {
+        "status": "typed",
+        "test": "ModelVerificationTests.VerifyRequirementReadsTheVerificationVerdictsBesideItsVerdict",
+        "fields": [
+          "verdict",
+          "instances",
+          "diagnostics",
+          "verification_verdicts"
+        ]
+      },
+      {
+        "status": "typed",
+        "test": "ModelVerificationTests.AVerificationTheServiceCouldNotAnswerIsAVerificationExceptionKeepingWhatItReported",
+        "fields": [
+          "error"
+        ]
+      }
+    ],
+    "sysml.VerifySatisfactionRequest": [
+      {
+        "status": "typed",
+        "test": "ModelVerificationTests.VerifySatisfactionSendsTheScopeAndQuestionAndReadsEveryVerdict",
+        "fields": [
+          "model_hash",
+          "symbol_id",
+          "engine",
+          "question"
+        ]
+      }
+    ],
+    "sysml.VerifySatisfactionResponse": [
+      {
+        "status": "typed",
+        "test": "ModelVerificationTests.VerifySatisfactionSendsTheScopeAndQuestionAndReadsEveryVerdict",
+        "fields": [
+          "verdicts",
+          "instances",
+          "diagnostics",
+          "verification_verdicts"
+        ]
+      },
+      {
+        "status": "typed",
+        "test": "ModelVerificationTests.AVerificationTheServiceCouldNotAnswerIsAVerificationExceptionKeepingWhatItReported",
+        "fields": [
+          "error",
+          "failure_reason"
+        ]
+      }
+    ],
+    "sysml.WitnessAssignment": [
+      {
+        "status": "typed",
+        "test": "ModelVerificationTests.VerifyConstraintSendsEveryOptionAndReadsEveryFieldOfTheVerdict",
+        "fields": [
+          "feature",
+          "value",
+          "unit",
+          "exact"
+        ]
+      }
+    ]
   }
 }

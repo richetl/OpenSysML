@@ -70,6 +70,7 @@ internal static class ApiAdapters
             .Concat(VerificationArea.Adapters)
             .Concat(SamplingArea.Adapters)
             .Concat(ConversionArea.Adapters)
+            .Concat(QueryDocsArea.Adapters)
             .ToFrozenDictionary(adapter => adapter.Method, StringComparer.Ordinal);
 
     /// <summary>Why a scenario of an RPC the public API does not cover is skipped.</summary>

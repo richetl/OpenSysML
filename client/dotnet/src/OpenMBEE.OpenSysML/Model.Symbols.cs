@@ -10,7 +10,6 @@ namespace OpenMBEE.OpenSysML;
 public sealed partial class Model
 {
     internal const string GetSymbolMethod = "sysml.SysMLService/GetSymbol";
-    internal const string QueryMethod = "sysml.SysMLService/Query";
 
     private const string PropertyId = "@id";
     private const string PropertyName = "name";
@@ -123,19 +122,8 @@ public sealed partial class Model
             : throw new TransportException(StatusCode.Internal, $"{GetSymbolMethod} answered neither a symbol nor a failure for {symbolId}.", GetSymbolMethod);
     }
 
-    private static Wire.Query Selecting(string select, string? property = null, IEnumerable<string>? values = null)
-    {
-        var query = new Wire.Query { Select = { select } };
-        if (property is not null)
-        {
-            query.Where = new Wire.Constraint
-            {
-                Primitive = new Wire.PrimitiveConstraint { Property = property, Operator = Wire.PrimitiveOperator.Equal, Value = { values! } },
-            };
-        }
-
-        return query;
-    }
+    private static Query Selecting(string select, string? property = null, IEnumerable<string>? values = null) =>
+        new() { Select = [select], Where = property is null ? null : QueryConstraint.Equal(property, values!) };
 
     // The symbol whose own id is this one: the service also resolves a name through imports and aliases.
     private async Task<Symbol?> SymbolWithIdAsync(string id, CancellationToken cancellationToken)
@@ -153,7 +141,7 @@ public sealed partial class Model
             return await WalkAsync(symbol => symbol.Name == name, maxDepth: null, cancellationToken).ConfigureAwait(false);
         }
 
-        var named = await QueryAsync(Selecting(PropertyOwner, PropertyName, [name]), cancellationToken).ConfigureAwait(false);
+        var named = (await QueryAsync(Selecting(PropertyOwner, PropertyName, [name]), cancellationToken).ConfigureAwait(false)).Elements;
         var ids = named.Select(element => element.Id).ToList();
         Dictionary<string, int>? depth = null;
         if (ids.Count > 1 || (ids.Count > 0 && HasErrors))
@@ -185,7 +173,7 @@ public sealed partial class Model
 
     // Each element's depth below its document's root, counted up its owner chain rather than from its
     // id's segments, which a quoted name may contain. A chain ending short of a root ends one level below one.
-    private async Task<Dictionary<string, int>> DepthsAsync(IReadOnlyList<Wire.QueryResultElement> elements, CancellationToken cancellationToken)
+    private async Task<Dictionary<string, int>> DepthsAsync(ValueList<QueryElement> elements, CancellationToken cancellationToken)
     {
         var owner = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach (var root in Roots)
@@ -202,7 +190,7 @@ public sealed partial class Model
         while (unknown.Count > 0)
         {
             var asked = Selecting(PropertyOwner, PropertyId, unknown.Order(StringComparer.Ordinal));
-            foreach (var element in await QueryAsync(asked, cancellationToken).ConfigureAwait(false))
+            foreach (var element in (await QueryAsync(asked, cancellationToken).ConfigureAwait(false)).Elements)
             {
                 owner[element.Id] = element.Properties.GetValueOrDefault(PropertyOwner, string.Empty);
             }
@@ -283,7 +271,7 @@ public sealed partial class Model
         var declared = new List<(string Id, string Name)>();
         if (Connection.Capabilities.Has(Capabilities.Query))
         {
-            foreach (var element in await QueryAsync(Selecting(PropertyName), cancellationToken).ConfigureAwait(false))
+            foreach (var element in (await QueryAsync(Selecting(PropertyName), cancellationToken).ConfigureAwait(false)).Elements)
             {
                 declared.Add((element.Id, element.Properties.GetValueOrDefault(PropertyName, string.Empty)));
             }
@@ -315,12 +303,5 @@ public sealed partial class Model
         }
 
         return NearNames.Closest(name, candidates, MaxSuggestions);
-    }
-
-    private async Task<IReadOnlyList<Wire.QueryResultElement>> QueryAsync(Wire.Query query, CancellationToken cancellationToken)
-    {
-        var request = new Wire.QueryRequest { ModelHash = Hash, Query = query };
-        var response = await Connection.ModelCallAsync<Wire.QueryRequest, Wire.QueryResponse>(QueryMethod, request, cancellationToken).ConfigureAwait(false);
-        return response.Elements;
     }
 }
