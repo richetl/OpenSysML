@@ -1,6 +1,5 @@
 {
   "uncovered_rpcs": [
-    "ApplyEdits",
     "CompareResults",
     "ExportGraphs",
     "ImportData"

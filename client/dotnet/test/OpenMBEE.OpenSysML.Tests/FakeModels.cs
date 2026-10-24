@@ -41,6 +41,9 @@ internal static class FakeModels
         Capabilities.RenderDocument,
         Capabilities.RenderDocumentHtml,
         Capabilities.RenderView,
+        Capabilities.ApplyEdits,
+        Capabilities.EditDocuments,
+        .. Internal.EditWire.GateOrder,
         .. Internal.ValueWire.SendGateOrder,
     ];
 

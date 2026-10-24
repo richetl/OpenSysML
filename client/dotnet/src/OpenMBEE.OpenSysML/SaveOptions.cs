@@ -1,8 +1,8 @@
 namespace OpenMBEE.OpenSysML;
 
 /// <summary>
-/// How <see cref="Conversion.SaveAsync"/>, <see cref="Model.SaveAsync"/> and <see cref="Migration.WriteAsync"/> write a
-/// file. Every file is written whole to a temporary file beside it, flushed, and then moved into place, so a write that
+/// How <see cref="Conversion.SaveAsync"/>, <see cref="Model.SaveAsync"/>, <see cref="Migration.WriteAsync"/>,
+/// <see cref="EditResult.SaveAsync"/> and <see cref="EditedDocument.SaveAsync"/> write a file. Every file is written whole to a temporary file beside it, flushed, and then moved into place, so a write that
 /// fails or is cancelled leaves no partial file and an existing destination as it was.
 /// </summary>
 public sealed class SaveOptions

@@ -121,6 +121,8 @@ public sealed class ConformanceAdapterTests
         { "Migrate", """{"file_path": "Vehicle.xmi", "to_format": "sysml"}""", "the public API requires a fully-qualified, valid migration file path" },
         { "Migrate", """{"content": "AQ==", "to_format": "sysml", "layout_path": ""}""", "MigrateOptions names an empty form, layout or image base URL; leave FromFormat, LayoutPath, LayoutContent or ImageBaseUrl null for none." },
         { "RecordRun", """{"model_hash": "h", "analysis_symbol_id": "C", "accept_documents": true, "ranges": [{"parameter": "b", "start": {"int_value": 0}}]}""", "the public API holds a sweep range with both endpoints, which ranges[0] does not state" },
+        { "ApplyEdits", """{"model_hash": " ", "operations": [{"rename": {"target": "A", "new_name": "B"}}]}""", "the public API names a model by a hash that is not blank" },
+        { "ApplyEdits", """{"model_hash": "h", "operations": [{"rename": {"target": "A", "new_name": "B"}}, {}]}""", "the public API names an edit's form, which operations[1] does not" },
     };
 
     private static Dictionary<string, (IMessage Request, IMessage Response)> Complete => new(StringComparer.Ordinal)
@@ -480,6 +482,15 @@ public sealed class ConformanceAdapterTests
         ["Migrate from a file"] = (
             new Wire.MigrateRequest { FilePath = Path.GetFullPath("/models/a.xmi"), ToFormat = "ttl", LayoutPath = "/models/a_mtip.xml" },
             CompleteConversionWire.Migration),
+        ["ApplyEdits"] = (CompleteEditingWire.Request, CompleteEditingWire.Single),
+        ["ApplyEdits of a model of several documents"] = (
+            new Wire.ApplyEditsRequest
+            {
+                ModelHash = Hash,
+                AcceptDocuments = true,
+                Operations = { new Wire.EditOperation { Rename = new Wire.RenameEdit { Target = "EngineLibrary::Engine", NewName = "Motor" } } },
+            },
+            CompleteEditingWire.Several),
     };
 
     // Every value a request can send, one of each arm the API writes as given, by name.
@@ -593,6 +604,14 @@ public sealed class ConformanceAdapterTests
         ["Migrate"] = (
             new Wire.MigrateRequest { Content = ByteString.CopyFromUtf8("not xmi"), FromFormat = "xmi", ToFormat = "ttl" },
             CompleteConversionWire.FailedMigration),
+        ["ApplyEdits"] = (
+            new Wire.ApplyEditsRequest
+            {
+                ModelHash = Hash,
+                AcceptDocuments = true,
+                Operations = { new Wire.EditOperation { Delete = new Wire.DeleteEdit { Target = "EngineLibrary::Engine" } } },
+            },
+            CompleteEditingWire.Refusal),
     };
 
     [Theory]
@@ -744,6 +763,27 @@ public sealed class ConformanceAdapterTests
 
         var reason = Assert.IsType<ScenarioAnswer.Unexpressible>(answer).Reason;
         Assert.StartsWith("the public API cannot hold inputs[\"x\"] as spelled: An array", reason, StringComparison.Ordinal);
+        Assert.DoesNotContain("(Parameter", reason, StringComparison.Ordinal);
+        Assert.Equal(["GetServerInfo"], handler.Requests.Select(sent => sent.Method));
+    }
+
+    [Fact]
+    public async Task AnActionBodyNestedDeeperThanTheServiceReadsIsUnexpressible()
+    {
+        var method = ScenarioRequests.Method("ApplyEdits");
+        using var handler = new FakeServiceHandler { Capabilities = FakeModels.ModelCapabilities };
+        await using var connection = await FakeConnection.OpenAsync(handler);
+        var item = new Wire.AddSequenceEdit { Keyword = "then", Ref = "x" };
+        for (var level = 0; level <= Edit.AddSequence.MaxDepth; level++)
+        {
+            item = new Wire.AddSequenceEdit { MemberKind = "loop", Body = { item } };
+        }
+
+        var request = new Wire.ApplyEditsRequest { ModelHash = Hash, Operations = { new Wire.EditOperation { AddSequence = item } } };
+        var answer = await Client(connection).CallAsync(method, request, TestContext.Current.CancellationToken);
+
+        var reason = Assert.IsType<ScenarioAnswer.Unexpressible>(answer).Reason;
+        Assert.StartsWith("the public API cannot hold operations[0] as spelled: Item 0 spans 129 levels", reason, StringComparison.Ordinal);
         Assert.DoesNotContain("(Parameter", reason, StringComparison.Ordinal);
         Assert.Equal(["GetServerInfo"], handler.Requests.Select(sent => sent.Method));
     }

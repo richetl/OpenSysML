@@ -18,10 +18,11 @@ of this repository and consumed by `ProjectReference`. It is not published to Nu
 > records runs. It [converts and migrates](#converting-migrating-and-saving) models, between
 > notation, Turtle and the API's JSON form and from SysML v1, and saves them to disk without
 > ever leaving a partial file. It [queries models, runs their document queries and renders
-> their documents and views](#querying-documents-and-views). Its [conformance
+> their documents and views](#querying-documents-and-views), and [edits their
+> notation](#editing) while keeping everything an edit did not touch. Its [conformance
 > runner](#conformance) runs the shared suite through that API. It does not download a release
-> of the service, and offers none of the other typed operations (editing, graph export, data
-> import and result comparison). The other clients ([Python](../python/), [Java](../java/),
+> of the service, and offers none of the other typed operations (graph export, data import and
+> result comparison). The other clients ([Python](../python/), [Java](../java/),
 > [Rust](../rust/), [Node](../node/)) are the ones to use for those today.
 
 ## Requirements
@@ -246,6 +247,7 @@ use after disposal, which are the standard exceptions:
 | The service answered that it could not verify, validate, calculate or sweep at all: an unknown symbol, a symbol of another kind, a subject or argument that does not read, a range no values follow from | `VerificationException`, a `ModelException` with the failure's `Reason` (`FailureReason.WrongKind` for a symbol of another kind) and the `Instances`, `Verifications` and engine `Standing` the answer carried |
 | The service answered that an analysis case could not run to its end | `AnalysisException`, a `VerificationException` with the `Partial` run: the outputs computed, the verdicts and evaluations made and the objects named before the failure |
 | The service refused a document query or document because the model declares it, or a query it runs, wrongly (`FailedPrecondition`) | `QueryException`, a `ModelException` with the `StatusCode` and `ServiceMessage` the service gave |
+| The service answered that it refused a batch of edits: an unknown target, a value that does not parse, a name taken, references a delete would break | `EditException`, a `ModelException` with the `Failure` kind, the `Diagnostics` behind it, and the `Referrers` and `ReferringElements` of a refused rename, delete or move |
 | No well-formed answer was read: the endpoint was unreachable or did not speak the protocol, a Connect refusal was not a Connect error, the answer was malformed or over a size limit, or the deadline passed | `TransportException`, with `StatusCode`, `Method` and the cause as `InnerException` |
 | The service answered a value of a kind this client does not know | `UnsupportedValueException`, with `Method`, `Path` and the value's `ValueBytes` |
 | The caller's token was cancelled | `OperationCanceledException` carrying that token |
@@ -638,6 +640,90 @@ beyond `long` or exact Rational (one a `double` holds exactly is sent as that `d
 service without `rational_values`); `render_document`, then `render_document_html` for HTML;
 or `render_view`.
 
+## Editing
+
+```csharp
+var model = (await connection.LoadAsync("editable.sysml")).RequireNoErrors();
+var result = await model.Edit()
+    .SetValue("Demo::SC::unitMass", "1050.0[SI::kg]")
+    .AddMember("Demo", "part def", "Engine", m => m with { IsAbstract = true, Doc = "Turns fuel into torque." })
+    .AddIf("Demo::Run", "x == 0", new Editor.Body().AddAssign("x", "1"), new Editor.Body().AddAssign("x", "2"))
+    .ApplyAsync();                                                       // result.Content, result.Applied
+await result.SaveAsync("editable.sysml", new SaveOptions { Overwrite = true });
+
+var engines = await connection.ParseSourcesAsync([SourceDocument.FromFile("library.sysml"), SourceDocument.FromFile("user.sysml")]);
+var renamed = await engines.ApplyEditsAsync([new Edit.Rename("EngineLibrary::Engine", "Motor")]);
+foreach (var document in renamed.Documents) { /* each document the rename rewrote */ }
+```
+
+| Method | Answers |
+| --- | --- |
+| `Model.Edit` | An `Editor` collecting edits in the order they are added, with a method for each kind and the shorthands of action-body sequencing, applied as one batch by `ApplyAsync` |
+| `Model.ApplyEditsAsync` | An `EditResult` of a batch of `Edit`s: the edited notation of a single-document model as `Content`, every document the edits rewrote as an `EditedDocument` in `Documents`, and what each edit changed as an `AppliedEdit` (its `OperationIndex`, the bytes' `Offset` and `Length`, `OldText`, `NewText` and `Document`) |
+
+The edits apply in order to the notation the model was parsed from, all of them or none, and
+the answer is byte-identical to that notation outside what they changed, comments and layout
+kept. The model itself is unchanged: load the edited notation to read the edited model. An
+`Edit` is an immutable record, one nested record per kind the service has: `SetValue`,
+`Rename`, `AddMember`, `Delete`, `Move`, `AddConnection`, `AddSatisfy`,
+`AddRequirementConstraint`, `AddTransition`, `AddImport`, `AddDocumentation`, `AddVerify`,
+`AddMetadata`, `AddSequence`, `AddMetadataPrefix`, `AddComment` and `AddNote`. Each names its
+target or owner as the model reports elements (`Demo::Vehicle`), an owner left empty naming
+the document root, and writes notation (a type, a value, an expression) as text that the
+service judges. Its optional parts are null when not written, and a `with` expression derives
+another; an optional part set to empty text is refused before anything is sent, since the
+service reads empty as absent. No type outside the library derives from `Edit`.
+
+`AddMember` writes a declaration of any kind with its `Type`, `Multiplicity`, `Value` (or a
+`BodyExpression` written in braces, a constraint's condition or a calculation's result),
+`Specializes`, `Redefines`, `IsAbstract`, `IsDefault`, `Direction`, `MetadataPrefixes` and
+`Doc`; an empty `Kind` writes a directed parameter, as `Editor.AddParameter` does.
+`AddSequence` writes an action body's `first` and `then` members, guarded successions and
+`else`, and the `accept`, `send`, `assign`, `if`, `while`, `loop`, `for` and `terminate`
+statements, whose `Body` and `ElseBody` nest further items; its factories write each form, and
+an `Editor.Body` collects a nested body's items, writing its first statement without `then`. A
+body is read when it is passed, so changing it afterwards changes nothing built from it. The
+service reads items nested at most `Edit.AddSequence.MaxDepth` (128) levels below their edit,
+and one nested deeper cannot be built.
+
+An editor sends the edits collected when `ApplyAsync` is called. Once it succeeds the editor
+is spent, and an edit added while it is being applied or after is refused with
+`InvalidOperationException` rather than lost; a failed apply leaves it to apply again. An
+empty batch is sent too, and refused as `EditFailure.NoOperations`.
+
+A model of several documents is edited as one: the edits target the declarations of
+`EditOptions.InDocument` (the first document when null), and a rename or cascade delete
+follows references into every other document, rewriting those too. Its edited notation is in
+`Documents` alone and `Content` is null, so it is never mistaken for the whole model, and
+`EditResult.SaveAsync` refuses it; write each document with `EditedDocument.SaveAsync`
+instead. A model loaded from one file or inline notation has one document, one parsed from
+several has as many as it was given; for a model named by hash alone, whose documents this
+client does not know, an answer naming documents but no notation reads as one of several. A
+service without `edit_documents` edits a model of one document alone, answers its `Content`
+without `Documents`, and names no document an edit changed. `EditOptions.AcceptDocuments` is
+true by default, since this client reads `Documents`; false asks the service to refuse a model
+of several documents with `FailedPrecondition` rather than edit it.
+
+A batch the service refused, nothing of it applied, raises `EditException` with its `Failure`
+kind (`UnknownTarget`, `InvalidValue`, `MemberNameTaken`, `DeleteReferenced`, ...), the
+`Diagnostics` behind it, and, for a rename, delete or move the model's references block, the
+`Referrers` with the document declaring each and the service's `ReferringElements` spelling.
+A kind this release does not name keeps its number over protobuf. A model the service no longer
+holds is a `ModelNotFoundException`; a document the model does not have is a
+`ServiceException` with `InvalidArgument`. A malformed answer, a refusal beside edited
+notation, an applied edit of no edit in the batch, notation in `content` for a model of
+several documents, or documents other than the one document of a single-document model, is a
+`TransportException` with `Internal`. Before anything is sent the batch needs `apply_edits`,
+then the capabilities its edits need, judged over the whole batch in the service's order:
+`authoring` for any edit but a value or a rename, the dedicated capability of a connection,
+satisfy, requirement constraint, transition, verification, metadata, prefix, sequence,
+action-body statement or import, then `member_modifiers`, `implicit_parameters`,
+`constraint_body_authoring` and `state_action_authoring` for the member forms that use them,
+then `documentation_authoring` and `comment_authoring`; and last `edit_documents` to name a
+document. `EditResult.SaveAsync` and `EditedDocument.SaveAsync` write as
+[`Conversion.SaveAsync`](#converting-migrating-and-saving) does: whole, through a temporary
+file, and never over an existing file unless `SaveOptions.Overwrite` asks.
+
 ## Values
 
 `Value` is an immutable value the service evaluates, or one sent to it: one nested sealed
@@ -800,9 +886,10 @@ and the tests hold it to the schema and the [conformance scenarios](../../confor
   value gates.
 - `values` and `edits`: every arm of `Value` and of `EditOperation`, with the capability a
   request holding the arm needs and, for a `Value`, the one under which the service sends it,
-  and once implemented the test that proves the arm. Every `Value` arm is implemented, and
-  `sendGateOrder` is the order the service checks the value capabilities in, which a test
-  reads from the service's source.
+  and once implemented the test that proves the arm. Every `Value` and `EditOperation` arm is
+  implemented; `sendGateOrder` and `gateOrder` are the orders the service checks the value and
+  edit capabilities in, which tests read from the service's source along with the predicates
+  behind each edit capability.
 - `population`: response fields the service fills only under a capability.
 - `fields`: every field of every message an RPC reaches, `deferred`, or once mapped `typed`,
   `raw-only` or `unsupported` with its reason and the test that proves it. Each message lists
@@ -902,7 +989,7 @@ the report format, destination and filesystem error.
 
 Each RPC the API covers has an adapter, grouped by area beside the methods it calls
 (`ConnectionArea`, `ModelArea`, `ExecutionArea`, `VerificationArea`, `SamplingArea`, `ConversionArea`,
-`QueryDocsArea`). An adapter reads the
+`QueryDocsArea`, `EditingArea`). An adapter reads the
 decoded request as the arguments of the typed method, so the request the client sends is the
 one the scenario states, and renders what the method returned, with
 [`Rendering`](src/OpenMBEE.OpenSysML.Conformance/Rendering.cs) reading only public types, back
@@ -910,12 +997,13 @@ into the response. The values a request sends are read into public `Value`s by p
 constructors, so the typed call writes them itself. ExecuteAction and ExecuteState call the
 explore method when the schedule explores, and RunAnalysis when its schedule or engine does,
 and the run method otherwise; RunRuns calls the action or the Monte Carlo case method by which
-the request names. A failure the service reported in band is rendered as the
+the request names. ApplyEdits reads each operation as the `Edit` of its arm, an empty field
+an optional part left null. A failure the service reported in band is rendered as the
 response's `error`, failure reason and diagnostics, with what the exception kept of the answer:
 a run's clock and trace, a check's or an analysis's partial result, a verification's objects,
 verification verdicts and engine standing, the table runs made, the run, sweep or sample a
-recording made, with its own failure where it reported one, and a conversion's or migration's
-formats, notice and diagnostics; a refusal keeps the service's status and message, as does a
+recording made, with its own failure where it reported one, a conversion's or migration's
+formats, notice and diagnostics, and a refused edit's kind, diagnostics and referrers; a refusal keeps the service's status and message, as does a
 document query or document the model declares wrongly, which the API raises as a
 `QueryException`; a
 capability the client refuses for before sending is `UNIMPLEMENTED`, which the service would
@@ -935,8 +1023,8 @@ skip, the run says so. Per protocol, of 194 scenarios:
 
 | Configuration | ran | passed | skipped as uncovered | skipped as unexpressible |
 | --- | --: | --: | --: | --: |
-| default | 151 | 151 | 37 | 6 |
-| `strict_conformance` and `oslc_query` withheld | 150 | 150 | 37 | 6 |
+| default | 175 | 175 | 13 | 6 |
+| `strict_conformance` and `oslc_query` withheld | 174 | 174 | 13 | 6 |
 
 The unexpressible requests send what the public types refuse to hold or send:
 `parse/naming_no_source_is_invalid` names no source, which the API always does; three
@@ -952,8 +1040,8 @@ test asserts it fails the run:
 | `-mutate` | What it does to every answer | Scenarios that fail, per protocol |
 | --- | --- | --: |
 | `perturb-reals` | Moves each real by a millionth | 27 |
-| `truncate-lists` | Drops the last entry of each list | 51 |
-| `rewrite-strings` | Replaces each non-empty string but no map key | 77 |
+| `truncate-lists` | Drops the last entry of each list | 69 |
+| `rewrite-strings` | Replaces each non-empty string but no map key | 96 |
 
 `make conformance-dotnet-check` also runs the reference runner against the same binary, both
 with `-v`, and `dotnet-gates.py conformance-check` holds the two runs together: both reports

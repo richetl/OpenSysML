@@ -106,6 +106,14 @@ public sealed partial class Model : IAsyncDisposable
     /// <summary>Whether disposing this model closes its connection, as for a model from <see cref="OpenSysMLClient"/>.</summary>
     public bool OwnsConnection => ownsConnection;
 
+    /// <summary>How many documents the model has, as its parse said; null for a model named by hash or answered by a call that does not say.</summary>
+    internal int? DocumentCount => parseMethod switch
+    {
+        Connection.ParseFileMethod => 1,
+        Connection.ParseSourcesMethod => Documents.Count,
+        _ => null,
+    };
+
     /// <summary>Requires a parse without errors, for chaining onto a load.</summary>
     /// <returns>This model.</returns>
     /// <exception cref="ModelErrorsException">The parse reported errors, which the exception carries.</exception>

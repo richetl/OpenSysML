@@ -644,6 +644,48 @@ internal static class Rendering
         };
     }
 
+    /// <summary>
+    /// The notation a batch of edits produced, with what each edit changed and every document it rewrote; a model of
+    /// several documents answers no content.
+    /// </summary>
+    internal static Wire.ApplyEditsResponse EditResult(EditResult result)
+    {
+        ArgumentNullException.ThrowIfNull(result);
+        return new Wire.ApplyEditsResponse
+        {
+            Content = result.Content ?? string.Empty,
+            Applied =
+            {
+                result.Applied.Select(applied => new Wire.AppliedEdit
+                {
+                    OperationIndex = applied.OperationIndex,
+                    Target = applied.Target,
+                    Offset = applied.Offset,
+                    Length = applied.Length,
+                    OldText = applied.OldText,
+                    NewText = applied.NewText,
+                    Document = applied.Document ?? string.Empty,
+                }),
+            },
+            Diagnostics = { Diagnostics(result.Diagnostics) },
+            Documents = { result.Documents.Select(document => new Wire.EditedDocument { Name = document.Name, Content = document.Content }) },
+        };
+    }
+
+    /// <summary>A refused batch of edits, in band: why, its kind, its diagnostics and the declarations referring to its target.</summary>
+    internal static Wire.ApplyEditsResponse EditResult(EditException failure)
+    {
+        ArgumentNullException.ThrowIfNull(failure);
+        return new Wire.ApplyEditsResponse
+        {
+            Error = failure.Message,
+            Failure = (Wire.EditFailure)(int)failure.Failure,
+            Diagnostics = { Diagnostics(failure.Diagnostics) },
+            ReferringElements = { failure.ReferringElements },
+            Referrers = { failure.Referrers.Select(referrer => new Wire.Referrer { Name = referrer.Name, Document = referrer.Document }) },
+        };
+    }
+
     /// <summary>What a query selected, every element with its id, type and reported properties.</summary>
     internal static Wire.QueryResponse QueryResult(QueryResult result)
     {

@@ -479,12 +479,13 @@
       "request": "sysml.ApplyEditsRequest",
       "response": "sysml.ApplyEditsResponse",
       "methods": [
-        "Model.Edit().ApplyAsync"
+        "Model.Edit().ApplyAsync",
+        "Model.ApplyEditsAsync"
       ],
       "input": "Edit list, EditOptions",
       "result": "EditResult",
       "area": "editing",
-      "status": "deferred",
+      "status": "implemented",
       "gates": [
         {
           "capability": "apply_edits",
@@ -522,6 +523,18 @@
         "apply_edits/adds_reference_assertions_and_calc_case_result_bodies",
         "apply_edits/no_operations_is_refused_rather_than_echoing_the_source",
         "apply_edits/a_verification_objective_and_metadata_are_authored"
+      ],
+      "tests": [
+        "ModelEditingTests.EveryArmAndEveryOptionIsSentAsTheSchemaWritesIt",
+        "ModelEditingTests.TheBatchIsJudgedWholeInTheServicesOrderAndANamedDocumentLast",
+        "ModelEditingTests.AStatementNestedAtAnyDepthIsJudgedAndSentAsDeepAsTheServiceReads",
+        "ModelEditingTests.ASingleDocumentModelAnswersItsNotationInContentAndInItsOneDocument",
+        "ModelEditingTests.AModelOfSeveralDocumentsAnswersItsDocumentsAloneAndAHashedModelIsReadFromTheAnswer",
+        "ModelEditingTests.ARefusalIsAnEditExceptionKeepingItsKindDiagnosticsAndReferrers",
+        "ModelEditingTests.AMalformedAnswerIsATransportFailure",
+        "ServiceEditingTests.EveryArmIsWrittenAsTheServiceWritesItAndTheEditedModelReadsBack",
+        "ServiceEditingTests.AModelOfSeveralDocumentsIsEditedAsOneAndARefusalNamesItsReferrers",
+        "ServiceEditingTests.AServiceWithoutDocumentsOrAuthoringAnswersAsItAdvertisesAndIsAskedNothingItCannotDo"
       ]
     },
     {
@@ -1566,17 +1579,19 @@
     "arms": {
       "set_value": {
         "edit": "SetValue",
-        "status": "deferred",
-        "gates": []
+        "status": "implemented",
+        "gates": [],
+        "test": "ModelEditingTests.EveryArmAndEveryOptionIsSentAsTheSchemaWritesIt"
       },
       "rename": {
         "edit": "Rename",
-        "status": "deferred",
-        "gates": []
+        "status": "implemented",
+        "gates": [],
+        "test": "ModelEditingTests.EveryArmAndEveryOptionIsSentAsTheSchemaWritesIt"
       },
       "add_member": {
         "edit": "AddMember",
-        "status": "deferred",
+        "status": "implemented",
         "gates": [
           {
             "capability": "authoring",
@@ -1617,31 +1632,34 @@
             "field": "doc",
             "when": "doc is set"
           }
-        ]
+        ],
+        "test": "ModelEditingTests.EveryArmAndEveryOptionIsSentAsTheSchemaWritesIt"
       },
       "delete": {
         "edit": "Delete",
-        "status": "deferred",
+        "status": "implemented",
         "gates": [
           {
             "capability": "authoring",
             "when": "always"
           }
-        ]
+        ],
+        "test": "ModelEditingTests.EveryArmAndEveryOptionIsSentAsTheSchemaWritesIt"
       },
       "move": {
         "edit": "Move",
-        "status": "deferred",
+        "status": "implemented",
         "gates": [
           {
             "capability": "authoring",
             "when": "always"
           }
-        ]
+        ],
+        "test": "ModelEditingTests.EveryArmAndEveryOptionIsSentAsTheSchemaWritesIt"
       },
       "add_connection": {
         "edit": "AddConnection",
-        "status": "deferred",
+        "status": "implemented",
         "gates": [
           {
             "capability": "authoring",
@@ -1651,11 +1669,12 @@
             "capability": "connection_authoring",
             "when": "always"
           }
-        ]
+        ],
+        "test": "ModelEditingTests.EveryArmAndEveryOptionIsSentAsTheSchemaWritesIt"
       },
       "add_satisfy": {
         "edit": "AddSatisfy",
-        "status": "deferred",
+        "status": "implemented",
         "gates": [
           {
             "capability": "authoring",
@@ -1665,11 +1684,12 @@
             "capability": "satisfy_authoring",
             "when": "always"
           }
-        ]
+        ],
+        "test": "ModelEditingTests.EveryArmAndEveryOptionIsSentAsTheSchemaWritesIt"
       },
       "add_requirement_constraint": {
         "edit": "AddRequirementConstraint",
-        "status": "deferred",
+        "status": "implemented",
         "gates": [
           {
             "capability": "authoring",
@@ -1679,11 +1699,12 @@
             "capability": "requirement_constraint_authoring",
             "when": "always"
           }
-        ]
+        ],
+        "test": "ModelEditingTests.EveryArmAndEveryOptionIsSentAsTheSchemaWritesIt"
       },
       "add_transition": {
         "edit": "AddTransition",
-        "status": "deferred",
+        "status": "implemented",
         "gates": [
           {
             "capability": "authoring",
@@ -1693,11 +1714,12 @@
             "capability": "transition_authoring",
             "when": "always"
           }
-        ]
+        ],
+        "test": "ModelEditingTests.EveryArmAndEveryOptionIsSentAsTheSchemaWritesIt"
       },
       "add_import": {
         "edit": "AddImport",
-        "status": "deferred",
+        "status": "implemented",
         "gates": [
           {
             "capability": "authoring",
@@ -1707,11 +1729,12 @@
             "capability": "import_authoring",
             "when": "always"
           }
-        ]
+        ],
+        "test": "ModelEditingTests.EveryArmAndEveryOptionIsSentAsTheSchemaWritesIt"
       },
       "add_documentation": {
         "edit": "AddDocumentation",
-        "status": "deferred",
+        "status": "implemented",
         "gates": [
           {
             "capability": "authoring",
@@ -1721,11 +1744,12 @@
             "capability": "documentation_authoring",
             "when": "always"
           }
-        ]
+        ],
+        "test": "ModelEditingTests.EveryArmAndEveryOptionIsSentAsTheSchemaWritesIt"
       },
       "add_verify": {
         "edit": "AddVerify",
-        "status": "deferred",
+        "status": "implemented",
         "gates": [
           {
             "capability": "authoring",
@@ -1735,11 +1759,12 @@
             "capability": "verification_objective_authoring",
             "when": "always"
           }
-        ]
+        ],
+        "test": "ModelEditingTests.EveryArmAndEveryOptionIsSentAsTheSchemaWritesIt"
       },
       "add_metadata": {
         "edit": "AddMetadata",
-        "status": "deferred",
+        "status": "implemented",
         "gates": [
           {
             "capability": "authoring",
@@ -1749,11 +1774,12 @@
             "capability": "metadata_authoring",
             "when": "always"
           }
-        ]
+        ],
+        "test": "ModelEditingTests.EveryArmAndEveryOptionIsSentAsTheSchemaWritesIt"
       },
       "add_sequence": {
         "edit": "AddSequence",
-        "status": "deferred",
+        "status": "implemented",
         "gates": [
           {
             "capability": "authoring",
@@ -1768,11 +1794,12 @@
             "field": "body",
             "when": "this step or one nested in body or else_body sets condition, value, target, via, until, multiplicity or parameter; has a body or else_body; has keyword if or else; has a member_kind without a keyword; or has member_kind accept, send, assign, if, while, loop, for or terminate"
           }
-        ]
+        ],
+        "test": "ModelEditingTests.EveryArmAndEveryOptionIsSentAsTheSchemaWritesIt"
       },
       "add_metadata_prefix": {
         "edit": "AddMetadataPrefix",
-        "status": "deferred",
+        "status": "implemented",
         "gates": [
           {
             "capability": "authoring",
@@ -1782,11 +1809,12 @@
             "capability": "metadata_prefix_authoring",
             "when": "always"
           }
-        ]
+        ],
+        "test": "ModelEditingTests.EveryArmAndEveryOptionIsSentAsTheSchemaWritesIt"
       },
       "add_comment": {
         "edit": "AddComment",
-        "status": "deferred",
+        "status": "implemented",
         "gates": [
           {
             "capability": "authoring",
@@ -1796,11 +1824,12 @@
             "capability": "comment_authoring",
             "when": "always"
           }
-        ]
+        ],
+        "test": "ModelEditingTests.EveryArmAndEveryOptionIsSentAsTheSchemaWritesIt"
       },
       "add_note": {
         "edit": "AddNote",
-        "status": "deferred",
+        "status": "implemented",
         "gates": [
           {
             "capability": "authoring",
@@ -1810,7 +1839,8 @@
             "capability": "comment_authoring",
             "when": "always"
           }
-        ]
+        ],
+        "test": "ModelEditingTests.EveryArmAndEveryOptionIsSentAsTheSchemaWritesIt"
       }
     }
   },
@@ -1866,7 +1896,8 @@
   "fields": {
     "sysml.AddCommentEdit": [
       {
-        "status": "deferred",
+        "status": "typed",
+        "test": "ModelEditingTests.EveryArmAndEveryOptionIsSentAsTheSchemaWritesIt",
         "fields": [
           "owner",
           "body",
@@ -1878,7 +1909,8 @@
     ],
     "sysml.AddConnectionEdit": [
       {
-        "status": "deferred",
+        "status": "typed",
+        "test": "ModelEditingTests.EveryArmAndEveryOptionIsSentAsTheSchemaWritesIt",
         "fields": [
           "owner",
           "kind",
@@ -1891,7 +1923,8 @@
     ],
     "sysml.AddDocumentationEdit": [
       {
-        "status": "deferred",
+        "status": "typed",
+        "test": "ModelEditingTests.EveryArmAndEveryOptionIsSentAsTheSchemaWritesIt",
         "fields": [
           "target",
           "body",
@@ -1903,7 +1936,8 @@
     ],
     "sysml.AddImportEdit": [
       {
-        "status": "deferred",
+        "status": "typed",
+        "test": "ModelEditingTests.EveryArmAndEveryOptionIsSentAsTheSchemaWritesIt",
         "fields": [
           "owner",
           "visibility",
@@ -1916,7 +1950,8 @@
     ],
     "sysml.AddMemberEdit": [
       {
-        "status": "deferred",
+        "status": "typed",
+        "test": "ModelEditingTests.EveryArmAndEveryOptionIsSentAsTheSchemaWritesIt",
         "fields": [
           "owner",
           "kind",
@@ -1937,7 +1972,8 @@
     ],
     "sysml.AddMetadataEdit": [
       {
-        "status": "deferred",
+        "status": "typed",
+        "test": "ModelEditingTests.EveryArmAndEveryOptionIsSentAsTheSchemaWritesIt",
         "fields": [
           "owner",
           "metadata_type",
@@ -1950,7 +1986,8 @@
     ],
     "sysml.AddMetadataPrefixEdit": [
       {
-        "status": "deferred",
+        "status": "typed",
+        "test": "ModelEditingTests.EveryArmAndEveryOptionIsSentAsTheSchemaWritesIt",
         "fields": [
           "target",
           "metadata_type"
@@ -1959,7 +1996,8 @@
     ],
     "sysml.AddNoteEdit": [
       {
-        "status": "deferred",
+        "status": "typed",
+        "test": "ModelEditingTests.EveryArmAndEveryOptionIsSentAsTheSchemaWritesIt",
         "fields": [
           "target",
           "text"
@@ -1968,7 +2006,8 @@
     ],
     "sysml.AddRequirementConstraintEdit": [
       {
-        "status": "deferred",
+        "status": "typed",
+        "test": "ModelEditingTests.EveryArmAndEveryOptionIsSentAsTheSchemaWritesIt",
         "fields": [
           "owner",
           "kind",
@@ -1979,7 +2018,8 @@
     ],
     "sysml.AddSatisfyEdit": [
       {
-        "status": "deferred",
+        "status": "typed",
+        "test": "ModelEditingTests.EveryArmAndEveryOptionIsSentAsTheSchemaWritesIt",
         "fields": [
           "owner",
           "requirement",
@@ -1991,7 +2031,8 @@
     ],
     "sysml.AddSequenceEdit": [
       {
-        "status": "deferred",
+        "status": "typed",
+        "test": "ModelEditingTests.EveryArmAndEveryOptionIsSentAsTheSchemaWritesIt",
         "fields": [
           "owner",
           "keyword",
@@ -2014,7 +2055,8 @@
     ],
     "sysml.AddTransitionEdit": [
       {
-        "status": "deferred",
+        "status": "typed",
+        "test": "ModelEditingTests.EveryArmAndEveryOptionIsSentAsTheSchemaWritesIt",
         "fields": [
           "owner",
           "name",
@@ -2029,7 +2071,8 @@
     ],
     "sysml.AddVerifyEdit": [
       {
-        "status": "deferred",
+        "status": "typed",
+        "test": "ModelEditingTests.EveryArmAndEveryOptionIsSentAsTheSchemaWritesIt",
         "fields": [
           "owner",
           "requirement"
@@ -2038,7 +2081,8 @@
     ],
     "sysml.AppliedEdit": [
       {
-        "status": "deferred",
+        "status": "typed",
+        "test": "ModelEditingTests.ASingleDocumentModelAnswersItsNotationInContentAndInItsOneDocument",
         "fields": [
           "operation_index",
           "target",
@@ -2052,7 +2096,8 @@
     ],
     "sysml.ApplyEditsRequest": [
       {
-        "status": "deferred",
+        "status": "typed",
+        "test": "ModelEditingTests.EveryArmAndEveryOptionIsSentAsTheSchemaWritesIt",
         "fields": [
           "model_hash",
           "operations",
@@ -2063,15 +2108,22 @@
     ],
     "sysml.ApplyEditsResponse": [
       {
-        "status": "deferred",
+        "status": "typed",
+        "test": "ModelEditingTests.ASingleDocumentModelAnswersItsNotationInContentAndInItsOneDocument",
         "fields": [
           "content",
           "applied",
+          "diagnostics",
+          "documents"
+        ]
+      },
+      {
+        "status": "typed",
+        "test": "ModelEditingTests.ARefusalIsAnEditExceptionKeepingItsKindDiagnosticsAndReferrers",
+        "fields": [
           "error",
           "failure",
-          "diagnostics",
           "referring_elements",
-          "documents",
           "referrers"
         ]
       }
@@ -2448,7 +2500,8 @@
     ],
     "sysml.DeleteEdit": [
       {
-        "status": "deferred",
+        "status": "typed",
+        "test": "ModelEditingTests.EveryArmAndEveryOptionIsSentAsTheSchemaWritesIt",
         "fields": [
           "target",
           "cascade"
@@ -2615,7 +2668,8 @@
     ],
     "sysml.EditOperation": [
       {
-        "status": "deferred",
+        "status": "typed",
+        "test": "ModelEditingTests.EveryArmAndEveryOptionIsSentAsTheSchemaWritesIt",
         "fields": [
           "set_value",
           "rename",
@@ -3025,7 +3079,8 @@
     ],
     "sysml.MetadataFeatureValue": [
       {
-        "status": "deferred",
+        "status": "typed",
+        "test": "ModelEditingTests.EveryArmAndEveryOptionIsSentAsTheSchemaWritesIt",
         "fields": [
           "feature",
           "value"
@@ -3126,7 +3181,8 @@
     ],
     "sysml.MoveEdit": [
       {
-        "status": "deferred",
+        "status": "typed",
+        "test": "ModelEditingTests.EveryArmAndEveryOptionIsSentAsTheSchemaWritesIt",
         "fields": [
           "target",
           "owner"
@@ -3406,7 +3462,8 @@
     ],
     "sysml.Referrer": [
       {
-        "status": "deferred",
+        "status": "typed",
+        "test": "ModelEditingTests.ARefusalIsAnEditExceptionKeepingItsKindDiagnosticsAndReferrers",
         "fields": [
           "name",
           "document"
@@ -3415,7 +3472,8 @@
     ],
     "sysml.RenameEdit": [
       {
-        "status": "deferred",
+        "status": "typed",
+        "test": "ModelEditingTests.EveryArmAndEveryOptionIsSentAsTheSchemaWritesIt",
         "fields": [
           "target",
           "new_name"
@@ -3906,7 +3964,8 @@
     ],
     "sysml.SetValueEdit": [
       {
-        "status": "deferred",
+        "status": "typed",
+        "test": "ModelEditingTests.EveryArmAndEveryOptionIsSentAsTheSchemaWritesIt",
         "fields": [
           "target",
           "value"

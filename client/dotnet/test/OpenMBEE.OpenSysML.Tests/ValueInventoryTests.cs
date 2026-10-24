@@ -183,7 +183,7 @@ public sealed partial class ValueInventoryTests
     }
 
     // A consumer imports only what the library makes visible; importing all of it shows why a constructor is unusable.
-    private static List<string> Errors(string source, MetadataImportOptions imported = MetadataImportOptions.Public)
+    internal static List<string> Errors(string source, MetadataImportOptions imported = MetadataImportOptions.Public)
     {
         var library = typeof(Value).Assembly.Location;
         var references = ((string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")!)
