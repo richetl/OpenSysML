@@ -367,13 +367,16 @@
       "response": "sysml.ConvertResponse",
       "methods": [
         "Connection.ConvertAsync",
+        "Model.ConvertAsync",
         "Model.ToNotationAsync",
-        "Model.ToTurtleAsync"
+        "Model.ToTurtleAsync",
+        "Model.ToApiJsonAsync",
+        "Model.SaveAsync"
       ],
-      "input": "ConvertSource, ConvertOptions",
-      "result": "Conversion",
+      "input": "ConvertSource (file, inline content or model hash), target format, ConvertOptions",
+      "result": "Conversion, which SaveAsync writes under SaveOptions",
       "area": "conversion",
-      "status": "deferred",
+      "status": "implemented",
       "gates": [
         {
           "capability": "convert",
@@ -403,6 +406,23 @@
         "convert/an_empty_target_format_is_invalid",
         "convert/a_syntax_error_refuses_the_conversion_unless_tolerated",
         "convert/a_sysml_v1_model_is_migrated_not_converted"
+      ],
+      "tests": [
+        "ModelConversionTests.ConvertSendsEverySourceAndOptionAndReadsEveryField",
+        "ModelConversionTests.TheModelHelpersConvertTheParsedSourceToTheFormatTheyName",
+        "ModelConversionTests.AConversionNotMadeIsAConversionExceptionKeepingItsFormatsAndAMalformedAnswerIsRefused",
+        "ModelConversionTests.NotFoundIsTheFilesForAFileAndTheModelsForAHash",
+        "ModelConversionTests.TheWrongVerbIsSentAndRefusedByTheServiceNamingTheOtherOne",
+        "ModelConversionTests.ConvertGatesAreCheckedInTheServicesOrderBeforeAnythingIsSent",
+        "ModelConversionTests.SavingAModelConvertsItToTheFormatItsExtensionNamesAndWritesItWhole",
+        "SafeWriteTests.ASaveWritesTheContentWholeAndRefusesAnExistingFileUnlessOverwriting",
+        "SafeWriteTests.ACancelledOrFailedSaveLeavesNoPartialFileAndTheExistingOneAsItWas",
+        "ServiceConversionTests.NotationConvertsToEveryFormatAndBackFromEverySource",
+        "ServiceConversionTests.IdsDocumentsTheCompactFormAndTheChecksDiagnosticsAreWhatTheServiceWrites",
+        "ServiceConversionTests.ASyntaxErrorFailsTheConversionUnlessToleratedAndAMappingRefusalIsInBand",
+        "ServiceConversionTests.TheWrongVerbAMissingFileAndAnEvictedModelAreRefused",
+        "ServiceConversionTests.SavingAModelWritesWhatItConvertsTo",
+        "ServiceConversionTests.AWithheldCapabilityIsRefusedBeforeAnythingIsSent"
       ]
     },
     {
@@ -412,10 +432,10 @@
       "methods": [
         "Connection.MigrateAsync"
       ],
-      "input": "MigrateSource, MigrateOptions",
-      "result": "Migration",
+      "input": "MigrateSource (fully-qualified file path or inline bytes), target format, MigrateOptions",
+      "result": "Migration, which WriteAsync writes with its files under SaveOptions",
       "area": "conversion",
-      "status": "deferred",
+      "status": "implemented",
       "gates": [
         {
           "capability": "migrate",
@@ -430,6 +450,28 @@
         "migrate/a_v2_model_is_converted_not_migrated",
         "migrate/inline_content_must_name_its_form",
         "migrate/a_v1_model_is_never_a_target"
+      ],
+      "tests": [
+        "ModelConversionTests.MigrationSourcesRequireFullyQualifiedPathsBeforeAnythingIsSent",
+        "ModelConversionTests.MigrateSendsEverySourceAndOptionAndReadsEveryField",
+        "ModelConversionTests.AMigrationNotMadeIsAMigrationExceptionAndAMalformedAnswerIsRefused",
+        "ModelConversionTests.NotFoundIsTheFilesForAFileAndTheModelsForAHash",
+        "ModelConversionTests.TheWrongVerbIsSentAndRefusedByTheServiceNamingTheOtherOne",
+        "ModelConversionTests.ConvertGatesAreCheckedInTheServicesOrderBeforeAnythingIsSent",
+        "SafeWriteTests.AMigrationWritesItsFilesBesideTheModelCreatingTheirDirectories",
+        "SafeWriteTests.AMigrationNeverReplacesItsV1ModelEvenWhenOverwriting",
+        "SafeWriteTests.UnicodeEquivalentSourceNamesAreGuardedOnMacOSAndDistinctElsewhere",
+        "SafeWriteTests.UnicodeEquivalentDestinationsAreRefusedOnMacOSAndDistinctElsewhere",
+        "SafeWriteTests.AMigrationFileThatIsNotAPortableRelativePathIsRefusedAndNothingIsWritten",
+        "SafeWriteTests.FilesThatWouldLandOnOneAnotherOrOnTheModelAreRefused",
+        "SafeWriteTests.AMigrationFileIsNeverWrittenThroughASymbolicLink",
+        "SafeWriteTests.AFailedMigrationWriteRemovesWhatItCreatedAndKeepsWhatWasThere",
+        "ConformanceAdapterTests.InvalidOrNoncanonicalMigrationFilePathsAreUnexpressibleWithoutChangingTheRequest",
+        "ServiceConversionTests.TheWrongVerbAMissingFileAndAnEvictedModelAreRefused",
+        "ServiceConversionTests.AV1ModelIsMigratedWithEveryElementAccountedFor",
+        "ServiceConversionTests.AnArchivesImageFilesAreWrittenBesideTheMigratedModelAndTheV1ModelIsNeverReplaced",
+        "ServiceConversionTests.ALayoutLaysTheViewsOutAndStrictnessWritesNoExtension",
+        "ServiceConversionTests.AWithheldCapabilityIsRefusedBeforeAnythingIsSent"
       ]
     },
     {
@@ -2343,27 +2385,84 @@
       "composite": "deferred"
     },
     "sysml.ConvertRequest": {
-      "file_path": "deferred",
-      "content": "deferred",
-      "model_hash": "deferred",
-      "from_format": "deferred",
-      "to_format": "deferred",
-      "tolerate_syntax_errors": "deferred",
-      "id_form": "deferred",
-      "documents": "deferred",
-      "compact": "deferred",
-      "omit_derived": "deferred",
-      "keep_derived": "deferred",
-      "include_check_diagnostics": "deferred"
+      "file_path": {
+        "status": "typed",
+        "test": "ModelConversionTests.ConvertSendsEverySourceAndOptionAndReadsEveryField"
+      },
+      "content": {
+        "status": "typed",
+        "test": "ModelConversionTests.ConvertSendsEverySourceAndOptionAndReadsEveryField"
+      },
+      "model_hash": {
+        "status": "typed",
+        "test": "ModelConversionTests.ConvertSendsEverySourceAndOptionAndReadsEveryField"
+      },
+      "from_format": {
+        "status": "typed",
+        "test": "ModelConversionTests.ConvertSendsEverySourceAndOptionAndReadsEveryField"
+      },
+      "to_format": {
+        "status": "typed",
+        "test": "ModelConversionTests.ConvertSendsEverySourceAndOptionAndReadsEveryField"
+      },
+      "tolerate_syntax_errors": {
+        "status": "typed",
+        "test": "ModelConversionTests.ConvertSendsEverySourceAndOptionAndReadsEveryField"
+      },
+      "id_form": {
+        "status": "typed",
+        "test": "ModelConversionTests.ConvertSendsEverySourceAndOptionAndReadsEveryField"
+      },
+      "documents": {
+        "status": "typed",
+        "test": "ModelConversionTests.ConvertSendsEverySourceAndOptionAndReadsEveryField"
+      },
+      "compact": {
+        "status": "typed",
+        "test": "ModelConversionTests.ConvertSendsEverySourceAndOptionAndReadsEveryField"
+      },
+      "omit_derived": {
+        "status": "typed",
+        "test": "ModelConversionTests.ConvertSendsEverySourceAndOptionAndReadsEveryField"
+      },
+      "keep_derived": {
+        "status": "typed",
+        "test": "ModelConversionTests.ConvertSendsEverySourceAndOptionAndReadsEveryField"
+      },
+      "include_check_diagnostics": {
+        "status": "typed",
+        "test": "ModelConversionTests.ConvertSendsEverySourceAndOptionAndReadsEveryField"
+      }
     },
     "sysml.ConvertResponse": {
-      "content": "deferred",
-      "from_format": "deferred",
-      "to_format": "deferred",
-      "error": "deferred",
-      "diagnostics": "deferred",
-      "experimental": "deferred",
-      "experimental_notice": "deferred"
+      "content": {
+        "status": "typed",
+        "test": "ModelConversionTests.ConvertSendsEverySourceAndOptionAndReadsEveryField"
+      },
+      "from_format": {
+        "status": "typed",
+        "test": "ModelConversionTests.ConvertSendsEverySourceAndOptionAndReadsEveryField"
+      },
+      "to_format": {
+        "status": "typed",
+        "test": "ModelConversionTests.ConvertSendsEverySourceAndOptionAndReadsEveryField"
+      },
+      "error": {
+        "status": "typed",
+        "test": "ModelConversionTests.AConversionNotMadeIsAConversionExceptionKeepingItsFormatsAndAMalformedAnswerIsRefused"
+      },
+      "diagnostics": {
+        "status": "typed",
+        "test": "ModelConversionTests.ConvertSendsEverySourceAndOptionAndReadsEveryField"
+      },
+      "experimental": {
+        "status": "typed",
+        "test": "ModelConversionTests.ConvertSendsEverySourceAndOptionAndReadsEveryField"
+      },
+      "experimental_notice": {
+        "status": "typed",
+        "test": "ModelConversionTests.ConvertSendsEverySourceAndOptionAndReadsEveryField"
+      }
     },
     "sysml.DataImport": {
       "name": "deferred",
@@ -3175,50 +3274,158 @@
       }
     },
     "sysml.MigrateRequest": {
-      "file_path": "deferred",
-      "content": "deferred",
-      "from_format": "deferred",
-      "to_format": "deferred",
-      "report": "deferred",
-      "results": "deferred",
-      "layout_path": "deferred",
-      "layout_content": "deferred",
-      "image_base_url": "deferred",
-      "strict": "deferred"
+      "file_path": {
+        "status": "typed",
+        "test": "ModelConversionTests.MigrateSendsEverySourceAndOptionAndReadsEveryField"
+      },
+      "content": {
+        "status": "typed",
+        "test": "ModelConversionTests.MigrateSendsEverySourceAndOptionAndReadsEveryField"
+      },
+      "from_format": {
+        "status": "typed",
+        "test": "ModelConversionTests.MigrateSendsEverySourceAndOptionAndReadsEveryField"
+      },
+      "to_format": {
+        "status": "typed",
+        "test": "ModelConversionTests.MigrateSendsEverySourceAndOptionAndReadsEveryField"
+      },
+      "report": {
+        "status": "typed",
+        "test": "ModelConversionTests.MigrateSendsEverySourceAndOptionAndReadsEveryField"
+      },
+      "results": {
+        "status": "typed",
+        "test": "ModelConversionTests.MigrateSendsEverySourceAndOptionAndReadsEveryField"
+      },
+      "layout_path": {
+        "status": "typed",
+        "test": "ModelConversionTests.MigrateSendsEverySourceAndOptionAndReadsEveryField"
+      },
+      "layout_content": {
+        "status": "typed",
+        "test": "ModelConversionTests.MigrateSendsEverySourceAndOptionAndReadsEveryField"
+      },
+      "image_base_url": {
+        "status": "typed",
+        "test": "ModelConversionTests.MigrateSendsEverySourceAndOptionAndReadsEveryField"
+      },
+      "strict": {
+        "status": "typed",
+        "test": "ModelConversionTests.MigrateSendsEverySourceAndOptionAndReadsEveryField"
+      }
     },
     "sysml.MigrateResponse": {
-      "content": "deferred",
-      "from_format": "deferred",
-      "to_format": "deferred",
-      "error": "deferred",
-      "experimental": "deferred",
-      "experimental_notice": "deferred",
-      "report": "deferred",
-      "results": "deferred",
-      "files": "deferred"
+      "content": {
+        "status": "typed",
+        "test": "ModelConversionTests.MigrateSendsEverySourceAndOptionAndReadsEveryField"
+      },
+      "from_format": {
+        "status": "typed",
+        "test": "ModelConversionTests.MigrateSendsEverySourceAndOptionAndReadsEveryField"
+      },
+      "to_format": {
+        "status": "typed",
+        "test": "ModelConversionTests.MigrateSendsEverySourceAndOptionAndReadsEveryField"
+      },
+      "error": {
+        "status": "typed",
+        "test": "ModelConversionTests.AMigrationNotMadeIsAMigrationExceptionAndAMalformedAnswerIsRefused"
+      },
+      "experimental": {
+        "status": "typed",
+        "test": "ModelConversionTests.MigrateSendsEverySourceAndOptionAndReadsEveryField"
+      },
+      "experimental_notice": {
+        "status": "typed",
+        "test": "ModelConversionTests.MigrateSendsEverySourceAndOptionAndReadsEveryField"
+      },
+      "report": {
+        "status": "typed",
+        "test": "ModelConversionTests.MigrateSendsEverySourceAndOptionAndReadsEveryField"
+      },
+      "results": {
+        "status": "typed",
+        "test": "ModelConversionTests.MigrateSendsEverySourceAndOptionAndReadsEveryField"
+      },
+      "files": {
+        "status": "typed",
+        "test": "ModelConversionTests.MigrateSendsEverySourceAndOptionAndReadsEveryField"
+      }
     },
     "sysml.MigrationEntry": {
-      "id": "deferred",
-      "kind": "deferred",
-      "name": "deferred",
-      "target": "deferred",
-      "verdict": "deferred",
-      "note": "deferred"
+      "id": {
+        "status": "typed",
+        "test": "ModelConversionTests.MigrateSendsEverySourceAndOptionAndReadsEveryField"
+      },
+      "kind": {
+        "status": "typed",
+        "test": "ModelConversionTests.MigrateSendsEverySourceAndOptionAndReadsEveryField"
+      },
+      "name": {
+        "status": "typed",
+        "test": "ModelConversionTests.MigrateSendsEverySourceAndOptionAndReadsEveryField"
+      },
+      "target": {
+        "status": "typed",
+        "test": "ModelConversionTests.MigrateSendsEverySourceAndOptionAndReadsEveryField"
+      },
+      "verdict": {
+        "status": "typed",
+        "test": "ModelConversionTests.MigrateSendsEverySourceAndOptionAndReadsEveryField"
+      },
+      "note": {
+        "status": "typed",
+        "test": "ModelConversionTests.MigrateSendsEverySourceAndOptionAndReadsEveryField"
+      }
     },
     "sysml.MigrationFile": {
-      "path": "deferred",
-      "content": "deferred"
+      "path": {
+        "status": "typed",
+        "test": "ModelConversionTests.MigrateSendsEverySourceAndOptionAndReadsEveryField"
+      },
+      "content": {
+        "status": "typed",
+        "test": "ModelConversionTests.MigrateSendsEverySourceAndOptionAndReadsEveryField"
+      }
     },
     "sysml.MigrationReport": {
-      "source": "deferred",
-      "exporter": "deferred",
-      "summary": "deferred",
-      "mapped": "deferred",
-      "approximated": "deferred",
-      "unmapped": "deferred",
-      "skipped": "deferred",
-      "entries": "deferred",
-      "text": "deferred"
+      "source": {
+        "status": "typed",
+        "test": "ModelConversionTests.MigrateSendsEverySourceAndOptionAndReadsEveryField"
+      },
+      "exporter": {
+        "status": "typed",
+        "test": "ModelConversionTests.MigrateSendsEverySourceAndOptionAndReadsEveryField"
+      },
+      "summary": {
+        "status": "typed",
+        "test": "ModelConversionTests.MigrateSendsEverySourceAndOptionAndReadsEveryField"
+      },
+      "mapped": {
+        "status": "typed",
+        "test": "ModelConversionTests.MigrateSendsEverySourceAndOptionAndReadsEveryField"
+      },
+      "approximated": {
+        "status": "typed",
+        "test": "ModelConversionTests.MigrateSendsEverySourceAndOptionAndReadsEveryField"
+      },
+      "unmapped": {
+        "status": "typed",
+        "test": "ModelConversionTests.MigrateSendsEverySourceAndOptionAndReadsEveryField"
+      },
+      "skipped": {
+        "status": "typed",
+        "test": "ModelConversionTests.MigrateSendsEverySourceAndOptionAndReadsEveryField"
+      },
+      "entries": {
+        "status": "typed",
+        "test": "ModelConversionTests.MigrateSendsEverySourceAndOptionAndReadsEveryField"
+      },
+      "text": {
+        "status": "typed",
+        "test": "ModelConversionTests.MigrateSendsEverySourceAndOptionAndReadsEveryField"
+      }
     },
     "sysml.MoveEdit": {
       "target": "deferred",

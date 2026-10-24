@@ -13,12 +13,15 @@ of this repository and consumed by `ProjectReference`. It is not published to Nu
 > machines once or over every order of their choice points, and a search of every schedule
 > for a violated property. It [verifies and analyzes](#verifying-calculating-and-analyzing)
 > models: constraints, requirements, satisfactions and whole objects, calculations, analysis
-> cases, parameter sweeps and the engines that answer them. Its
-> [conformance runner](#conformance) runs the shared suite through that API. It does not
-> download a release of the service, and offers none of the other typed operations
-> (sampled runs, conversion, queries, documents, editing). The other clients
-> ([Python](../python/), [Java](../java/), [Rust](../rust/), [Node](../node/)) are the ones
-> to use for those today.
+> cases, parameter sweeps and the engines that answer them; it
+> [runs them repeatedly](#running-repeatedly-self-checking-and-recording), self-checks and
+> records runs. It [converts and migrates](#converting-migrating-and-saving) models, between
+> notation, Turtle and the API's JSON form and from SysML v1, and saves them to disk without
+> ever leaving a partial file. Its [conformance runner](#conformance) runs the shared suite
+> through that API. It does not download a release of the service, and offers none of the
+> other typed operations (queries, documents, views, editing, graph export, data import and
+> result comparison). The other clients ([Python](../python/), [Java](../java/),
+> [Rust](../rust/), [Node](../node/)) are the ones to use for those today.
 
 ## Requirements
 
@@ -498,6 +501,69 @@ analyze cleanly, their `GeneratedSource`. Before anything is sent the calls need
 each input, `engines` and `schedule_explore` for an engine, and the value capabilities of each
 argument and range endpoint, in the order the service checks them.
 
+## Converting, migrating and saving
+
+```csharp
+var model = (await connection.LoadAsync("vehicle.sysml")).RequireNoErrors();
+var turtle = await model.ToTurtleAsync();                                 // turtle.Experimental, turtle.ExperimentalNotice
+await model.SaveAsync("vehicle.json");                                    // the format the extension names: api-json
+var back = await connection.ConvertAsync(ConvertSource.Inline(turtle.Content), ConversionFormat.SysML,
+    new ConvertOptions { FromFormat = ConversionFormat.Turtle });
+var migration = await connection.MigrateAsync(MigrateSource.FromFile(Path.GetFullPath("Model.mdzip")), ConversionFormat.SysML,
+    new MigrateOptions { Report = true });
+await migration.WriteAsync("Model.sysml");                                // and its images, beside it
+```
+
+| Method | Answers |
+| --- | --- |
+| `Connection.ConvertAsync` | A `Conversion` of a `ConvertSource` (a file the service reads, inline content, or a model by hash): the `Content` in the target format, the `FromFormat` and `ToFormat` the service used, canonically named, the `Diagnostics` of tolerated syntax errors and of the semantic check when asked for, and whether the RDF mapping it went through is `Experimental`, with the service's `ExperimentalNotice` |
+| `Model.ConvertAsync`, `ToNotationAsync`, `ToTurtleAsync`, `ToApiJsonAsync` | The same for the source the model was parsed from, which a file edited since does not change |
+| `Model.SaveAsync` | The `Conversion` written to a file, in the format its extension names (`.sysml`, `.kerml`, `.ttl`, `.turtle`, `.json`) unless one is given |
+| `Connection.MigrateAsync` | A `Migration` of a SysML v1 `MigrateSource` (an `.xmi`, `.uml` or `.mdzip` file, or its bytes): the `Content`, its `Report` (the `Summary` and the `Mapped`, `Approximated`, `Unmapped` and `Skipped` counts always, every `MigrationEntry` and the report `Text` with `MigrateOptions.Report`), the tool's stored `Results` with `MigrateOptions.Results`, and the `Files`, such as images, the model refers to |
+
+Formats are named as `sysml -convert` names them; `ConversionFormat` holds the canonical
+names, and the service also takes its aliases (`text`, `turtle`, `rdf`, `json`). Which
+directions and options apply is the service's to judge, as is a SysML v1 source given to
+`ConvertAsync` or a v2 one to `MigrateAsync`: each is refused with `InvalidArgument`, naming
+the other call. `ConvertOptions` carries the source's `FromFormat` (inline content must name
+it), `TolerateSyntaxErrors`, the `IdForm` of derived ids in a graph, the `Documents` of a
+multi-document model to write, the `Compact` API JSON form with `OmitDerived` and
+`KeepDerived`, and `IncludeCheckDiagnostics`. `MigrateOptions` carries the v1 `FromFormat`,
+`Report`, `Results`, an MTIP layout as `LayoutPath` or `LayoutContent`, an `ImageBaseUrl` and
+`Strict`. A conversion the service answered but could not make, a source that would not parse
+or a mapping refusal, raises `ConversionException` with its diagnostics and formats; a v1
+model that could not be read raises `MigrationException`. An element with no v2 form is a
+report entry, never an exception. A file the service cannot read is a
+`ModelFileNotFoundException`, a model it no longer holds a `ModelNotFoundException`. Before
+anything is sent the calls need `convert`, then `convert_documents`, `convert_compact` and
+`convert_check_diagnostics` for the options that use them, in that order, or `migrate`.
+
+`MigrateSource.FromFile` requires a fully-qualified path in the client's path syntax, rejecting
+relative, invalid, and (on Windows) drive-relative or root-relative paths with `ArgumentException`.
+It normalizes the path once, then sends that exact path to the service and keeps it as
+`Migration.SourcePath` for source protection. The service's working directory is never inferred
+from the client's. Use `Path.GetFullPath` when deliberately naming a local file; for a service on
+another host, use an absolute path shared with the client or carry the document inline.
+`ConvertSource.FromFile` and migration layout paths still resolve relative to the service.
+
+Nothing is written to disk until `Conversion.SaveAsync`, `Model.SaveAsync` or
+`Migration.WriteAsync` is called, and those never replace an existing file unless
+`SaveOptions.Overwrite` asks. Each file is written whole to a temporary file beside it,
+flushed, and moved into place, so a failure or cancellation leaves no partial or temporary
+file and an existing destination as it was. A migration's `Files` are written below the
+model's directory, creating their directories, and the model last. Every destination is
+judged first, and `UnwritableException` refuses, with nothing written: an existing file
+without an overwrite, a directory, a symbolic link, a missing directory, the v1 model the
+migration came from (even with an overwrite), and a migration file whose path is absolute,
+names a drive or a share, holds `.`, `..` or a backslash, is not a portable file name (a
+control character, a Windows-invalid character such as `?`, `*`, `|`, `"`, `<` or `>`, a trailing
+dot or space, a Windows device name), lands on another file (compared without case on Windows
+and macOS, with Unicode normalization equivalence on macOS), or passes through a symbolic link
+or junction. The same comparisons protect the v1 source and detect file/directory collisions.
+A failed write removes the files and directories it created; several files are not published
+atomically, so a file an overwrite already replaced stays replaced, and a directory replaced
+by a link while the write is under way is not guarded against.
+
 ## Values
 
 `Value` is an immutable value the service evaluates, or one sent to it: one nested sealed
@@ -758,7 +824,7 @@ exits 1, including a JSON or JUnit destination that cannot be written: the diagn
 the report format, destination and filesystem error.
 
 Each RPC the API covers has an adapter, grouped by area beside the methods it calls
-(`ConnectionArea`, `ModelArea`, `ExecutionArea`, `VerificationArea`, `SamplingArea`). An adapter reads the
+(`ConnectionArea`, `ModelArea`, `ExecutionArea`, `VerificationArea`, `SamplingArea`, `ConversionArea`). An adapter reads the
 decoded request as the arguments of the typed method, so the request the client sends is the
 one the scenario states, and renders what the method returned, with
 [`Rendering`](src/OpenMBEE.OpenSysML.Conformance/Rendering.cs) reading only public types, back
@@ -769,8 +835,9 @@ and the run method otherwise; RunRuns calls the action or the Monte Carlo case m
 the request names. A failure the service reported in band is rendered as the
 response's `error`, failure reason and diagnostics, with what the exception kept of the answer:
 a run's clock and trace, a check's or an analysis's partial result, a verification's objects,
-verification verdicts and engine standing, the table runs made, and the run, sweep or sample a
-recording made, with its own failure where it reported one; a refusal keeps the service's status and message; a
+verification verdicts and engine standing, the table runs made, the run, sweep or sample a
+recording made, with its own failure where it reported one, and a conversion's or migration's
+formats, notice and diagnostics; a refusal keeps the service's status and message; a
 capability the client refuses for before sending is `UNIMPLEMENTED`, which the service would
 answer; a transport failure is its status. Nothing is sent raw: a test reads the runner's IL
 and fails on any call to `Connection.CallAsync` or the generated stub. A request setting a field
@@ -788,8 +855,8 @@ skip, the run says so. Per protocol, of 194 scenarios:
 
 | Configuration | ran | passed | skipped as uncovered | skipped as unexpressible |
 | --- | --: | --: | --: | --: |
-| default | 121 | 121 | 69 | 4 |
-| `strict_conformance` and `oslc_query` withheld | 120 | 120 | 69 | 4 |
+| default | 133 | 133 | 57 | 4 |
+| `strict_conformance` and `oslc_query` withheld | 132 | 132 | 57 | 4 |
 
 The unexpressible requests send what the public types refuse to hold or send:
 `parse/naming_no_source_is_invalid` names no source, which the API always does, and three
@@ -803,8 +870,8 @@ test asserts it fails the run:
 | `-mutate` | What it does to every answer | Scenarios that fail, per protocol |
 | --- | --- | --: |
 | `perturb-reals` | Moves each real by a millionth | 26 |
-| `truncate-lists` | Drops the last entry of each list | 39 |
-| `rewrite-strings` | Replaces each non-empty string but no map key | 62 |
+| `truncate-lists` | Drops the last entry of each list | 41 |
+| `rewrite-strings` | Replaces each non-empty string but no map key | 68 |
 
 `make conformance-dotnet-check` also runs the reference runner against the same binary, both
 with `-v`, and `dotnet-gates.py conformance-check` holds the two runs together: both reports

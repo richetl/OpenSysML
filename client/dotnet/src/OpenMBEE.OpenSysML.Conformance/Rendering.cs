@@ -560,6 +560,90 @@ internal static class Rendering
         Sample = sample is null ? null : Runs(sample),
     };
 
+    /// <summary>A conversion, with its formats, diagnostics and whether it is experimental.</summary>
+    internal static Wire.ConvertResponse Conversion(Conversion conversion)
+    {
+        ArgumentNullException.ThrowIfNull(conversion);
+        return new Wire.ConvertResponse
+        {
+            Content = conversion.Content,
+            FromFormat = conversion.FromFormat,
+            ToFormat = conversion.ToFormat,
+            Diagnostics = { Diagnostics(conversion.Diagnostics) },
+            Experimental = conversion.Experimental,
+            ExperimentalNotice = conversion.ExperimentalNotice,
+        };
+    }
+
+    /// <summary>A conversion not made, in band, with the formats and diagnostics the failure kept.</summary>
+    internal static Wire.ConvertResponse Conversion(ConversionException failure)
+    {
+        ArgumentNullException.ThrowIfNull(failure);
+        return new Wire.ConvertResponse
+        {
+            FromFormat = failure.FromFormat,
+            ToFormat = failure.ToFormat,
+            Error = failure.Message,
+            Diagnostics = { Diagnostics(failure.Diagnostics) },
+            Experimental = failure.Experimental,
+            ExperimentalNotice = failure.ExperimentalNotice,
+        };
+    }
+
+    /// <summary>A migration, with its report, results and files.</summary>
+    internal static Wire.MigrateResponse Migration(Migration migration)
+    {
+        ArgumentNullException.ThrowIfNull(migration);
+        var report = migration.Report;
+        return new Wire.MigrateResponse
+        {
+            Content = migration.Content,
+            FromFormat = migration.FromFormat,
+            ToFormat = migration.ToFormat,
+            Experimental = migration.Experimental,
+            ExperimentalNotice = migration.ExperimentalNotice,
+            Report = new Wire.MigrationReport
+            {
+                Source = report.Source,
+                Exporter = report.Exporter,
+                Summary = report.Summary,
+                Mapped = report.Mapped,
+                Approximated = report.Approximated,
+                Unmapped = report.Unmapped,
+                Skipped = report.Skipped,
+                Entries =
+                {
+                    report.Entries.Select(entry => new Wire.MigrationEntry
+                    {
+                        Id = entry.Id,
+                        Kind = entry.Kind,
+                        Name = entry.Name,
+                        Target = entry.Target,
+                        Verdict = entry.Verdict,
+                        Note = entry.Note,
+                    }),
+                },
+                Text = report.Text,
+            },
+            Results = migration.Results,
+            Files = { migration.Files.Select(file => new Wire.MigrationFile { Path = file.Path, Content = Google.Protobuf.ByteString.CopyFrom(file.Content.Span) }) },
+        };
+    }
+
+    /// <summary>A migration not made, in band, with the formats the failure kept.</summary>
+    internal static Wire.MigrateResponse Migration(MigrationException failure)
+    {
+        ArgumentNullException.ThrowIfNull(failure);
+        return new Wire.MigrateResponse
+        {
+            FromFormat = failure.FromFormat,
+            ToFormat = failure.ToFormat,
+            Error = failure.Message,
+            Experimental = failure.Experimental,
+            ExperimentalNotice = failure.ExperimentalNotice,
+        };
+    }
+
     /// <summary>One engine's listing.</summary>
     internal static Wire.EngineInfo Engine(EngineInfo engine)
     {

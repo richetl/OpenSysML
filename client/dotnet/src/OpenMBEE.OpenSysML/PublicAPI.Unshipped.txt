@@ -1803,3 +1803,175 @@ static OpenMBEE.OpenSysML.SelfCheckApplication.operator !=(OpenMBEE.OpenSysML.Se
 static OpenMBEE.OpenSysML.SelfCheckApplication.operator ==(OpenMBEE.OpenSysML.SelfCheckApplication? left, OpenMBEE.OpenSysML.SelfCheckApplication? right) -> bool
 static OpenMBEE.OpenSysML.SelfCheckFinding.operator !=(OpenMBEE.OpenSysML.SelfCheckFinding? left, OpenMBEE.OpenSysML.SelfCheckFinding? right) -> bool
 static OpenMBEE.OpenSysML.SelfCheckFinding.operator ==(OpenMBEE.OpenSysML.SelfCheckFinding? left, OpenMBEE.OpenSysML.SelfCheckFinding? right) -> bool
+OpenMBEE.OpenSysML.Connection.ConvertAsync(OpenMBEE.OpenSysML.ConvertSource! source, string! toFormat, OpenMBEE.OpenSysML.ConvertOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<OpenMBEE.OpenSysML.Conversion!>!
+OpenMBEE.OpenSysML.Connection.MigrateAsync(OpenMBEE.OpenSysML.MigrateSource! source, string! toFormat, OpenMBEE.OpenSysML.MigrateOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<OpenMBEE.OpenSysML.Migration!>!
+OpenMBEE.OpenSysML.Conversion
+OpenMBEE.OpenSysML.Conversion.<Clone>$() -> OpenMBEE.OpenSysML.Conversion!
+OpenMBEE.OpenSysML.Conversion.Content.get -> string!
+OpenMBEE.OpenSysML.Conversion.Conversion(string! content, string! fromFormat, string! toFormat, System.Collections.Generic.IEnumerable<OpenMBEE.OpenSysML.Diagnostic!>! diagnostics, bool experimental, string! experimentalNotice) -> void
+OpenMBEE.OpenSysML.Conversion.Diagnostics.get -> OpenMBEE.OpenSysML.ValueList<OpenMBEE.OpenSysML.Diagnostic!>
+OpenMBEE.OpenSysML.Conversion.Equals(OpenMBEE.OpenSysML.Conversion? other) -> bool
+OpenMBEE.OpenSysML.Conversion.Experimental.get -> bool
+OpenMBEE.OpenSysML.Conversion.ExperimentalNotice.get -> string!
+OpenMBEE.OpenSysML.Conversion.FromFormat.get -> string!
+OpenMBEE.OpenSysML.Conversion.SaveAsync(string! path, OpenMBEE.OpenSysML.SaveOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string!>!
+OpenMBEE.OpenSysML.Conversion.ToFormat.get -> string!
+OpenMBEE.OpenSysML.ConversionException
+OpenMBEE.OpenSysML.ConversionException.ConversionException(string! message, string! method, System.Collections.Generic.IEnumerable<OpenMBEE.OpenSysML.Diagnostic!>! diagnostics, string! fromFormat, string! toFormat, bool experimental, string! experimentalNotice) -> void
+OpenMBEE.OpenSysML.ConversionException.Experimental.get -> bool
+OpenMBEE.OpenSysML.ConversionException.ExperimentalNotice.get -> string!
+OpenMBEE.OpenSysML.ConversionException.FromFormat.get -> string!
+OpenMBEE.OpenSysML.ConversionException.ToFormat.get -> string!
+OpenMBEE.OpenSysML.ConversionFormat
+OpenMBEE.OpenSysML.ConvertOptions
+OpenMBEE.OpenSysML.ConvertOptions.Compact.get -> bool
+OpenMBEE.OpenSysML.ConvertOptions.Compact.init -> void
+OpenMBEE.OpenSysML.ConvertOptions.ConvertOptions() -> void
+OpenMBEE.OpenSysML.ConvertOptions.Documents.get -> System.Collections.Generic.IReadOnlyList<string!>!
+OpenMBEE.OpenSysML.ConvertOptions.Documents.init -> void
+OpenMBEE.OpenSysML.ConvertOptions.FromFormat.get -> string?
+OpenMBEE.OpenSysML.ConvertOptions.FromFormat.init -> void
+OpenMBEE.OpenSysML.ConvertOptions.IdForm.get -> OpenMBEE.OpenSysML.IdForm?
+OpenMBEE.OpenSysML.ConvertOptions.IdForm.init -> void
+OpenMBEE.OpenSysML.ConvertOptions.IncludeCheckDiagnostics.get -> bool
+OpenMBEE.OpenSysML.ConvertOptions.IncludeCheckDiagnostics.init -> void
+OpenMBEE.OpenSysML.ConvertOptions.KeepDerived.get -> System.Collections.Generic.IReadOnlyList<string!>!
+OpenMBEE.OpenSysML.ConvertOptions.KeepDerived.init -> void
+OpenMBEE.OpenSysML.ConvertOptions.OmitDerived.get -> bool
+OpenMBEE.OpenSysML.ConvertOptions.OmitDerived.init -> void
+OpenMBEE.OpenSysML.ConvertOptions.TolerateSyntaxErrors.get -> bool
+OpenMBEE.OpenSysML.ConvertOptions.TolerateSyntaxErrors.init -> void
+OpenMBEE.OpenSysML.ConvertSource
+OpenMBEE.OpenSysML.ConvertSource.<Clone>$() -> OpenMBEE.OpenSysML.ConvertSource!
+OpenMBEE.OpenSysML.ConvertSource.Content.get -> string?
+OpenMBEE.OpenSysML.ConvertSource.Equals(OpenMBEE.OpenSysML.ConvertSource? other) -> bool
+OpenMBEE.OpenSysML.ConvertSource.FilePath.get -> string?
+OpenMBEE.OpenSysML.ConvertSource.ModelHash.get -> string?
+OpenMBEE.OpenSysML.IdForm
+OpenMBEE.OpenSysML.IdForm.Qualified = 0 -> OpenMBEE.OpenSysML.IdForm
+OpenMBEE.OpenSysML.IdForm.Uuid = 1 -> OpenMBEE.OpenSysML.IdForm
+OpenMBEE.OpenSysML.MigrateOptions
+OpenMBEE.OpenSysML.MigrateOptions.FromFormat.get -> string?
+OpenMBEE.OpenSysML.MigrateOptions.FromFormat.init -> void
+OpenMBEE.OpenSysML.MigrateOptions.ImageBaseUrl.get -> string?
+OpenMBEE.OpenSysML.MigrateOptions.ImageBaseUrl.init -> void
+OpenMBEE.OpenSysML.MigrateOptions.LayoutContent.get -> string?
+OpenMBEE.OpenSysML.MigrateOptions.LayoutContent.init -> void
+OpenMBEE.OpenSysML.MigrateOptions.LayoutPath.get -> string?
+OpenMBEE.OpenSysML.MigrateOptions.LayoutPath.init -> void
+OpenMBEE.OpenSysML.MigrateOptions.MigrateOptions() -> void
+OpenMBEE.OpenSysML.MigrateOptions.Report.get -> bool
+OpenMBEE.OpenSysML.MigrateOptions.Report.init -> void
+OpenMBEE.OpenSysML.MigrateOptions.Results.get -> bool
+OpenMBEE.OpenSysML.MigrateOptions.Results.init -> void
+OpenMBEE.OpenSysML.MigrateOptions.Strict.get -> bool
+OpenMBEE.OpenSysML.MigrateOptions.Strict.init -> void
+OpenMBEE.OpenSysML.MigrateSource
+OpenMBEE.OpenSysML.MigrateSource.Content.get -> System.ReadOnlyMemory<byte>?
+OpenMBEE.OpenSysML.MigrateSource.FilePath.get -> string?
+OpenMBEE.OpenSysML.Migration
+OpenMBEE.OpenSysML.Migration.<Clone>$() -> OpenMBEE.OpenSysML.Migration!
+OpenMBEE.OpenSysML.Migration.Content.get -> string!
+OpenMBEE.OpenSysML.Migration.Equals(OpenMBEE.OpenSysML.Migration? other) -> bool
+OpenMBEE.OpenSysML.Migration.Experimental.get -> bool
+OpenMBEE.OpenSysML.Migration.ExperimentalNotice.get -> string!
+OpenMBEE.OpenSysML.Migration.Files.get -> OpenMBEE.OpenSysML.ValueList<OpenMBEE.OpenSysML.MigrationFile!>
+OpenMBEE.OpenSysML.Migration.FromFormat.get -> string!
+OpenMBEE.OpenSysML.Migration.Migration(string! content, string! fromFormat, string! toFormat, OpenMBEE.OpenSysML.MigrationReport! report, string! results, System.Collections.Generic.IEnumerable<OpenMBEE.OpenSysML.MigrationFile!>! files, bool experimental, string! experimentalNotice, string? sourcePath) -> void
+OpenMBEE.OpenSysML.Migration.Report.get -> OpenMBEE.OpenSysML.MigrationReport!
+OpenMBEE.OpenSysML.Migration.Results.get -> string!
+OpenMBEE.OpenSysML.Migration.SourcePath.get -> string?
+OpenMBEE.OpenSysML.Migration.ToFormat.get -> string!
+OpenMBEE.OpenSysML.Migration.WriteAsync(string! path, OpenMBEE.OpenSysML.SaveOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string!>!
+OpenMBEE.OpenSysML.MigrationEntry
+OpenMBEE.OpenSysML.MigrationEntry.<Clone>$() -> OpenMBEE.OpenSysML.MigrationEntry!
+OpenMBEE.OpenSysML.MigrationEntry.Equals(OpenMBEE.OpenSysML.MigrationEntry? other) -> bool
+OpenMBEE.OpenSysML.MigrationEntry.Id.get -> string!
+OpenMBEE.OpenSysML.MigrationEntry.Kind.get -> string!
+OpenMBEE.OpenSysML.MigrationEntry.MigrationEntry(string! id, string! kind, string! name, string! target, string! verdict, string! note) -> void
+OpenMBEE.OpenSysML.MigrationEntry.Name.get -> string!
+OpenMBEE.OpenSysML.MigrationEntry.Note.get -> string!
+OpenMBEE.OpenSysML.MigrationEntry.Target.get -> string!
+OpenMBEE.OpenSysML.MigrationEntry.Verdict.get -> string!
+OpenMBEE.OpenSysML.MigrationException
+OpenMBEE.OpenSysML.MigrationException.Experimental.get -> bool
+OpenMBEE.OpenSysML.MigrationException.ExperimentalNotice.get -> string!
+OpenMBEE.OpenSysML.MigrationException.FromFormat.get -> string!
+OpenMBEE.OpenSysML.MigrationException.MigrationException(string! message, string! method, string! fromFormat, string! toFormat, bool experimental, string! experimentalNotice) -> void
+OpenMBEE.OpenSysML.MigrationException.ToFormat.get -> string!
+OpenMBEE.OpenSysML.MigrationFile
+OpenMBEE.OpenSysML.MigrationFile.Content.get -> System.ReadOnlyMemory<byte>
+OpenMBEE.OpenSysML.MigrationFile.Equals(OpenMBEE.OpenSysML.MigrationFile? other) -> bool
+OpenMBEE.OpenSysML.MigrationFile.MigrationFile(string! path, System.ReadOnlySpan<byte> content) -> void
+OpenMBEE.OpenSysML.MigrationFile.Path.get -> string!
+OpenMBEE.OpenSysML.MigrationReport
+OpenMBEE.OpenSysML.MigrationReport.<Clone>$() -> OpenMBEE.OpenSysML.MigrationReport!
+OpenMBEE.OpenSysML.MigrationReport.Approximated.get -> int
+OpenMBEE.OpenSysML.MigrationReport.ByVerdict(string! verdict) -> OpenMBEE.OpenSysML.ValueList<OpenMBEE.OpenSysML.MigrationEntry!>
+OpenMBEE.OpenSysML.MigrationReport.Entries.get -> OpenMBEE.OpenSysML.ValueList<OpenMBEE.OpenSysML.MigrationEntry!>
+OpenMBEE.OpenSysML.MigrationReport.Equals(OpenMBEE.OpenSysML.MigrationReport? other) -> bool
+OpenMBEE.OpenSysML.MigrationReport.Exporter.get -> string!
+OpenMBEE.OpenSysML.MigrationReport.Mapped.get -> int
+OpenMBEE.OpenSysML.MigrationReport.MigrationReport(string! source, string! exporter, string! summary, int mapped, int approximated, int unmapped, int skipped, System.Collections.Generic.IEnumerable<OpenMBEE.OpenSysML.MigrationEntry!>! entries, string! text) -> void
+OpenMBEE.OpenSysML.MigrationReport.Skipped.get -> int
+OpenMBEE.OpenSysML.MigrationReport.Source.get -> string!
+OpenMBEE.OpenSysML.MigrationReport.Summary.get -> string!
+OpenMBEE.OpenSysML.MigrationReport.Text.get -> string!
+OpenMBEE.OpenSysML.MigrationReport.Total.get -> long
+OpenMBEE.OpenSysML.MigrationReport.Unmapped.get -> int
+OpenMBEE.OpenSysML.Model.ConvertAsync(string! toFormat, OpenMBEE.OpenSysML.ConvertOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<OpenMBEE.OpenSysML.Conversion!>!
+OpenMBEE.OpenSysML.Model.SaveAsync(string! path, string? toFormat = null, OpenMBEE.OpenSysML.ConvertOptions? options = null, OpenMBEE.OpenSysML.SaveOptions? saveOptions = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<OpenMBEE.OpenSysML.Conversion!>!
+OpenMBEE.OpenSysML.Model.ToApiJsonAsync(OpenMBEE.OpenSysML.ConvertOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<OpenMBEE.OpenSysML.Conversion!>!
+OpenMBEE.OpenSysML.Model.ToNotationAsync(OpenMBEE.OpenSysML.ConvertOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<OpenMBEE.OpenSysML.Conversion!>!
+OpenMBEE.OpenSysML.Model.ToTurtleAsync(OpenMBEE.OpenSysML.ConvertOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<OpenMBEE.OpenSysML.Conversion!>!
+OpenMBEE.OpenSysML.SaveOptions
+OpenMBEE.OpenSysML.SaveOptions.Overwrite.get -> bool
+OpenMBEE.OpenSysML.SaveOptions.Overwrite.init -> void
+OpenMBEE.OpenSysML.SaveOptions.SaveOptions() -> void
+OpenMBEE.OpenSysML.UnwritableException
+OpenMBEE.OpenSysML.UnwritableException.Path.get -> string!
+OpenMBEE.OpenSysML.UnwritableException.UnwritableException(string! message, string! path) -> void
+const OpenMBEE.OpenSysML.ConversionFormat.ApiJson = "api-json" -> string!
+const OpenMBEE.OpenSysML.ConversionFormat.KerML = "kerml" -> string!
+const OpenMBEE.OpenSysML.ConversionFormat.Mdzip = "mdzip" -> string!
+const OpenMBEE.OpenSysML.ConversionFormat.SysML = "sysml" -> string!
+const OpenMBEE.OpenSysML.ConversionFormat.Turtle = "ttl" -> string!
+const OpenMBEE.OpenSysML.ConversionFormat.Uml = "uml" -> string!
+const OpenMBEE.OpenSysML.ConversionFormat.Xmi = "xmi" -> string!
+override OpenMBEE.OpenSysML.Conversion.Equals(object? obj) -> bool
+override OpenMBEE.OpenSysML.Conversion.GetHashCode() -> int
+override OpenMBEE.OpenSysML.Conversion.ToString() -> string!
+override OpenMBEE.OpenSysML.ConvertSource.Equals(object? obj) -> bool
+override OpenMBEE.OpenSysML.ConvertSource.GetHashCode() -> int
+override OpenMBEE.OpenSysML.ConvertSource.ToString() -> string!
+override OpenMBEE.OpenSysML.Migration.Equals(object? obj) -> bool
+override OpenMBEE.OpenSysML.Migration.GetHashCode() -> int
+override OpenMBEE.OpenSysML.Migration.ToString() -> string!
+override OpenMBEE.OpenSysML.MigrationEntry.Equals(object? obj) -> bool
+override OpenMBEE.OpenSysML.MigrationEntry.GetHashCode() -> int
+override OpenMBEE.OpenSysML.MigrationEntry.ToString() -> string!
+override OpenMBEE.OpenSysML.MigrationFile.Equals(object? obj) -> bool
+override OpenMBEE.OpenSysML.MigrationFile.GetHashCode() -> int
+override OpenMBEE.OpenSysML.MigrationFile.ToString() -> string!
+override OpenMBEE.OpenSysML.MigrationReport.Equals(object? obj) -> bool
+override OpenMBEE.OpenSysML.MigrationReport.GetHashCode() -> int
+override OpenMBEE.OpenSysML.MigrationReport.ToString() -> string!
+static OpenMBEE.OpenSysML.Conversion.operator !=(OpenMBEE.OpenSysML.Conversion? left, OpenMBEE.OpenSysML.Conversion? right) -> bool
+static OpenMBEE.OpenSysML.Conversion.operator ==(OpenMBEE.OpenSysML.Conversion? left, OpenMBEE.OpenSysML.Conversion? right) -> bool
+static OpenMBEE.OpenSysML.ConversionFormat.OfPath(string! path) -> string?
+static OpenMBEE.OpenSysML.ConvertOptions.Default.get -> OpenMBEE.OpenSysML.ConvertOptions!
+static OpenMBEE.OpenSysML.ConvertSource.FromFile(string! path) -> OpenMBEE.OpenSysML.ConvertSource!
+static OpenMBEE.OpenSysML.ConvertSource.FromModelHash(string! modelHash) -> OpenMBEE.OpenSysML.ConvertSource!
+static OpenMBEE.OpenSysML.ConvertSource.Inline(string! content) -> OpenMBEE.OpenSysML.ConvertSource!
+static OpenMBEE.OpenSysML.ConvertSource.operator !=(OpenMBEE.OpenSysML.ConvertSource? left, OpenMBEE.OpenSysML.ConvertSource? right) -> bool
+static OpenMBEE.OpenSysML.ConvertSource.operator ==(OpenMBEE.OpenSysML.ConvertSource? left, OpenMBEE.OpenSysML.ConvertSource? right) -> bool
+static OpenMBEE.OpenSysML.MigrateOptions.Default.get -> OpenMBEE.OpenSysML.MigrateOptions!
+static OpenMBEE.OpenSysML.MigrateSource.FromFile(string! path) -> OpenMBEE.OpenSysML.MigrateSource!
+static OpenMBEE.OpenSysML.MigrateSource.Inline(System.ReadOnlySpan<byte> content) -> OpenMBEE.OpenSysML.MigrateSource!
+static OpenMBEE.OpenSysML.Migration.operator !=(OpenMBEE.OpenSysML.Migration? left, OpenMBEE.OpenSysML.Migration? right) -> bool
+static OpenMBEE.OpenSysML.Migration.operator ==(OpenMBEE.OpenSysML.Migration? left, OpenMBEE.OpenSysML.Migration? right) -> bool
+static OpenMBEE.OpenSysML.MigrationEntry.operator !=(OpenMBEE.OpenSysML.MigrationEntry? left, OpenMBEE.OpenSysML.MigrationEntry? right) -> bool
+static OpenMBEE.OpenSysML.MigrationEntry.operator ==(OpenMBEE.OpenSysML.MigrationEntry? left, OpenMBEE.OpenSysML.MigrationEntry? right) -> bool
+static OpenMBEE.OpenSysML.MigrationReport.operator !=(OpenMBEE.OpenSysML.MigrationReport? left, OpenMBEE.OpenSysML.MigrationReport? right) -> bool
+static OpenMBEE.OpenSysML.MigrationReport.operator ==(OpenMBEE.OpenSysML.MigrationReport? left, OpenMBEE.OpenSysML.MigrationReport? right) -> bool
+static OpenMBEE.OpenSysML.SaveOptions.Default.get -> OpenMBEE.OpenSysML.SaveOptions!

@@ -146,7 +146,7 @@ public sealed partial class Connection
             request.Documents.Add(document);
         }
 
-        var response = await ParseCallAsync<Wire.ParseSourcesRequest, Wire.ParseSourcesResponse>(ParseSourcesMethod, request, cancellationToken).ConfigureAwait(false);
+        var response = await FileCallAsync<Wire.ParseSourcesRequest, Wire.ParseSourcesResponse>(ParseSourcesMethod, request, cancellationToken).ConfigureAwait(false);
         var diagnostics = ModelWire.Diagnostics(response.Diagnostics);
         RequireParsed(response.Error, response.ModelHash, ParseSourcesMethod, diagnostics);
         return new Model(
@@ -245,15 +245,15 @@ public sealed partial class Connection
             Capabilities.Require(OpenSysML.Capabilities.InlineLanguage);
         }
 
-        var response = await ParseCallAsync<Wire.ParseFileRequest, Wire.ParseFileResponse>(ParseFileMethod, request, cancellationToken).ConfigureAwait(false);
+        var response = await FileCallAsync<Wire.ParseFileRequest, Wire.ParseFileResponse>(ParseFileMethod, request, cancellationToken).ConfigureAwait(false);
         var diagnostics = ModelWire.Diagnostics(response.Diagnostics);
         RequireParsed(response.Error, response.ModelHash, ParseFileMethod, diagnostics);
         var roots = response.Root is { } root ? new ValueList<Symbol>([ModelWire.Symbol(root, ParseFileMethod, "root")]) : default;
         return new Model(this, response.ModelHash, ParseFileMethod, roots, diagnostics, documents, null, default);
     }
 
-    // A parse answers NotFound for one thing alone, a file it could not read.
-    private async Task<TResponse> ParseCallAsync<TRequest, TResponse>(string method, TRequest request, CancellationToken cancellationToken)
+    // A call reading files the service names answers NotFound for one thing alone, a file it could not read.
+    private async Task<TResponse> FileCallAsync<TRequest, TResponse>(string method, TRequest request, CancellationToken cancellationToken)
         where TRequest : class, IMessage<TRequest>
         where TResponse : class, IMessage<TResponse>
     {

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
@@ -89,6 +90,14 @@ public sealed class ConformanceAdapterTests
         { "RunRuns", """{"model_hash": "h", "analysis_symbol_id": "C", "observe": ["t"]}""", "the public API binds inputs, a performer and observables only to an action it runs, so it cannot send them with a Monte Carlo case" },
         { "RunRuns", """{"model_hash": "h", "analysis_symbol_id": "C", "performer_symbol_id": "P"}""", "the public API binds inputs, a performer and observables only to an action it runs, so it cannot send them with a Monte Carlo case" },
         { "RecordRun", """{"model_hash": "h", "analysis_symbol_id": "C"}""", "the public API reads every document a recording answers, so it always accepts them" },
+        { "Convert", """{"to_format": "sysml"}""", "the public API always names a source, so it cannot send a request naming none" },
+        { "Convert", """{"file_path": "", "to_format": "sysml"}""", "the public API names a file by a path that is not empty" },
+        { "Convert", """{"model_hash": " ", "to_format": "sysml"}""", "the public API names a model by a hash that is not blank" },
+        { "Convert", """{"content": "package P;", "from_format": "sysml", "to_format": "ttl", "id_form": "Uuid"}""", "the public API names an id form as an IdForm, which has none spelled \"Uuid\"" },
+        { "Migrate", """{"to_format": "sysml"}""", "the public API always names a source, so it cannot send a request naming none" },
+        { "Migrate", """{"file_path": "", "to_format": "sysml"}""", "the public API names a file by a path that is not empty" },
+        { "Migrate", """{"file_path": "Vehicle.xmi", "to_format": "sysml"}""", "the public API requires a fully-qualified, valid migration file path" },
+        { "Migrate", """{"content": "AQ==", "to_format": "sysml", "layout_path": ""}""", "MigrateOptions names an empty form, layout or image base URL; leave FromFormat, LayoutPath, LayoutContent or ImageBaseUrl null for none." },
         { "RecordRun", """{"model_hash": "h", "analysis_symbol_id": "C", "accept_documents": true, "ranges": [{"parameter": "b", "start": {"int_value": 0}}]}""", "the public API holds a sweep range with both endpoints, which ranges[0] does not state" },
     };
 
@@ -335,6 +344,42 @@ public sealed class ConformanceAdapterTests
         ["RecordRun of a sample"] = (
             new Wire.RecordRunRequest { ModelHash = Hash, AnalysisSymbolId = "MC::Mc", Runs = 2, Seed = 0, AcceptDocuments = true },
             CompleteSamplingWire.SampleRecording),
+        ["Convert"] = (
+            new Wire.ConvertRequest
+            {
+                Content = "package P;",
+                FromFormat = "kerml",
+                ToFormat = "api-json",
+                TolerateSyntaxErrors = true,
+                IdForm = "uuid",
+                Compact = true,
+                OmitDerived = true,
+                KeepDerived = { "owner" },
+                IncludeCheckDiagnostics = true,
+            },
+            CompleteConversionWire.Conversion),
+        ["Convert from a file"] = (
+            new Wire.ConvertRequest { FilePath = "/models/a.ttl", ToFormat = "sysml", IdForm = "qualified" },
+            new Wire.ConvertResponse { Content = "package P;\n", FromFormat = "ttl", ToFormat = "sysml", Experimental = true, ExperimentalNotice = "n" }),
+        ["Convert a model"] = (
+            new Wire.ConvertRequest { ModelHash = Hash, ToFormat = "ttl", Documents = { "a.sysml" }, FromFormat = "sysml" },
+            CompleteConversionWire.Conversion),
+        ["Migrate"] = (
+            new Wire.MigrateRequest
+            {
+                Content = ByteString.CopyFrom(1, 2, 3),
+                FromFormat = "mdzip",
+                ToFormat = "sysml",
+                Report = true,
+                Results = true,
+                LayoutContent = "<mtip/>",
+                ImageBaseUrl = "https://example.com",
+                Strict = true,
+            },
+            CompleteConversionWire.Migration),
+        ["Migrate from a file"] = (
+            new Wire.MigrateRequest { FilePath = Path.GetFullPath("/models/a.xmi"), ToFormat = "ttl", LayoutPath = "/models/a_mtip.xml" },
+            CompleteConversionWire.Migration),
     };
 
     // Every value a request can send, one of each arm the API writes as given, by name.
@@ -442,6 +487,12 @@ public sealed class ConformanceAdapterTests
         ["RecordRun"] = (
             new Wire.RecordRunRequest { ModelHash = Hash, AnalysisSymbolId = "Sw::CostAnalysis", AcceptDocuments = true },
             CompleteSamplingWire.FailedRunRecording),
+        ["Convert"] = (
+            new Wire.ConvertRequest { Content = "package P {", FromFormat = "sysml", ToFormat = "api-json" },
+            CompleteConversionWire.FailedConversion),
+        ["Migrate"] = (
+            new Wire.MigrateRequest { Content = ByteString.CopyFromUtf8("not xmi"), FromFormat = "xmi", ToFormat = "ttl" },
+            CompleteConversionWire.FailedMigration),
     };
 
     [Theory]
@@ -539,6 +590,26 @@ public sealed class ConformanceAdapterTests
         var answer = await Client(connection).CallAsync(method, JsonParser.Default.Parse(json, method.InputType), TestContext.Current.CancellationToken);
 
         Assert.Equal(new ScenarioAnswer.Unexpressible(reason), answer);
+        Assert.Equal(["GetServerInfo"], handler.Requests.Select(request => request.Method));
+    }
+
+    [Theory]
+    [MemberData(nameof(Wires))]
+    public async Task InvalidOrNoncanonicalMigrationFilePathsAreUnexpressibleWithoutChangingTheRequest(ClientWire wire)
+    {
+        using var handler = new FakeServiceHandler(wire) { Capabilities = FakeModels.ModelCapabilities };
+        await using var connection = await FakeConnection.OpenAsync(handler);
+        foreach (var (path, reason) in new[]
+        {
+            (Path.Combine(Path.GetTempPath(), "a\0b.xmi"), "the public API requires a fully-qualified, valid migration file path"),
+            (Path.Combine(Path.GetTempPath(), "models", "..", "Vehicle.xmi"), "the public API normalizes a migration file path before sending it"),
+        })
+        {
+            var request = new Wire.MigrateRequest { FilePath = path, ToFormat = "sysml" };
+            var answer = await Client(connection).CallAsync(ScenarioRequests.Method("Migrate"), request, TestContext.Current.CancellationToken);
+            Assert.Equal(new ScenarioAnswer.Unexpressible(reason), answer);
+        }
+
         Assert.Equal(["GetServerInfo"], handler.Requests.Select(request => request.Method));
     }
 

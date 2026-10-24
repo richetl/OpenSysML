@@ -31,6 +31,11 @@ internal static class FakeModels
         Capabilities.Runs,
         Capabilities.SelfCheck,
         Capabilities.RecordRun,
+        Capabilities.Convert,
+        Capabilities.ConvertDocuments,
+        Capabilities.ConvertCompact,
+        Capabilities.ConvertCheckDiagnostics,
+        Capabilities.Migrate,
         .. Internal.ValueWire.SendGateOrder,
     ];
 

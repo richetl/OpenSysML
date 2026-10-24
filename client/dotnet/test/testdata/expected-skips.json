@@ -2,10 +2,8 @@
   "uncovered_rpcs": [
     "ApplyEdits",
     "CompareResults",
-    "Convert",
     "ExportGraphs",
     "ImportData",
-    "Migrate",
     "Query",
     "RenderDocument",
     "RenderView",
