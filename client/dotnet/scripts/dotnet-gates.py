@@ -31,7 +31,7 @@ its order and totals that add up, and the .NET JUnit report the same totals, one
 configuration and protocol and one case per scenario with its matching outcome. Then, scenario by
 scenario, both runs must agree on the outcome, the status, the capabilities missing and whether the without-capability
 expectation applied, and their -v logs on the normalized response. Timing and what answered are
-not compared, the wall time each row of a sweep or of runs reports included, nor the time a recording
+not compared, the wall time each row of a sweep, of runs or of a comparison reports included, nor the time a recording
 states in the records it generates and the hash of the recorded model that follows from it, which is
 compared only as present or not. A .NET skip the expected skips list is excluded, as reviewed; nothing else is. The
 service's capabilities are compared as a set, since the client holds them as one.
@@ -505,6 +505,7 @@ TIMING_FIELDS = {
     "RunSweep": (("rows", "*", "elapsed_micros"),),
     "RunRuns": (("rows", "*", "elapsed_micros"),),
     "RecordRun": (("sweep", "rows", "*", "elapsed_micros"), ("sample", "rows", "*", "elapsed_micros")),
+    "CompareResults": (("configurations", "*", "rows", "*", "elapsed_micros"),),
 }
 
 # The time a recording was made, which every record it generates states as `runAt = "<UTC, to the

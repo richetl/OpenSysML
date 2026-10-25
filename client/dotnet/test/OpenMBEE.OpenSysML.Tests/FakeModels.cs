@@ -43,6 +43,9 @@ internal static class FakeModels
         Capabilities.RenderView,
         Capabilities.ApplyEdits,
         Capabilities.EditDocuments,
+        Capabilities.ExportGraphs,
+        Capabilities.ImportData,
+        Capabilities.CompareResults,
         .. Internal.EditWire.GateOrder,
         .. Internal.ValueWire.SendGateOrder,
     ];

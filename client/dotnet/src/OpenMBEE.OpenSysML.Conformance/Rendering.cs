@@ -686,6 +686,157 @@ internal static class Rendering
         };
     }
 
+    /// <summary>An exported graph form, its version and the subject as resolved.</summary>
+    internal static Wire.ExportGraphsResponse Graphs(Graphs graphs)
+    {
+        ArgumentNullException.ThrowIfNull(graphs);
+        return new Wire.ExportGraphsResponse { Content = graphs.Content, Version = graphs.Version, Subject = graphs.Subject };
+    }
+
+    /// <summary>What an import set, file by file and assignment by assignment, with the notation and model it made; a dry run answers neither.</summary>
+    internal static Wire.ImportDataResponse ImportResult(ImportResult result)
+    {
+        ArgumentNullException.ThrowIfNull(result);
+        return new Wire.ImportDataResponse
+        {
+            Files =
+            {
+                result.Files.Select(file => new Wire.ImportedFile
+                {
+                    Name = file.Name,
+                    Values = file.Values,
+                    Elements = file.Elements,
+                    Assignments =
+                    {
+                        file.Assignments.Select(value => new Wire.ImportedValue
+                        {
+                            Element = value.Element,
+                            Feature = value.Feature,
+                            Value = value.Value,
+                            Redefines = value.Redefines,
+                            Where = value.Where,
+                            Description = value.Description,
+                        }),
+                    },
+                }),
+            },
+            Documents = { result.Documents.Select(document => new Wire.EditedDocument { Name = document.Name, Content = document.Content }) },
+            Content = result.Content ?? string.Empty,
+            ModelHash = result.Model?.Hash ?? string.Empty,
+            Diagnostics = { Diagnostics(result.Diagnostics) },
+        };
+    }
+
+    /// <summary>An import the model refused, in band: why, and the diagnostics behind it.</summary>
+    internal static Wire.ImportDataResponse ImportResult(ModelException refused)
+    {
+        ArgumentNullException.ThrowIfNull(refused);
+        return new Wire.ImportDataResponse { Error = refused.Message, Diagnostics = { Diagnostics(refused.Diagnostics) } };
+    }
+
+    /// <summary>A comparison, every configuration with its runs, objects and observables, and the engine that ran them.</summary>
+    internal static Wire.CompareResultsResponse Comparison(Comparison comparison)
+    {
+        ArgumentNullException.ThrowIfNull(comparison);
+        return new Wire.CompareResultsResponse
+        {
+            Configurations = { comparison.Configurations.Select(Configuration) },
+            Source = comparison.Source,
+            Diagnostics = { Diagnostics(comparison.Diagnostics) },
+            Engine = comparison.Standing.Engine,
+            Strength = comparison.Standing.Strength,
+            Bounds = { Bounds(comparison.Standing) },
+        };
+    }
+
+    /// <summary>Results nothing of which was compared, in band: why, its kind, and what the answer reported beside.</summary>
+    internal static Wire.CompareResultsResponse Comparison(CompareException failure)
+    {
+        ArgumentNullException.ThrowIfNull(failure);
+        var rendered = Comparison(failure.Partial);
+        rendered.Error = failure.Message;
+        rendered.FailureReason = Reason(failure.Reason);
+        return rendered;
+    }
+
+    private static Wire.ConfigurationComparison Configuration(ConfigurationComparison configuration)
+    {
+        var rendered = new Wire.ConfigurationComparison
+        {
+            Id = configuration.Id,
+            Name = configuration.Name,
+            Behavior = configuration.Behavior,
+            Target = configuration.Target,
+            ResultLocation = configuration.ResultLocation,
+            Status = configuration.Status,
+            Unresolved = configuration.Unresolved,
+            StoredRuns = configuration.StoredRuns,
+            StoredSnapshots = configuration.StoredSnapshots,
+            Runs = configuration.Runs,
+            Completed = configuration.Completed,
+            Draws = configuration.Draws,
+            ClockStep = configuration.ClockStep,
+            Rows = { Rows(configuration.Rows) },
+            Instances = { Instances(configuration.Instances) },
+            Observables = { configuration.Observables.Select(Observable) },
+            Errors = { configuration.Errors },
+            Notes = { configuration.Notes },
+            Lines = { configuration.Lines },
+        };
+        if (configuration.Seed is { } seed)
+        {
+            rendered.Seed = seed;
+        }
+
+        return rendered;
+    }
+
+    private static Wire.ObservableComparison Observable(ObservableComparison observable)
+    {
+        var rendered = new Wire.ObservableComparison
+        {
+            Stored = observable.Stored,
+            Feature = observable.Feature,
+            Unit = observable.Unit,
+            Tool = Distribution(observable.Tool),
+            Pooled = observable.Pooled,
+            Unstored = observable.Unstored,
+            Run = Distribution(observable.Run),
+            Produced = observable.Produced,
+            Compared = observable.Compared,
+            Notes = { observable.Notes },
+        };
+        if (observable.Difference is { } difference)
+        {
+            rendered.Difference = new Wire.StatisticDifference { Min = difference.Min, Mean = difference.Mean, P50 = difference.P50, P90 = difference.P90, Max = difference.Max };
+        }
+
+        if (observable.Declared is { } declared)
+        {
+            rendered.Declared = new Wire.CaseStatistics
+            {
+                Analysis = declared.Analysis,
+                Rows = { declared.Rows.Select(row => new Wire.CaseStatistic { Statistic = row.Statistic, Of = row.Of, Tool = row.Tool, Run = row.Run, Difference = row.Difference }) },
+                Notes = { declared.Notes },
+            };
+        }
+
+        return rendered;
+    }
+
+    private static Wire.ComparedDistribution? Distribution(ComparedDistribution? distribution) => distribution is null
+        ? null
+        : new Wire.ComparedDistribution
+        {
+            Count = distribution.Count,
+            Min = distribution.Min,
+            Mean = distribution.Mean,
+            P50 = distribution.P50,
+            P90 = distribution.P90,
+            Max = distribution.Max,
+            Deviation = distribution.Deviation,
+        };
+
     /// <summary>What a query selected, every element with its id, type and reported properties.</summary>
     internal static Wire.QueryResponse QueryResult(QueryResult result)
     {

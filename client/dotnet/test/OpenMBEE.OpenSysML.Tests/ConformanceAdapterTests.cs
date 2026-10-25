@@ -123,6 +123,11 @@ public sealed class ConformanceAdapterTests
         { "RecordRun", """{"model_hash": "h", "analysis_symbol_id": "C", "accept_documents": true, "ranges": [{"parameter": "b", "start": {"int_value": 0}}]}""", "the public API holds a sweep range with both endpoints, which ranges[0] does not state" },
         { "ApplyEdits", """{"model_hash": " ", "operations": [{"rename": {"target": "A", "new_name": "B"}}]}""", "the public API names a model by a hash that is not blank" },
         { "ApplyEdits", """{"model_hash": "h", "operations": [{"rename": {"target": "A", "new_name": "B"}}, {}]}""", "the public API names an edit's form, which operations[1] does not" },
+        { "ExportGraphs", """{"model_hash": " ", "subject": "Test::race"}""", "the public API names a model by a hash that is not blank" },
+        { "ExportGraphs", """{"model_hash": "h"}""", "the public API names a behavior by a qualified name that is not empty" },
+        { "ImportData", """{"model_hash": "h", "imports": [{"name": "a.csv"}, {"content": "element\n"}]}""", "the public API names a data file by a name that is not empty, which imports[1] does not" },
+        { "CompareResults", """{"model_hash": "h"}""", "the public API always names the results compared, so it cannot send a request naming none" },
+        { "CompareResults", """{"model_hash": "h", "results": "{}", "observe": [{"stored": " ", "feature": "target.total"}]}""", "the public API names a stored observable by a name that is not blank, which observe[0] does not" },
     };
 
     private static Dictionary<string, (IMessage Request, IMessage Response)> Complete => new(StringComparer.Ordinal)
@@ -491,6 +496,14 @@ public sealed class ConformanceAdapterTests
                 Operations = { new Wire.EditOperation { Rename = new Wire.RenameEdit { Target = "EngineLibrary::Engine", NewName = "Motor" } } },
             },
             CompleteEditingWire.Several),
+        ["ExportGraphs"] = (CompleteGraphDataWire.ExportRequest, CompleteGraphDataWire.Graphs),
+        ["ImportData"] = (CompleteGraphDataWire.ImportRequest, CompleteGraphDataWire.Imported),
+        ["ImportData as a dry run"] = (CompleteGraphDataWire.DryRunRequest, CompleteGraphDataWire.DryRun),
+        ["ImportData of a model of several documents"] = (CompleteGraphDataWire.ImportRequest, CompleteGraphDataWire.ImportedSeveral),
+        ["ImportData declining several documents"] = (
+            new Wire.ImportDataRequest { ModelHash = Hash, Imports = { new Wire.DataImport { Name = "fleet.csv", Content = "element\n" } } },
+            new Wire.ImportDataResponse { Files = { new Wire.ImportedFile { Name = "fleet.csv" } }, ModelHash = Hash }),
+        ["CompareResults"] = (CompleteGraphDataWire.CompareRequest, CompleteGraphDataWire.Comparison),
     };
 
     // Every value a request can send, one of each arm the API writes as given, by name.
@@ -612,6 +625,8 @@ public sealed class ConformanceAdapterTests
                 Operations = { new Wire.EditOperation { Delete = new Wire.DeleteEdit { Target = "EngineLibrary::Engine" } } },
             },
             CompleteEditingWire.Refusal),
+        ["ImportData"] = (CompleteGraphDataWire.ImportRequest, CompleteGraphDataWire.Refusal),
+        ["CompareResults"] = (CompleteGraphDataWire.CompareRequest, CompleteGraphDataWire.CompareRefusal),
     };
 
     [Theory]

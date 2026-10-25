@@ -263,21 +263,7 @@ internal static class EditWire
             throw Malformed(method, "the declarations referring to a refused edit's target, though it refused nothing");
         }
 
-        var names = new HashSet<string>(StringComparer.Ordinal);
-        for (var i = 0; i < response.Documents.Count; i++)
-        {
-            var name = response.Documents[i].Name;
-            if (name.Length == 0)
-            {
-                throw Malformed(method, $"documents[{i}] without its name, which every edited document is given");
-            }
-
-            if (!names.Add(name))
-            {
-                throw Malformed(method, $"documents[{i}] repeating the document \"{name}\"");
-            }
-        }
-
+        var names = DocumentNames(response.Documents, method);
         var applied = response.Applied.Select((edit, i) => Applied(edit, i, method, operations, names)).ToList();
         var single = documentCount is { } count ? count == 1 : !editsDocuments || response.Content.Length > 0;
         if (!single && response.Content.Length > 0)
@@ -295,6 +281,28 @@ internal static class EditWire
             applied,
             response.Documents.Select(document => new EditedDocument(document.Name, document.Content)),
             diagnostics);
+    }
+
+    /// <summary>The names of the edited documents an answer carries, each given and none repeated.</summary>
+    /// <exception cref="TransportException">A document is unnamed, or named twice.</exception>
+    internal static HashSet<string> DocumentNames(IReadOnlyList<Wire.EditedDocument> documents, string method)
+    {
+        var names = new HashSet<string>(StringComparer.Ordinal);
+        for (var i = 0; i < documents.Count; i++)
+        {
+            var name = documents[i].Name;
+            if (name.Length == 0)
+            {
+                throw Malformed(method, $"documents[{i}] without its name, which every edited document is given");
+            }
+
+            if (!names.Add(name))
+            {
+                throw Malformed(method, $"documents[{i}] repeating the document \"{name}\"");
+            }
+        }
+
+        return names;
     }
 
     private static AppliedEdit Applied(Wire.AppliedEdit edit, int i, string method, int operations, HashSet<string> documents)

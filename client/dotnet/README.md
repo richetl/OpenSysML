@@ -18,12 +18,14 @@ of this repository and consumed by `ProjectReference`. It is not published to Nu
 > records runs. It [converts and migrates](#converting-migrating-and-saving) models, between
 > notation, Turtle and the API's JSON form and from SysML v1, and saves them to disk without
 > ever leaving a partial file. It [queries models, runs their document queries and renders
-> their documents and views](#querying-documents-and-views), and [edits their
-> notation](#editing) while keeping everything an edit did not touch. Its [conformance
-> runner](#conformance) runs the shared suite through that API. It does not download a release
-> of the service, and offers none of the other typed operations (graph export, data import and
-> result comparison). The other clients ([Python](../python/), [Java](../java/),
-> [Rust](../rust/), [Node](../node/)) are the ones to use for those today.
+> their documents and views](#querying-documents-and-views), [edits their
+> notation](#editing) while keeping everything an edit did not touch, and [exports behaviors'
+> graphs, imports data and compares a SysML v1 tool's results with
+> runs](#exporting-graphs-importing-data-and-comparing-results). Its [conformance
+> runner](#conformance) runs the shared suite through that API, every RPC of the service
+> covered. It does not download a release of the service; the other clients
+> ([Python](../python/), [Java](../java/), [Rust](../rust/), [Node](../node/)) are the ones to
+> use for that today.
 
 ## Requirements
 
@@ -724,6 +726,78 @@ document. `EditResult.SaveAsync` and `EditedDocument.SaveAsync` write as
 [`Conversion.SaveAsync`](#converting-migrating-and-saving) does: whole, through a temporary
 file, and never over an existing file unless `SaveOptions.Overwrite` asks.
 
+## Exporting graphs, importing data and comparing results
+
+```csharp
+var model = (await connection.LoadAsync("behavior.sysml")).RequireNoErrors();
+var graphs = await model.ExportGraphsAsync("Test::race");             // graphs.Content, the graphs:1 JSON
+
+var fleet = (await connection.LoadAsync("import.sysml")).RequireNoErrors();
+var imported = await fleet.ImportDataAsync(
+[
+    new DataImport("fleet.csv", await File.ReadAllTextAsync("fleet.csv")),
+    new DataImport("fleet.txt", "{\"id\":\"car\",\"n\":3}\n")
+    {
+        Format = "jsonl",
+        Map = "{\"element\":{\"path\":\"/id\",\"prefix\":\"V::\"},\"features\":{\"count\":{\"path\":\"/n\"}}}",
+    },
+]);                                                                    // imported.Model, imported.Content
+await imported.SaveAsync("import.sysml", new SaveOptions { Overwrite = true });
+
+var migrated = (await connection.LoadAsync("Probe.sysml")).RequireNoErrors();
+var comparison = await migrated.CompareResultsAsync(await File.ReadAllTextAsync("Probe.results.json"), new CompareOptions { Seed = 7 });
+Console.WriteLine(comparison);                                         // as sysml -compare-results prints it
+```
+
+| Method | Answers |
+| --- | --- |
+| `Model.ExportGraphsAsync` | The `Graphs` of an action or state machine, definition or usage: its `Content`, the canonical `graphs:<version>` JSON of its lowered graph and of every behavior it performs, the `Version` and the `Subject` as resolved |
+| `Model.ImportDataAsync` | An `ImportResult` of `DataImport`s: an `ImportedFile` per file with the `Values` it set on how many `Elements` and each `ImportedValue` assignment, the edited notation as `Content` or `Documents`, and the imported `Model` |
+| `Model.CompareResultsAsync` | A `Comparison` of a results index: a `ConfigurationComparison` per configuration with its `Status`, its runs as `SweepRow`s, each `ObservableComparison` of the tool's and the runs' `ComparedDistribution` with their `StatisticDifference` and the `CaseStatistics` a Monte Carlo case declares, and its `Lines` as `sysml -compare-results` prints them; and the `Standing` of the engine that ran them |
+
+A graph's form is the text the service wrote, the same an external engine is sent: the client
+reads nothing out of it and hands it on unchanged. A subject no element is named by is a
+`ServiceException` with `NotFound`; one that is no action or state machine, or that several
+elements are named by, is `InvalidArgument`; a model the service no longer holds is a
+`ModelNotFoundException`. An export needs `export_graphs`.
+
+Each data file is read as its name's extension says (`.csv`, `.tsv`, `.json`, `.jsonl`) or as
+`DataImport.Format` names, by its own header or by the JSON mapping `DataImport.Map` holds (the
+file `sysml -import-map` names), and the files are applied in order, one edit each, all of them
+or none: a feature the element declares has its value set, one it inherits is redefined in the
+element's body. The service parses the imported model and holds it under a hash of its own,
+which `ImportResult.Model` names as a new handle borrowing the connection; the model imported
+into is left as it was, and nothing is written to disk. An import that set no value answers
+that model under its own hash and no notation. `ImportOptions.DryRun` reports the assignments
+alone, with no model, notation or documents. A model of several documents is imported into as
+one, its edited notation in `Documents` alone and `Content` null, so `ImportResult.SaveAsync`
+refuses it and each `EditedDocument.SaveAsync` writes one; `ImportOptions.AcceptDocuments` is
+true by default, and false asks the service to refuse such a model with `FailedPrecondition`.
+A row naming no element or feature, a value that does not read, or values that make the model
+invalid refuse the whole import with a `ModelException` keeping the diagnostics behind it, and
+no model is made. An empty list of files and an import form other than `values` are refused by
+the service with `InvalidArgument`; a format, mapping or form set to empty text is refused
+before anything is sent, since the service reads empty as absent. A malformed answer, a refusal
+beside what it set, other files than one per file in order, a dry run's model, notation in
+`content` for a model of several documents, or documents other than the one document of a
+single-document model, is a `TransportException` with `Internal`. An import needs
+`import_data`; a lost answer does not prove the import was not made.
+
+The results are the JSON `sysml -migration-results` writes beside a migrated model, compared
+against that model. Every configuration they index is run, or those `CompareOptions.Actions`
+names, as many times as `Runs` or its own `numberOfRuns` says, under the `Seed`, `Draws` and
+`ClockStep` given or its own; `Observe` pairs stored observables with the features of the runs
+that answer them. A configuration that cannot be run is `unresolved`, saying why, one whose runs
+failed `fails` with their errors, and one not every observable of which compared `undecided`: a
+comparison, never an exception. A distribution, difference or case statistic the answer has
+none of is null, never zeros, and a pooled tool distribution knows its count and mean alone.
+Results the service cannot read, a negative number of runs, an unknown draw policy, a clock
+step no clock ticks by and an unknown engine are refused with `InvalidArgument`; results
+nothing of which could be compared raise `CompareException` with the failure's `Reason` and
+the `Partial` comparison the answer reported beside it. A comparison needs `compare_results`,
+then `engines` to name an engine and `schedule_explore` for the explore engine, checked in
+that order before anything is sent.
+
 ## Values
 
 `Value` is an immutable value the service evaluates, or one sent to it: one nested sealed
@@ -989,7 +1063,7 @@ the report format, destination and filesystem error.
 
 Each RPC the API covers has an adapter, grouped by area beside the methods it calls
 (`ConnectionArea`, `ModelArea`, `ExecutionArea`, `VerificationArea`, `SamplingArea`, `ConversionArea`,
-`QueryDocsArea`, `EditingArea`). An adapter reads the
+`QueryDocsArea`, `EditingArea`, `GraphDataArea`). An adapter reads the
 decoded request as the arguments of the typed method, so the request the client sends is the
 one the scenario states, and renders what the method returned, with
 [`Rendering`](src/OpenMBEE.OpenSysML.Conformance/Rendering.cs) reading only public types, back
@@ -1003,7 +1077,8 @@ response's `error`, failure reason and diagnostics, with what the exception kept
 a run's clock and trace, a check's or an analysis's partial result, a verification's objects,
 verification verdicts and engine standing, the table runs made, the run, sweep or sample a
 recording made, with its own failure where it reported one, a conversion's or migration's
-formats, notice and diagnostics, and a refused edit's kind, diagnostics and referrers; a refusal keeps the service's status and message, as does a
+formats, notice and diagnostics, a refused edit's kind, diagnostics and referrers, a refused
+import's diagnostics, and a comparison's kind, source and engine standing; a refusal keeps the service's status and message, as does a
 document query or document the model declares wrongly, which the API raises as a
 `QueryException`; a
 capability the client refuses for before sending is `UNIMPLEMENTED`, which the service would
@@ -1012,8 +1087,8 @@ and fails on any call to `Connection.CallAsync` or the generated stub. A request
 the adapter cannot send, or one the API has no way to express, is skipped for a stated reason;
 so is one the API itself refuses with `InvalidRequestException`, for that exception's message.
 
-Skips are accounted exactly. `expected-skips.json` lists the RPCs no adapter covers yet,
-which must be the inventory's `deferred` rows, and the scenarios whose request the API cannot
+Skips are accounted exactly. `expected-skips.json` lists the RPCs no adapter covers, which
+must be the inventory's `deferred` rows and today are none, and the scenarios whose request the API cannot
 express, each with the reason its adapter gives. The run fails for any other skip, a listed
 skip given another reason, and a listed skip that ran, whether or not `-allow-skips` is
 passed; in a configuration withholding capabilities, a skip is accounted only by a withheld
@@ -1023,8 +1098,8 @@ skip, the run says so. Per protocol, of 194 scenarios:
 
 | Configuration | ran | passed | skipped as uncovered | skipped as unexpressible |
 | --- | --: | --: | --: | --: |
-| default | 175 | 175 | 13 | 6 |
-| `strict_conformance` and `oslc_query` withheld | 174 | 174 | 13 | 6 |
+| default | 188 | 188 | 0 | 6 |
+| `strict_conformance` and `oslc_query` withheld | 187 | 187 | 0 | 6 |
 
 The unexpressible requests send what the public types refuse to hold or send:
 `parse/naming_no_source_is_invalid` names no source, which the API always does; three
@@ -1039,9 +1114,9 @@ test asserts it fails the run:
 
 | `-mutate` | What it does to every answer | Scenarios that fail, per protocol |
 | --- | --- | --: |
-| `perturb-reals` | Moves each real by a millionth | 27 |
-| `truncate-lists` | Drops the last entry of each list | 69 |
-| `rewrite-strings` | Replaces each non-empty string but no map key | 96 |
+| `perturb-reals` | Moves each real by a millionth | 28 |
+| `truncate-lists` | Drops the last entry of each list | 74 |
+| `rewrite-strings` | Replaces each non-empty string but no map key | 104 |
 
 `make conformance-dotnet-check` also runs the reference runner against the same binary, both
 with `-v`, and `dotnet-gates.py conformance-check` holds the two runs together: both reports
@@ -1049,7 +1124,7 @@ have the reference's members in its order and totals that add up, the JUnit repo
 same results, including each testcase's pass, failure, error or skip disposition, and every
 scenario the .NET run did not skip as reviewed has the reference's
 outcome, status, missing capabilities and normalized response. Only timing, including the
-wall time each row of a sweep or of runs reports and the time a recording states in the
+wall time each row of a sweep, of runs or of a comparison reports and the time a recording states in the
 records it generates, with the recorded model's hash that follows from it, which compares only
 as present, and what answered are not compared, and the service's capabilities compare as a
 set, which is how the client holds them.

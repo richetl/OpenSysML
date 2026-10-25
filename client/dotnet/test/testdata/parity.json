@@ -1296,7 +1296,7 @@
       "input": "behavior subject",
       "result": "Graphs",
       "area": "graph-data",
-      "status": "deferred",
+      "status": "implemented",
       "gates": [
         {
           "capability": "export_graphs",
@@ -1309,6 +1309,15 @@
         "export_graphs/state_machine_is_the_canonical_graphs_form",
         "export_graphs_unknown_subject_is_not_found",
         "export_graphs_non_behavior_is_invalid"
+      ],
+      "tests": [
+        "ModelGraphDataTests.ExportGraphsSendsTheSubjectAndKeepsTheFormByteForByte",
+        "ModelGraphDataTests.ExportGraphsNeedsItsCapabilityAndASubjectBeforeAnythingIsSent",
+        "ModelGraphDataTests.ExportGraphsTellsTheMissingModelFromTheMissingSubject",
+        "ModelGraphDataTests.AnExportWithoutItsFormVersionOrSubjectIsMalformed",
+        "ServiceGraphDataTests.AnActionAndAStateMachineExportTheFormAsTheServiceWroteIt",
+        "ServiceGraphDataTests.TheFormIsTheSameTextOverEveryWire",
+        "ServiceGraphDataTests.AnExportOfAMissingSubjectANonBehaviorOrAMissingModelIsRefused"
       ]
     },
     {
@@ -1321,7 +1330,7 @@
       "input": "DataImport list, ImportOptions",
       "result": "ImportResult",
       "area": "graph-data",
-      "status": "deferred",
+      "status": "implemented",
       "gates": [
         {
           "capability": "import_data",
@@ -1335,6 +1344,21 @@
         "import_data/dry_run_reports_without_changing_the_model",
         "import_data/an_unknown_element_refuses_the_whole_import",
         "import_data/no_imports_is_an_invalid_argument"
+      ],
+      "tests": [
+        "ModelGraphDataTests.ImportDataSendsEveryFileAndOptionAsTheSchemaWritesIt",
+        "ModelGraphDataTests.AnImportReadsEveryFileAndAnswersANewModelLeavingTheOldOneAsItWas",
+        "ModelGraphDataTests.ADryRunAnswersWhatEachFileWouldSetAndMakesNoModel",
+        "ModelGraphDataTests.AModelOfSeveralDocumentsAnswersEachChangedDocumentAndNoNotationOfOne",
+        "ModelGraphDataTests.AnImportThatSetNoValueAnswersTheModelItWasMadeOf",
+        "ModelGraphDataTests.ARefusedImportIsAModelExceptionKeepingItsDiagnosticsAndMakesNoModel",
+        "ModelGraphDataTests.AMalformedImportAnswerIsRefusedRatherThanRead",
+        "ModelGraphDataTests.AnImportsShapeAndGateAreCheckedBeforeAnythingIsSent",
+        "ServiceGraphDataTests.EveryFormatIsImportedInOrderIntoANewModelLeavingTheOldOneAsItWas",
+        "ServiceGraphDataTests.ADryRunReportsWhatTheImportWouldSetAndChangesNothing",
+        "ServiceGraphDataTests.ARefusedImportIsAModelExceptionAndChangesNothing",
+        "ServiceGraphDataTests.AModelOfSeveralDocumentsIsImportedIntoAsOne",
+        "ServiceGraphDataTests.TheImportedModelIsHeldByTheServiceAndItsNotationSavesAndLoadsBack"
       ]
     },
     {
@@ -1347,7 +1371,7 @@
       "input": "results JSON, CompareOptions",
       "result": "Comparison",
       "area": "graph-data",
-      "status": "deferred",
+      "status": "implemented",
       "gates": [
         {
           "capability": "compare_results",
@@ -1370,6 +1394,17 @@
         "compare_results/actions_select_configurations_by_name",
         "compare_results/malformed_results_are_refused_in_band",
         "compare_results/negative_runs_is_an_invalid_argument"
+      ],
+      "tests": [
+        "ModelGraphDataTests.CompareResultsSendsEveryOptionAsTheSchemaWritesIt",
+        "ModelGraphDataTests.AComparisonReadsEveryConfigurationObservableAndTheEngineThatRanIt",
+        "ModelGraphDataTests.ResultsNothingOfWhichWasComparedAreACompareExceptionKeepingWhatTheAnswerReported",
+        "ModelGraphDataTests.CompareGatesAreJudgedInTheServicesOrderBeforeAnythingIsSent",
+        "ModelGraphDataTests.ComparisonOptionsNamingEmptyTextAreRefusedBeforeAnythingIsSent",
+        "ServiceGraphDataTests.StoredAndPooledResultsAreComparedWithSeededRunsBesideFailedAndUnresolvedConfigurations",
+        "ServiceGraphDataTests.TheSameSeedMakesTheSameComparisonAndFixedDrawsNeedNone",
+        "ServiceGraphDataTests.ResultsTheServiceCannotReadAndOptionsItRefusesAreStatuses",
+        "ServiceGraphDataTests.AServiceWithoutTheCapabilitiesIsAskedNothingItCannotDo"
       ]
     }
   ],
@@ -2187,7 +2222,8 @@
     ],
     "sysml.CaseStatistic": [
       {
-        "status": "deferred",
+        "status": "typed",
+        "test": "ModelGraphDataTests.AComparisonReadsEveryConfigurationObservableAndTheEngineThatRanIt",
         "fields": [
           "statistic",
           "of",
@@ -2199,7 +2235,8 @@
     ],
     "sysml.CaseStatistics": [
       {
-        "status": "deferred",
+        "status": "typed",
+        "test": "ModelGraphDataTests.AComparisonReadsEveryConfigurationObservableAndTheEngineThatRanIt",
         "fields": [
           "analysis",
           "rows",
@@ -2346,7 +2383,8 @@
     ],
     "sysml.CompareResultsRequest": [
       {
-        "status": "deferred",
+        "status": "typed",
+        "test": "ModelGraphDataTests.CompareResultsSendsEveryOptionAsTheSchemaWritesIt",
         "fields": [
           "model_hash",
           "results",
@@ -2362,22 +2400,30 @@
     ],
     "sysml.CompareResultsResponse": [
       {
-        "status": "deferred",
+        "status": "typed",
+        "test": "ModelGraphDataTests.AComparisonReadsEveryConfigurationObservableAndTheEngineThatRanIt",
         "fields": [
           "configurations",
           "source",
-          "error",
           "diagnostics",
-          "failure_reason",
           "engine",
           "strength",
           "bounds"
+        ]
+      },
+      {
+        "status": "typed",
+        "test": "ModelGraphDataTests.ResultsNothingOfWhichWasComparedAreACompareExceptionKeepingWhatTheAnswerReported",
+        "fields": [
+          "error",
+          "failure_reason"
         ]
       }
     ],
     "sysml.ComparedDistribution": [
       {
-        "status": "deferred",
+        "status": "typed",
+        "test": "ModelGraphDataTests.AComparisonReadsEveryConfigurationObservableAndTheEngineThatRanIt",
         "fields": [
           "count",
           "min",
@@ -2411,7 +2457,8 @@
     ],
     "sysml.ConfigurationComparison": [
       {
-        "status": "deferred",
+        "status": "typed",
+        "test": "ModelGraphDataTests.AComparisonReadsEveryConfigurationObservableAndTheEngineThatRanIt",
         "fields": [
           "id",
           "name",
@@ -2489,7 +2536,8 @@
     ],
     "sysml.DataImport": [
       {
-        "status": "deferred",
+        "status": "typed",
+        "test": "ModelGraphDataTests.ImportDataSendsEveryFileAndOptionAsTheSchemaWritesIt",
         "fields": [
           "name",
           "content",
@@ -2909,7 +2957,8 @@
     ],
     "sysml.ExportGraphsRequest": [
       {
-        "status": "deferred",
+        "status": "typed",
+        "test": "ModelGraphDataTests.ExportGraphsSendsTheSubjectAndKeepsTheFormByteForByte",
         "fields": [
           "model_hash",
           "subject"
@@ -2918,7 +2967,8 @@
     ],
     "sysml.ExportGraphsResponse": [
       {
-        "status": "deferred",
+        "status": "typed",
+        "test": "ModelGraphDataTests.ExportGraphsSendsTheSubjectAndKeepsTheFormByteForByte",
         "fields": [
           "content",
           "version",
@@ -2962,7 +3012,8 @@
     ],
     "sysml.ImportDataRequest": [
       {
-        "status": "deferred",
+        "status": "typed",
+        "test": "ModelGraphDataTests.ImportDataSendsEveryFileAndOptionAsTheSchemaWritesIt",
         "fields": [
           "model_hash",
           "imports",
@@ -2974,20 +3025,28 @@
     ],
     "sysml.ImportDataResponse": [
       {
-        "status": "deferred",
+        "status": "typed",
+        "test": "ModelGraphDataTests.AnImportReadsEveryFileAndAnswersANewModelLeavingTheOldOneAsItWas",
         "fields": [
           "files",
           "documents",
           "content",
           "model_hash",
-          "error",
           "diagnostics"
+        ]
+      },
+      {
+        "status": "typed",
+        "test": "ModelGraphDataTests.ARefusedImportIsAModelExceptionKeepingItsDiagnosticsAndMakesNoModel",
+        "fields": [
+          "error"
         ]
       }
     ],
     "sysml.ImportedFile": [
       {
-        "status": "deferred",
+        "status": "typed",
+        "test": "ModelGraphDataTests.AnImportReadsEveryFileAndAnswersANewModelLeavingTheOldOneAsItWas",
         "fields": [
           "name",
           "values",
@@ -2998,7 +3057,8 @@
     ],
     "sysml.ImportedValue": [
       {
-        "status": "deferred",
+        "status": "typed",
+        "test": "ModelGraphDataTests.AnImportReadsEveryFileAndAnswersANewModelLeavingTheOldOneAsItWas",
         "fields": [
           "element",
           "feature",
@@ -3201,7 +3261,8 @@
     ],
     "sysml.ObservableComparison": [
       {
-        "status": "deferred",
+        "status": "typed",
+        "test": "ModelGraphDataTests.AComparisonReadsEveryConfigurationObservableAndTheEngineThatRanIt",
         "fields": [
           "stored",
           "feature",
@@ -3220,7 +3281,8 @@
     ],
     "sysml.ObservablePair": [
       {
-        "status": "deferred",
+        "status": "typed",
+        "test": "ModelGraphDataTests.CompareResultsSendsEveryOptionAsTheSchemaWritesIt",
         "fields": [
           "stored",
           "feature"
@@ -4011,7 +4073,8 @@
     ],
     "sysml.StatisticDifference": [
       {
-        "status": "deferred",
+        "status": "typed",
+        "test": "ModelGraphDataTests.AComparisonReadsEveryConfigurationObservableAndTheEngineThatRanIt",
         "fields": [
           "min",
           "mean",

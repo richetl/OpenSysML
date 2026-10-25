@@ -1,9 +1,5 @@
 {
-  "uncovered_rpcs": [
-    "CompareResults",
-    "ExportGraphs",
-    "ImportData"
-  ],
+  "uncovered_rpcs": [],
   "unexpressible": {
     "evaluate_calc/a_function_argument_naming_no_object_is_refused": "The value at arguments[0] is the function F::Scaler::scale closing over instance(3), which lives only within the response that held it.",
     "evaluate_calc/a_malformed_vector_argument_is_refused": "the public API holds a vector's components as numbers, which arguments[0].vector[1] is not",

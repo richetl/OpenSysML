@@ -72,6 +72,7 @@ internal static class ApiAdapters
             .Concat(ConversionArea.Adapters)
             .Concat(QueryDocsArea.Adapters)
             .Concat(EditingArea.Adapters)
+            .Concat(GraphDataArea.Adapters)
             .ToFrozenDictionary(adapter => adapter.Method, StringComparer.Ordinal);
 
     /// <summary>Why a scenario of an RPC the public API does not cover is skipped.</summary>

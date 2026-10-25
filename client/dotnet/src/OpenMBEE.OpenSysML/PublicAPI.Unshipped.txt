@@ -2825,3 +2825,253 @@ static OpenMBEE.OpenSysML.Referrer.operator ==(OpenMBEE.OpenSysML.Referrer? left
 virtual OpenMBEE.OpenSysML.Edit.EqualityContract.get -> System.Type!
 virtual OpenMBEE.OpenSysML.Edit.Equals(OpenMBEE.OpenSysML.Edit? other) -> bool
 virtual OpenMBEE.OpenSysML.Edit.PrintMembers(System.Text.StringBuilder! builder) -> bool
+OpenMBEE.OpenSysML.CaseStatistic
+OpenMBEE.OpenSysML.CaseStatistic.<Clone>$() -> OpenMBEE.OpenSysML.CaseStatistic!
+OpenMBEE.OpenSysML.CaseStatistic.CaseStatistic(string! statistic, string! of, string! tool, string! run, string! difference) -> void
+OpenMBEE.OpenSysML.CaseStatistic.Difference.get -> string!
+OpenMBEE.OpenSysML.CaseStatistic.Equals(OpenMBEE.OpenSysML.CaseStatistic? other) -> bool
+OpenMBEE.OpenSysML.CaseStatistic.Of.get -> string!
+OpenMBEE.OpenSysML.CaseStatistic.Run.get -> string!
+OpenMBEE.OpenSysML.CaseStatistic.Statistic.get -> string!
+OpenMBEE.OpenSysML.CaseStatistic.Tool.get -> string!
+OpenMBEE.OpenSysML.CaseStatistics
+OpenMBEE.OpenSysML.CaseStatistics.<Clone>$() -> OpenMBEE.OpenSysML.CaseStatistics!
+OpenMBEE.OpenSysML.CaseStatistics.Analysis.get -> string!
+OpenMBEE.OpenSysML.CaseStatistics.CaseStatistics(string! analysis, System.Collections.Generic.IEnumerable<OpenMBEE.OpenSysML.CaseStatistic!>! rows, System.Collections.Generic.IEnumerable<string!>! notes) -> void
+OpenMBEE.OpenSysML.CaseStatistics.Equals(OpenMBEE.OpenSysML.CaseStatistics? other) -> bool
+OpenMBEE.OpenSysML.CaseStatistics.Notes.get -> OpenMBEE.OpenSysML.ValueList<string!>
+OpenMBEE.OpenSysML.CaseStatistics.Rows.get -> OpenMBEE.OpenSysML.ValueList<OpenMBEE.OpenSysML.CaseStatistic!>
+OpenMBEE.OpenSysML.CompareException
+OpenMBEE.OpenSysML.CompareException.CompareException(string! message, string! method, OpenMBEE.OpenSysML.FailureReason reason, OpenMBEE.OpenSysML.Comparison! partial) -> void
+OpenMBEE.OpenSysML.CompareException.Partial.get -> OpenMBEE.OpenSysML.Comparison!
+OpenMBEE.OpenSysML.CompareOptions
+OpenMBEE.OpenSysML.CompareOptions.Actions.get -> System.Collections.Generic.IReadOnlyList<string!>!
+OpenMBEE.OpenSysML.CompareOptions.Actions.init -> void
+OpenMBEE.OpenSysML.CompareOptions.ClockStep.get -> double?
+OpenMBEE.OpenSysML.CompareOptions.ClockStep.init -> void
+OpenMBEE.OpenSysML.CompareOptions.CompareOptions() -> void
+OpenMBEE.OpenSysML.CompareOptions.Draws.get -> string?
+OpenMBEE.OpenSysML.CompareOptions.Draws.init -> void
+OpenMBEE.OpenSysML.CompareOptions.Engine.get -> string?
+OpenMBEE.OpenSysML.CompareOptions.Engine.init -> void
+OpenMBEE.OpenSysML.CompareOptions.Observe.get -> System.Collections.Generic.IReadOnlyList<OpenMBEE.OpenSysML.ObservablePair!>!
+OpenMBEE.OpenSysML.CompareOptions.Observe.init -> void
+OpenMBEE.OpenSysML.CompareOptions.Runs.get -> long
+OpenMBEE.OpenSysML.CompareOptions.Runs.init -> void
+OpenMBEE.OpenSysML.CompareOptions.Seed.get -> ulong?
+OpenMBEE.OpenSysML.CompareOptions.Seed.init -> void
+OpenMBEE.OpenSysML.ComparedDistribution
+OpenMBEE.OpenSysML.ComparedDistribution.<Clone>$() -> OpenMBEE.OpenSysML.ComparedDistribution!
+OpenMBEE.OpenSysML.ComparedDistribution.ComparedDistribution(long Count, double Min, double Mean, double P50, double P90, double Max, double Deviation) -> void
+OpenMBEE.OpenSysML.ComparedDistribution.Count.get -> long
+OpenMBEE.OpenSysML.ComparedDistribution.Count.init -> void
+OpenMBEE.OpenSysML.ComparedDistribution.Deconstruct(out long Count, out double Min, out double Mean, out double P50, out double P90, out double Max, out double Deviation) -> void
+OpenMBEE.OpenSysML.ComparedDistribution.Deviation.get -> double
+OpenMBEE.OpenSysML.ComparedDistribution.Deviation.init -> void
+OpenMBEE.OpenSysML.ComparedDistribution.Equals(OpenMBEE.OpenSysML.ComparedDistribution? other) -> bool
+OpenMBEE.OpenSysML.ComparedDistribution.Max.get -> double
+OpenMBEE.OpenSysML.ComparedDistribution.Max.init -> void
+OpenMBEE.OpenSysML.ComparedDistribution.Mean.get -> double
+OpenMBEE.OpenSysML.ComparedDistribution.Mean.init -> void
+OpenMBEE.OpenSysML.ComparedDistribution.Min.get -> double
+OpenMBEE.OpenSysML.ComparedDistribution.Min.init -> void
+OpenMBEE.OpenSysML.ComparedDistribution.P50.get -> double
+OpenMBEE.OpenSysML.ComparedDistribution.P50.init -> void
+OpenMBEE.OpenSysML.ComparedDistribution.P90.get -> double
+OpenMBEE.OpenSysML.ComparedDistribution.P90.init -> void
+OpenMBEE.OpenSysML.Comparison
+OpenMBEE.OpenSysML.Comparison.<Clone>$() -> OpenMBEE.OpenSysML.Comparison!
+OpenMBEE.OpenSysML.Comparison.Comparison(string! source, System.Collections.Generic.IEnumerable<OpenMBEE.OpenSysML.ConfigurationComparison!>! configurations, System.Collections.Generic.IEnumerable<OpenMBEE.OpenSysML.Diagnostic!>! diagnostics, OpenMBEE.OpenSysML.Standing! standing) -> void
+OpenMBEE.OpenSysML.Comparison.Configurations.get -> OpenMBEE.OpenSysML.ValueList<OpenMBEE.OpenSysML.ConfigurationComparison!>
+OpenMBEE.OpenSysML.Comparison.Diagnostics.get -> OpenMBEE.OpenSysML.ValueList<OpenMBEE.OpenSysML.Diagnostic!>
+OpenMBEE.OpenSysML.Comparison.Equals(OpenMBEE.OpenSysML.Comparison? other) -> bool
+OpenMBEE.OpenSysML.Comparison.Holds.get -> bool
+OpenMBEE.OpenSysML.Comparison.Source.get -> string!
+OpenMBEE.OpenSysML.Comparison.Standing.get -> OpenMBEE.OpenSysML.Standing!
+OpenMBEE.OpenSysML.ConfigurationComparison
+OpenMBEE.OpenSysML.ConfigurationComparison.<Clone>$() -> OpenMBEE.OpenSysML.ConfigurationComparison!
+OpenMBEE.OpenSysML.ConfigurationComparison.Behavior.get -> string!
+OpenMBEE.OpenSysML.ConfigurationComparison.ClockStep.get -> double
+OpenMBEE.OpenSysML.ConfigurationComparison.Completed.get -> long
+OpenMBEE.OpenSysML.ConfigurationComparison.ConfigurationComparison(string! id, string! name, string! behavior, string! target, string! resultLocation, string! status, string! unresolved, long storedRuns, long storedSnapshots, long runs, long completed, string! draws, ulong? seed, double clockStep, System.Collections.Generic.IEnumerable<OpenMBEE.OpenSysML.SweepRow!>! rows, System.Collections.Generic.IEnumerable<OpenMBEE.OpenSysML.Instance!>! instances, System.Collections.Generic.IEnumerable<OpenMBEE.OpenSysML.ObservableComparison!>! observables, System.Collections.Generic.IEnumerable<string!>! errors, System.Collections.Generic.IEnumerable<string!>! notes, System.Collections.Generic.IEnumerable<string!>! lines) -> void
+OpenMBEE.OpenSysML.ConfigurationComparison.Draws.get -> string!
+OpenMBEE.OpenSysML.ConfigurationComparison.Equals(OpenMBEE.OpenSysML.ConfigurationComparison? other) -> bool
+OpenMBEE.OpenSysML.ConfigurationComparison.Errors.get -> OpenMBEE.OpenSysML.ValueList<string!>
+OpenMBEE.OpenSysML.ConfigurationComparison.FindInstance(long instanceId) -> OpenMBEE.OpenSysML.Instance?
+OpenMBEE.OpenSysML.ConfigurationComparison.Holds.get -> bool
+OpenMBEE.OpenSysML.ConfigurationComparison.Id.get -> string!
+OpenMBEE.OpenSysML.ConfigurationComparison.Instances.get -> OpenMBEE.OpenSysML.ValueList<OpenMBEE.OpenSysML.Instance!>
+OpenMBEE.OpenSysML.ConfigurationComparison.Lines.get -> OpenMBEE.OpenSysML.ValueList<string!>
+OpenMBEE.OpenSysML.ConfigurationComparison.Name.get -> string!
+OpenMBEE.OpenSysML.ConfigurationComparison.Notes.get -> OpenMBEE.OpenSysML.ValueList<string!>
+OpenMBEE.OpenSysML.ConfigurationComparison.Observables.get -> OpenMBEE.OpenSysML.ValueList<OpenMBEE.OpenSysML.ObservableComparison!>
+OpenMBEE.OpenSysML.ConfigurationComparison.Resolve(OpenMBEE.OpenSysML.Value.InstanceRefValue! reference) -> OpenMBEE.OpenSysML.Instance?
+OpenMBEE.OpenSysML.ConfigurationComparison.ResultLocation.get -> string!
+OpenMBEE.OpenSysML.ConfigurationComparison.Rows.get -> OpenMBEE.OpenSysML.ValueList<OpenMBEE.OpenSysML.SweepRow!>
+OpenMBEE.OpenSysML.ConfigurationComparison.Runs.get -> long
+OpenMBEE.OpenSysML.ConfigurationComparison.Seed.get -> ulong?
+OpenMBEE.OpenSysML.ConfigurationComparison.Status.get -> string!
+OpenMBEE.OpenSysML.ConfigurationComparison.StoredRuns.get -> long
+OpenMBEE.OpenSysML.ConfigurationComparison.StoredSnapshots.get -> long
+OpenMBEE.OpenSysML.ConfigurationComparison.Target.get -> string!
+OpenMBEE.OpenSysML.ConfigurationComparison.Unresolved.get -> string!
+OpenMBEE.OpenSysML.DataImport
+OpenMBEE.OpenSysML.DataImport.<Clone>$() -> OpenMBEE.OpenSysML.DataImport!
+OpenMBEE.OpenSysML.DataImport.Content.get -> string!
+OpenMBEE.OpenSysML.DataImport.Content.init -> void
+OpenMBEE.OpenSysML.DataImport.DataImport(string! name, string! content) -> void
+OpenMBEE.OpenSysML.DataImport.Equals(OpenMBEE.OpenSysML.DataImport? other) -> bool
+OpenMBEE.OpenSysML.DataImport.Format.get -> string?
+OpenMBEE.OpenSysML.DataImport.Format.init -> void
+OpenMBEE.OpenSysML.DataImport.Map.get -> string?
+OpenMBEE.OpenSysML.DataImport.Map.init -> void
+OpenMBEE.OpenSysML.DataImport.Name.get -> string!
+OpenMBEE.OpenSysML.DataImport.Name.init -> void
+OpenMBEE.OpenSysML.Graphs
+OpenMBEE.OpenSysML.Graphs.<Clone>$() -> OpenMBEE.OpenSysML.Graphs!
+OpenMBEE.OpenSysML.Graphs.Content.get -> string!
+OpenMBEE.OpenSysML.Graphs.Equals(OpenMBEE.OpenSysML.Graphs? other) -> bool
+OpenMBEE.OpenSysML.Graphs.Graphs(string! content, int version, string! subject) -> void
+OpenMBEE.OpenSysML.Graphs.Subject.get -> string!
+OpenMBEE.OpenSysML.Graphs.Version.get -> int
+OpenMBEE.OpenSysML.ImportOptions
+OpenMBEE.OpenSysML.ImportOptions.AcceptDocuments.get -> bool
+OpenMBEE.OpenSysML.ImportOptions.AcceptDocuments.init -> void
+OpenMBEE.OpenSysML.ImportOptions.As.get -> string?
+OpenMBEE.OpenSysML.ImportOptions.As.init -> void
+OpenMBEE.OpenSysML.ImportOptions.DryRun.get -> bool
+OpenMBEE.OpenSysML.ImportOptions.DryRun.init -> void
+OpenMBEE.OpenSysML.ImportOptions.ImportOptions() -> void
+OpenMBEE.OpenSysML.ImportResult
+OpenMBEE.OpenSysML.ImportResult.<Clone>$() -> OpenMBEE.OpenSysML.ImportResult!
+OpenMBEE.OpenSysML.ImportResult.Content.get -> string?
+OpenMBEE.OpenSysML.ImportResult.Diagnostics.get -> OpenMBEE.OpenSysML.ValueList<OpenMBEE.OpenSysML.Diagnostic!>
+OpenMBEE.OpenSysML.ImportResult.Documents.get -> OpenMBEE.OpenSysML.ValueList<OpenMBEE.OpenSysML.EditedDocument!>
+OpenMBEE.OpenSysML.ImportResult.Equals(OpenMBEE.OpenSysML.ImportResult? other) -> bool
+OpenMBEE.OpenSysML.ImportResult.Files.get -> OpenMBEE.OpenSysML.ValueList<OpenMBEE.OpenSysML.ImportedFile!>
+OpenMBEE.OpenSysML.ImportResult.ImportResult(System.Collections.Generic.IEnumerable<OpenMBEE.OpenSysML.ImportedFile!>! files, string? content, System.Collections.Generic.IEnumerable<OpenMBEE.OpenSysML.EditedDocument!>! documents, OpenMBEE.OpenSysML.Model? model, System.Collections.Generic.IEnumerable<OpenMBEE.OpenSysML.Diagnostic!>! diagnostics) -> void
+OpenMBEE.OpenSysML.ImportResult.IsDryRun.get -> bool
+OpenMBEE.OpenSysML.ImportResult.Model.get -> OpenMBEE.OpenSysML.Model?
+OpenMBEE.OpenSysML.ImportResult.SaveAsync(string! path, OpenMBEE.OpenSysML.SaveOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string!>!
+OpenMBEE.OpenSysML.ImportResult.Values.get -> long
+OpenMBEE.OpenSysML.ImportedFile
+OpenMBEE.OpenSysML.ImportedFile.<Clone>$() -> OpenMBEE.OpenSysML.ImportedFile!
+OpenMBEE.OpenSysML.ImportedFile.Assignments.get -> OpenMBEE.OpenSysML.ValueList<OpenMBEE.OpenSysML.ImportedValue!>
+OpenMBEE.OpenSysML.ImportedFile.Elements.get -> long
+OpenMBEE.OpenSysML.ImportedFile.Equals(OpenMBEE.OpenSysML.ImportedFile? other) -> bool
+OpenMBEE.OpenSysML.ImportedFile.ImportedFile(string! name, long values, long elements, System.Collections.Generic.IEnumerable<OpenMBEE.OpenSysML.ImportedValue!>! assignments) -> void
+OpenMBEE.OpenSysML.ImportedFile.Name.get -> string!
+OpenMBEE.OpenSysML.ImportedFile.Values.get -> long
+OpenMBEE.OpenSysML.ImportedValue
+OpenMBEE.OpenSysML.ImportedValue.<Clone>$() -> OpenMBEE.OpenSysML.ImportedValue!
+OpenMBEE.OpenSysML.ImportedValue.Description.get -> string!
+OpenMBEE.OpenSysML.ImportedValue.Element.get -> string!
+OpenMBEE.OpenSysML.ImportedValue.Equals(OpenMBEE.OpenSysML.ImportedValue? other) -> bool
+OpenMBEE.OpenSysML.ImportedValue.Feature.get -> string!
+OpenMBEE.OpenSysML.ImportedValue.ImportedValue(string! element, string! feature, string! value, string! redefines, string! where, string! description) -> void
+OpenMBEE.OpenSysML.ImportedValue.Redefines.get -> string!
+OpenMBEE.OpenSysML.ImportedValue.Value.get -> string!
+OpenMBEE.OpenSysML.ImportedValue.Where.get -> string!
+OpenMBEE.OpenSysML.Model.CompareResultsAsync(string! results, OpenMBEE.OpenSysML.CompareOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<OpenMBEE.OpenSysML.Comparison!>!
+OpenMBEE.OpenSysML.Model.ExportGraphsAsync(string! subject, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<OpenMBEE.OpenSysML.Graphs!>!
+OpenMBEE.OpenSysML.Model.ImportDataAsync(System.Collections.Generic.IEnumerable<OpenMBEE.OpenSysML.DataImport!>! imports, OpenMBEE.OpenSysML.ImportOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<OpenMBEE.OpenSysML.ImportResult!>!
+OpenMBEE.OpenSysML.ObservableComparison
+OpenMBEE.OpenSysML.ObservableComparison.<Clone>$() -> OpenMBEE.OpenSysML.ObservableComparison!
+OpenMBEE.OpenSysML.ObservableComparison.Compared.get -> bool
+OpenMBEE.OpenSysML.ObservableComparison.Declared.get -> OpenMBEE.OpenSysML.CaseStatistics?
+OpenMBEE.OpenSysML.ObservableComparison.Difference.get -> OpenMBEE.OpenSysML.StatisticDifference?
+OpenMBEE.OpenSysML.ObservableComparison.Equals(OpenMBEE.OpenSysML.ObservableComparison? other) -> bool
+OpenMBEE.OpenSysML.ObservableComparison.Feature.get -> string!
+OpenMBEE.OpenSysML.ObservableComparison.Notes.get -> OpenMBEE.OpenSysML.ValueList<string!>
+OpenMBEE.OpenSysML.ObservableComparison.ObservableComparison(string! stored, string! feature, string! unit, OpenMBEE.OpenSysML.ComparedDistribution? tool, bool pooled, bool unstored, OpenMBEE.OpenSysML.ComparedDistribution? run, long produced, bool compared, OpenMBEE.OpenSysML.StatisticDifference? difference, OpenMBEE.OpenSysML.CaseStatistics? declared, System.Collections.Generic.IEnumerable<string!>! notes) -> void
+OpenMBEE.OpenSysML.ObservableComparison.Pooled.get -> bool
+OpenMBEE.OpenSysML.ObservableComparison.Produced.get -> long
+OpenMBEE.OpenSysML.ObservableComparison.Run.get -> OpenMBEE.OpenSysML.ComparedDistribution?
+OpenMBEE.OpenSysML.ObservableComparison.Stored.get -> string!
+OpenMBEE.OpenSysML.ObservableComparison.Tool.get -> OpenMBEE.OpenSysML.ComparedDistribution?
+OpenMBEE.OpenSysML.ObservableComparison.Unit.get -> string!
+OpenMBEE.OpenSysML.ObservableComparison.Unstored.get -> bool
+OpenMBEE.OpenSysML.ObservablePair
+OpenMBEE.OpenSysML.ObservablePair.<Clone>$() -> OpenMBEE.OpenSysML.ObservablePair!
+OpenMBEE.OpenSysML.ObservablePair.Equals(OpenMBEE.OpenSysML.ObservablePair? other) -> bool
+OpenMBEE.OpenSysML.ObservablePair.Feature.get -> string?
+OpenMBEE.OpenSysML.ObservablePair.Feature.init -> void
+OpenMBEE.OpenSysML.ObservablePair.ObservablePair(string! stored, string? feature = null) -> void
+OpenMBEE.OpenSysML.ObservablePair.Stored.get -> string!
+OpenMBEE.OpenSysML.ObservablePair.Stored.init -> void
+OpenMBEE.OpenSysML.StatisticDifference
+OpenMBEE.OpenSysML.StatisticDifference.<Clone>$() -> OpenMBEE.OpenSysML.StatisticDifference!
+OpenMBEE.OpenSysML.StatisticDifference.Equals(OpenMBEE.OpenSysML.StatisticDifference? other) -> bool
+OpenMBEE.OpenSysML.StatisticDifference.Max.get -> string!
+OpenMBEE.OpenSysML.StatisticDifference.Mean.get -> string!
+OpenMBEE.OpenSysML.StatisticDifference.Min.get -> string!
+OpenMBEE.OpenSysML.StatisticDifference.P50.get -> string!
+OpenMBEE.OpenSysML.StatisticDifference.P90.get -> string!
+OpenMBEE.OpenSysML.StatisticDifference.StatisticDifference(string! min, string! mean, string! p50, string! p90, string! max) -> void
+override OpenMBEE.OpenSysML.CaseStatistic.Equals(object? obj) -> bool
+override OpenMBEE.OpenSysML.CaseStatistic.GetHashCode() -> int
+override OpenMBEE.OpenSysML.CaseStatistic.ToString() -> string!
+override OpenMBEE.OpenSysML.CaseStatistics.Equals(object? obj) -> bool
+override OpenMBEE.OpenSysML.CaseStatistics.GetHashCode() -> int
+override OpenMBEE.OpenSysML.CaseStatistics.ToString() -> string!
+override OpenMBEE.OpenSysML.ComparedDistribution.Equals(object? obj) -> bool
+override OpenMBEE.OpenSysML.ComparedDistribution.GetHashCode() -> int
+override OpenMBEE.OpenSysML.ComparedDistribution.ToString() -> string!
+override OpenMBEE.OpenSysML.Comparison.Equals(object? obj) -> bool
+override OpenMBEE.OpenSysML.Comparison.GetHashCode() -> int
+override OpenMBEE.OpenSysML.Comparison.ToString() -> string!
+override OpenMBEE.OpenSysML.ConfigurationComparison.Equals(object? obj) -> bool
+override OpenMBEE.OpenSysML.ConfigurationComparison.GetHashCode() -> int
+override OpenMBEE.OpenSysML.ConfigurationComparison.ToString() -> string!
+override OpenMBEE.OpenSysML.DataImport.Equals(object? obj) -> bool
+override OpenMBEE.OpenSysML.DataImport.GetHashCode() -> int
+override OpenMBEE.OpenSysML.DataImport.ToString() -> string!
+override OpenMBEE.OpenSysML.Graphs.Equals(object? obj) -> bool
+override OpenMBEE.OpenSysML.Graphs.GetHashCode() -> int
+override OpenMBEE.OpenSysML.Graphs.ToString() -> string!
+override OpenMBEE.OpenSysML.ImportResult.Equals(object? obj) -> bool
+override OpenMBEE.OpenSysML.ImportResult.GetHashCode() -> int
+override OpenMBEE.OpenSysML.ImportResult.ToString() -> string!
+override OpenMBEE.OpenSysML.ImportedFile.Equals(object? obj) -> bool
+override OpenMBEE.OpenSysML.ImportedFile.GetHashCode() -> int
+override OpenMBEE.OpenSysML.ImportedFile.ToString() -> string!
+override OpenMBEE.OpenSysML.ImportedValue.Equals(object? obj) -> bool
+override OpenMBEE.OpenSysML.ImportedValue.GetHashCode() -> int
+override OpenMBEE.OpenSysML.ImportedValue.ToString() -> string!
+override OpenMBEE.OpenSysML.ObservableComparison.Equals(object? obj) -> bool
+override OpenMBEE.OpenSysML.ObservableComparison.GetHashCode() -> int
+override OpenMBEE.OpenSysML.ObservableComparison.ToString() -> string!
+override OpenMBEE.OpenSysML.ObservablePair.Equals(object? obj) -> bool
+override OpenMBEE.OpenSysML.ObservablePair.GetHashCode() -> int
+override OpenMBEE.OpenSysML.ObservablePair.ToString() -> string!
+override OpenMBEE.OpenSysML.StatisticDifference.Equals(object? obj) -> bool
+override OpenMBEE.OpenSysML.StatisticDifference.GetHashCode() -> int
+override OpenMBEE.OpenSysML.StatisticDifference.ToString() -> string!
+static OpenMBEE.OpenSysML.CaseStatistic.operator !=(OpenMBEE.OpenSysML.CaseStatistic? left, OpenMBEE.OpenSysML.CaseStatistic? right) -> bool
+static OpenMBEE.OpenSysML.CaseStatistic.operator ==(OpenMBEE.OpenSysML.CaseStatistic? left, OpenMBEE.OpenSysML.CaseStatistic? right) -> bool
+static OpenMBEE.OpenSysML.CaseStatistics.operator !=(OpenMBEE.OpenSysML.CaseStatistics? left, OpenMBEE.OpenSysML.CaseStatistics? right) -> bool
+static OpenMBEE.OpenSysML.CaseStatistics.operator ==(OpenMBEE.OpenSysML.CaseStatistics? left, OpenMBEE.OpenSysML.CaseStatistics? right) -> bool
+static OpenMBEE.OpenSysML.CompareOptions.Default.get -> OpenMBEE.OpenSysML.CompareOptions!
+static OpenMBEE.OpenSysML.ComparedDistribution.operator !=(OpenMBEE.OpenSysML.ComparedDistribution? left, OpenMBEE.OpenSysML.ComparedDistribution? right) -> bool
+static OpenMBEE.OpenSysML.ComparedDistribution.operator ==(OpenMBEE.OpenSysML.ComparedDistribution? left, OpenMBEE.OpenSysML.ComparedDistribution? right) -> bool
+static OpenMBEE.OpenSysML.Comparison.operator !=(OpenMBEE.OpenSysML.Comparison? left, OpenMBEE.OpenSysML.Comparison? right) -> bool
+static OpenMBEE.OpenSysML.Comparison.operator ==(OpenMBEE.OpenSysML.Comparison? left, OpenMBEE.OpenSysML.Comparison? right) -> bool
+static OpenMBEE.OpenSysML.ConfigurationComparison.operator !=(OpenMBEE.OpenSysML.ConfigurationComparison? left, OpenMBEE.OpenSysML.ConfigurationComparison? right) -> bool
+static OpenMBEE.OpenSysML.ConfigurationComparison.operator ==(OpenMBEE.OpenSysML.ConfigurationComparison? left, OpenMBEE.OpenSysML.ConfigurationComparison? right) -> bool
+static OpenMBEE.OpenSysML.DataImport.operator !=(OpenMBEE.OpenSysML.DataImport? left, OpenMBEE.OpenSysML.DataImport? right) -> bool
+static OpenMBEE.OpenSysML.DataImport.operator ==(OpenMBEE.OpenSysML.DataImport? left, OpenMBEE.OpenSysML.DataImport? right) -> bool
+static OpenMBEE.OpenSysML.Graphs.operator !=(OpenMBEE.OpenSysML.Graphs? left, OpenMBEE.OpenSysML.Graphs? right) -> bool
+static OpenMBEE.OpenSysML.Graphs.operator ==(OpenMBEE.OpenSysML.Graphs? left, OpenMBEE.OpenSysML.Graphs? right) -> bool
+static OpenMBEE.OpenSysML.ImportOptions.Default.get -> OpenMBEE.OpenSysML.ImportOptions!
+static OpenMBEE.OpenSysML.ImportResult.operator !=(OpenMBEE.OpenSysML.ImportResult? left, OpenMBEE.OpenSysML.ImportResult? right) -> bool
+static OpenMBEE.OpenSysML.ImportResult.operator ==(OpenMBEE.OpenSysML.ImportResult? left, OpenMBEE.OpenSysML.ImportResult? right) -> bool
+static OpenMBEE.OpenSysML.ImportedFile.operator !=(OpenMBEE.OpenSysML.ImportedFile? left, OpenMBEE.OpenSysML.ImportedFile? right) -> bool
+static OpenMBEE.OpenSysML.ImportedFile.operator ==(OpenMBEE.OpenSysML.ImportedFile? left, OpenMBEE.OpenSysML.ImportedFile? right) -> bool
+static OpenMBEE.OpenSysML.ImportedValue.operator !=(OpenMBEE.OpenSysML.ImportedValue? left, OpenMBEE.OpenSysML.ImportedValue? right) -> bool
+static OpenMBEE.OpenSysML.ImportedValue.operator ==(OpenMBEE.OpenSysML.ImportedValue? left, OpenMBEE.OpenSysML.ImportedValue? right) -> bool
+static OpenMBEE.OpenSysML.ObservableComparison.operator !=(OpenMBEE.OpenSysML.ObservableComparison? left, OpenMBEE.OpenSysML.ObservableComparison? right) -> bool
+static OpenMBEE.OpenSysML.ObservableComparison.operator ==(OpenMBEE.OpenSysML.ObservableComparison? left, OpenMBEE.OpenSysML.ObservableComparison? right) -> bool
+static OpenMBEE.OpenSysML.ObservablePair.operator !=(OpenMBEE.OpenSysML.ObservablePair? left, OpenMBEE.OpenSysML.ObservablePair? right) -> bool
+static OpenMBEE.OpenSysML.ObservablePair.operator ==(OpenMBEE.OpenSysML.ObservablePair? left, OpenMBEE.OpenSysML.ObservablePair? right) -> bool
+static OpenMBEE.OpenSysML.StatisticDifference.operator !=(OpenMBEE.OpenSysML.StatisticDifference? left, OpenMBEE.OpenSysML.StatisticDifference? right) -> bool
+static OpenMBEE.OpenSysML.StatisticDifference.operator ==(OpenMBEE.OpenSysML.StatisticDifference? left, OpenMBEE.OpenSysML.StatisticDifference? right) -> bool

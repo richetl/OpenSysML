@@ -501,6 +501,15 @@ class ConformanceCheckTest(unittest.TestCase):
             theirs = self.sweeping({part: {"rows": [dict(row, elapsed_micros="9")]}, "package": "Records"}, rpc="RecordRun")
             self.assertEqual(self.check(ours=ours, theirs=theirs), (4, 2))
 
+    def test_the_wall_time_a_row_of_a_comparison_reports_is_not_compared_and_the_rest_of_it_is(self):
+        row = {"inputs": [{"name": "run", "value": {"int_value": 1}}], "elapsed_micros": "220"}
+        ours = self.sweeping({"configurations": [{"name": "C", "rows": [row]}, {"name": "D"}]}, rpc="CompareResults")
+        theirs = self.sweeping({"configurations": [{"name": "C", "rows": [dict(row, elapsed_micros="9")]}, {"name": "D"}]}, rpc="CompareResults")
+        self.assertEqual(self.check(ours=ours, theirs=theirs), (4, 2))
+        ours = self.sweeping({"configurations": [{"name": "C", "rows": [dict(row, inputs=[])]}]}, rpc="CompareResults")
+        with self.assertRaisesRegex(gates.GateError, r"run_sweep/rows: response configurations.0.rows.0.inputs: "):
+            self.check(ours=ours, theirs=self.sweeping({"configurations": [{"name": "C", "rows": [row]}]}, rpc="CompareResults"))
+
     def recording(self, at, model_hash="9f2c", extra=""):
         source = f'package Records {{\n    @AnalysisRecords::RecordedRun {{\n        runAt = "{at}";\n    }}\n{extra}}}\n'
         return {"source": source, "documents": [{"name": "Records.sysml", "content": source}], "content": source, "model_hash": model_hash}
