@@ -81,10 +81,16 @@ public sealed partial class Connection : IAsyncDisposable
     /// <param name="cancellationToken">Cancels the open, and the start of a private service no other open waits for.</param>
     /// <returns>The open connection, which the caller disposes.</returns>
     /// <exception cref="InvalidRequestException">An option is invalid.</exception>
-    /// <exception cref="BinaryNotFoundException">No service is named, and no binary was found to start one.</exception>
-    /// <exception cref="ChecksumMismatchException">The binary does not have <see cref="ConnectionOptions.ExpectedBinarySha256"/>.</exception>
-    /// <exception cref="UnsupportedPlatformException">No service is named, and this platform cannot start one.</exception>
-    /// <exception cref="ServiceStartException">No service is named and <see cref="ConnectionOptions.AutoStart"/> is false, or the private service did not start.</exception>
+    /// <exception cref="BinaryNotFoundException">No service is named, no binary was found to start one, and no release could be downloaded.</exception>
+    /// <exception cref="ChecksumMismatchException">
+    /// The binary does not have <see cref="ConnectionOptions.ExpectedBinarySha256"/>, or a release does not have the digest pinned or required for it.
+    /// </exception>
+    /// <exception cref="UnpinnedReleaseException">The release asked for is one this client pins no digest for.</exception>
+    /// <exception cref="UnsupportedPlatformException">No service is named, and this platform cannot start one, or has no release to download that was asked for.</exception>
+    /// <exception cref="ServiceStartException">
+    /// No service is named and <see cref="ConnectionOptions.AutoStart"/> is false, the release asked for could not be downloaded,
+    /// or the private service did not start.
+    /// </exception>
     /// <exception cref="StaleServiceException">The service is not the <see cref="ConnectionOptions.Version"/> asked for.</exception>
     /// <exception cref="CapabilityException">The service lacks a required capability.</exception>
     /// <exception cref="TransportException">The service could not be reached.</exception>
@@ -206,10 +212,28 @@ public sealed partial class Connection : IAsyncDisposable
     /// <param name="registry">The registry a private service is taken from.</param>
     /// <param name="cancellationToken">Cancels the open.</param>
     /// <returns>The open connection.</returns>
+    internal static Task<Connection> OpenAsync(
+        ConnectionOptions? options,
+        Func<string, string?> environment,
+        ServiceRegistry registry,
+        CancellationToken cancellationToken) =>
+        OpenAsync(options, environment, registry, ReleaseSource.Production, cancellationToken);
+
+    /// <summary>
+    /// Opens a connection, starting a private service through <paramref name="registry"/> when none is named, from a
+    /// release of <paramref name="releases"/> when no binary is named.
+    /// </summary>
+    /// <param name="options">How to reach the service; null for <see cref="ConnectionOptions.Default"/>.</param>
+    /// <param name="environment">Reads an environment variable; null when it is unset.</param>
+    /// <param name="registry">The registry a private service is taken from.</param>
+    /// <param name="releases">Where a release is downloaded from.</param>
+    /// <param name="cancellationToken">Cancels the open.</param>
+    /// <returns>The open connection.</returns>
     internal static async Task<Connection> OpenAsync(
         ConnectionOptions? options,
         Func<string, string?> environment,
         ServiceRegistry registry,
+        ReleaseSource releases,
         CancellationToken cancellationToken)
     {
         options ??= ConnectionOptions.Default;
@@ -218,7 +242,8 @@ public sealed partial class Connection : IAsyncDisposable
         cancellationToken.ThrowIfCancellationRequested();
         if (address is not null)
         {
-            if (options.BinaryPath is not null || options.ExpectedBinarySha256 is not null || options.IsolatedService)
+            if (options.BinaryPath is not null || options.ExpectedBinarySha256 is not null || options.IsolatedService
+                || options.DownloadVersion is not null || options.GithubRepo is not null)
             {
                 LogPrivateOptionsUnused(options.Logger, address);
             }
@@ -226,7 +251,7 @@ public sealed partial class Connection : IAsyncDisposable
             return await OpenAsync(CreateTransport(address, options), address, options, null, cancellationToken).ConfigureAwait(false);
         }
 
-        var binary = await BinaryResolver.ResolveAsync(options, environment, cancellationToken).ConfigureAwait(false);
+        var binary = await BinaryResolver.ResolveAsync(options, environment, releases, cancellationToken).ConfigureAwait(false);
         var lease = await registry.AcquireAsync(ServiceIdentity.Of(binary, options), options.IsolatedService, options.Logger, cancellationToken).ConfigureAwait(false);
         ITransport transport;
         try

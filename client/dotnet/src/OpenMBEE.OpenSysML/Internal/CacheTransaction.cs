@@ -470,6 +470,9 @@ internal sealed record CacheContents(string? Sha256, CacheMetadata? Metadata, st
 {
     /// <summary>Whether the record vouches for the executable: there are both, and the digest recorded is the executable's.</summary>
     internal bool Vouched => Sha256 is not null && Metadata is not null && Metadata.Describes(Sha256);
+
+    /// <summary>Whether there is no record at all, as beside an executable installed by hand, rather than one that cannot be used.</summary>
+    internal bool Unrecorded => Metadata is null && MetadataProblem == CacheMetadata.Absent;
 }
 
 /// <summary>A release <see cref="CacheTransaction.InstallAsync"/> installed.</summary>

@@ -339,6 +339,30 @@ public sealed class PrivateConnectionTests
             && entry.Message == "Connecting to http://fake.invalid:50051/, which $OPENSYSML_SERVICE names: the options describing a private service are not used");
     }
 
+    [Theory]
+    [InlineData("latest", null)]
+    [InlineData(null, "someone/fork")]
+    public async Task AServiceNamedByTheEnvironmentDownloadsNothingAndSaysTheReleaseOptionsAreUnused(string? version, string? repo)
+    {
+        using var handler = new FakeServiceHandler();
+        await using var releases = new ReleaseServer();
+        releases.Latest("v9.9.9");
+        var logger = new ListLogger();
+        var registry = Registry();
+
+        await using var connection = await Connection.OpenAsync(
+            new ConnectionOptions { DownloadVersion = version, GithubRepo = repo, HttpMessageHandler = handler, Logger = logger },
+            name => name == ConnectionOptions.ServiceVariable ? "fake.invalid:50051" : null,
+            registry,
+            releases.Source(),
+            Token);
+
+        Assert.Empty(registry.Entries());
+        Assert.Empty(releases.Requested);
+        Assert.Contains(logger.Entries, entry => entry.Level == LogLevel.Warning
+            && entry.Message == "Connecting to http://fake.invalid:50051/, which $OPENSYSML_SERVICE names: the options describing a private service are not used");
+    }
+
     [Fact]
     public async Task NoServiceNamedAndNoAutoStartIsAStartFailureThatStartsNothing()
     {

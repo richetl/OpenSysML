@@ -73,7 +73,9 @@ emit node "$( { [[ "$fanout" = true ]] || matches "$node_pattern"; } && echo tru
 emit python "$( { [[ "$fanout" = true ]] || matches "$python_pattern" || matches '^client/node/package\.json$' || matches '^client/java/pom\.xml$' || matches '^client/rust/opensysml/Cargo\.toml$' || matches '^client/rust/Cargo\.lock$' || matches '^client/dotnet/Directory\.Build\.props$' || matches '^editors/(mdk|syson(/backend)?)/pom\.xml$' || matches '^editors/(mdk/(plugin|tools|openapi-stubs|mdk-api-stubs|mdk-bridge|dist)|syson/syson-api-stubs)/pom\.xml$' || matches '^editors/(vscode|jupyterlab|syson/frontend)/package(-lock)?\.json$'; } && echo true || echo false)"
 emit java "$( { [[ "$fanout" = true ]] || matches "$java_pattern"; } && echo true || echo false)"
 emit rust "$( { [[ "$fanout" = true ]] || matches "$rust_pattern"; } && echo true || echo false)"
-emit dotnet "$( { [[ "$fanout" = true ]] || matches "$dotnet_pattern"; } && echo true || echo false)"
+# The .NET suite serves the Python client's signed-release fixtures as a release
+# it must refuse, so a change to them runs it too.
+emit dotnet "$( { [[ "$fanout" = true ]] || matches "$dotnet_pattern" || matches '^client/python/tests/fixtures/signed_release/'; } && echo true || echo false)"
 emit julia "$( { [[ "$fanout" = true ]] || matches "$julia_pattern"; } && echo true || echo false)"
 emit matlab "$( { [[ "$fanout" = true ]] || matches "$matlab_pattern"; } && echo true || echo false)"
 emit vscode "$( { [[ "$fanout" = true ]] || matches "$vscode_pattern"; } && echo true || echo false)"

@@ -35,21 +35,15 @@ public sealed class BinaryResolverTests : IDisposable
     }
 
     [Fact]
-    public void TheOptionComesFirstThenTheVariableThenTheCacheThenPath()
+    public void TheOptionIsNamedBeforeTheVariableAndNeitherIsNothing()
     {
         var option = Executable("option");
         var variable = Executable("variable");
-        var home = Directory.CreateDirectory(Path.Combine(root, "home")).FullName;
-        var cached = Executable(Path.Combine("home", ".opensysml", "bin"));
-        var onPath = Executable("path");
-        var environment = Environment(variable, home, Path.Combine(root, "empty-dir") + Path.PathSeparator + Path.Combine(root, "path"));
+        var environment = Environment(variable, null, null);
 
-        Assert.Equal(new FoundBinary(option, null), BinaryResolver.Find(new ConnectionOptions { BinaryPath = option }, environment));
-        Assert.Equal(new FoundBinary(variable, null), BinaryResolver.Find(new ConnectionOptions(), environment));
-        var fromCache = BinaryResolver.Find(new ConnectionOptions(), Environment("  ", home, Path.Combine(root, "path")));
-        Assert.Equal(cached, fromCache.Path);
-        Assert.Equal(cached, fromCache.Cache?.Executable);
-        Assert.Equal(new FoundBinary(onPath, null), BinaryResolver.Find(new ConnectionOptions(), Environment(null, Path.Combine(root, "no-home"), Path.Combine(root, "path"))));
+        Assert.Equal(option, BinaryResolver.FindNamed(new ConnectionOptions { BinaryPath = option }, environment));
+        Assert.Equal(variable, BinaryResolver.FindNamed(new ConnectionOptions(), environment));
+        Assert.Null(BinaryResolver.FindNamed(new ConnectionOptions(), Environment("  ", null, null)));
     }
 
     [Fact]
@@ -61,8 +55,10 @@ public sealed class BinaryResolverTests : IDisposable
         Directory.CreateDirectory(Path.Combine(blank, Name));
         var path = string.Join(Path.PathSeparator, Path.Combine(root, "missing"), blank, " ", Path.Combine(root, "first"), Path.Combine(root, "second"));
 
-        Assert.Equal(new FoundBinary(first, null), BinaryResolver.Find(new ConnectionOptions(), Environment(null, null, path)));
-        Assert.Equal(new FoundBinary(second, null), BinaryResolver.Find(new ConnectionOptions(), Environment(null, null, Path.Combine(root, "second"))));
+        Assert.Equal(first, BinaryResolver.FindOnPath(Environment(null, null, path), out _));
+        Assert.Equal(second, BinaryResolver.FindOnPath(Environment(null, null, Path.Combine(root, "second")), out _));
+        Assert.Null(BinaryResolver.FindOnPath(Environment(null, null, Path.Combine(root, "missing") + Path.PathSeparator + blank), out var searched));
+        Assert.Equal($"$PATH: no executable {Name} in its 2 directories", searched);
     }
 
     [Theory]
@@ -76,7 +72,7 @@ public sealed class BinaryResolverTests : IDisposable
         var options = byOption ? new ConnectionOptions { BinaryPath = missing } : new ConnectionOptions();
         var environment = Environment(byOption ? null : missing, home, Path.Combine(root, "home", ".opensysml", "bin"));
 
-        var error = Assert.Throws<BinaryNotFoundException>(() => BinaryResolver.Find(options, environment));
+        var error = Assert.Throws<BinaryNotFoundException>(() => BinaryResolver.FindNamed(options, environment));
 
         var source = byOption ? "ConnectionOptions.BinaryPath" : "$OPENSYSML_GRPC_BINARY";
         Assert.StartsWith($"{source} names {missing}, which is absent, not an executable sysml-grpc; it is used as named or not at all.", error.Message, StringComparison.Ordinal);
@@ -110,7 +106,7 @@ public sealed class BinaryResolverTests : IDisposable
 
         Assert.False(BinaryResolver.IsExecutable(file, out var why));
         Assert.Equal("not executable", why);
-        var error = Assert.Throws<BinaryNotFoundException>(() => BinaryResolver.Find(new ConnectionOptions { BinaryPath = file }, Environment(null, null, null)));
+        var error = Assert.Throws<BinaryNotFoundException>(() => BinaryResolver.FindNamed(new ConnectionOptions { BinaryPath = file }, Environment(null, null, null)));
         Assert.Contains("which is not executable", error.Message, StringComparison.Ordinal);
 
         File.SetUnixFileMode(file, UnixFileMode.UserRead | UnixFileMode.OtherExecute);
@@ -118,37 +114,51 @@ public sealed class BinaryResolverTests : IDisposable
     }
 
     [Fact]
-    public void FindingNothingListsEveryPlaceLookedAtAndSaysNothingIsDownloaded()
+    public async Task FindingNothingListsEveryPlaceLookedAtAndWhyNoReleaseCouldBeHad()
     {
         var home = Directory.CreateDirectory(Path.Combine(root, "home")).FullName;
         var path = Path.Combine(root, "a") + Path.PathSeparator + Path.Combine(root, "b");
+        var releases = ReleaseServer.Offline(ReleaseServer.Pins((ReleaseServer.Repo, ReleaseRequest.BuiltAgainst, ReleaseServer.Asset, new string('a', 64))));
 
-        var error = Assert.Throws<BinaryNotFoundException>(() => BinaryResolver.Find(new ConnectionOptions(), Environment(null, home, path)));
+        var error = await Assert.ThrowsAsync<BinaryNotFoundException>(() => BinaryResolver.ResolveAsync(new ConnectionOptions(), Environment(null, home, path), releases, Token));
 
-        Assert.Equal(
-            [
-                "$OPENSYSML_GRPC_BINARY: unset",
-                $"{Path.Combine(home, ".opensysml", "bin", Name)}: absent",
-                $"$PATH: no executable {Name} in its 2 directories",
-            ],
-            error.SearchedLocations);
-        Assert.Contains("This release of the .NET client does not download one.", error.Message, StringComparison.Ordinal);
+        var cached = Path.Combine(home, ".opensysml", "bin", Name);
+        Assert.Equal(4, error.SearchedLocations.Count);
+        Assert.Equal("$OPENSYSML_GRPC_BINARY: unset", error.SearchedLocations[0]);
+        Assert.Equal($"{cached}: absent", error.SearchedLocations[1]);
+        Assert.StartsWith($"release {ReleaseRequest.BuiltAgainst} of {ReleaseServer.Repo}: {releases.Downloads}{ReleaseServer.Repo}/releases/download/", error.SearchedLocations[2], StringComparison.Ordinal);
+        Assert.Equal($"$PATH: no executable {Name} in its 2 directories", error.SearchedLocations[3]);
+        Assert.IsType<ServiceStartException>(error.InnerException);
+        Assert.IsType<System.Net.Http.HttpRequestException>(error.InnerException.InnerException);
         Assert.Contains("make build-grpc", error.Message, StringComparison.Ordinal);
+        Assert.Contains("ConnectionOptions.DownloadVersion or $OPENSYSML_GRPC_VERSION", error.Message, StringComparison.Ordinal);
         Assert.Contains(string.Join("; ", error.SearchedLocations), error.Message, StringComparison.Ordinal);
     }
 
     [Fact]
-    public void WithoutAHomeOrAPathThereIsNothingToSearchAndItSaysSo()
+    public async Task WithoutAHomeOrAPathThereIsNothingToSearchAndItSaysSo()
     {
-        var error = Assert.Throws<BinaryNotFoundException>(() => BinaryResolver.Find(new ConnectionOptions(), Environment(null, null, null)));
+        var error = await Assert.ThrowsAsync<BinaryNotFoundException>(() => Resolve(new ConnectionOptions(), Environment(null, null, null)));
 
         Assert.Equal(
             [
                 "$OPENSYSML_GRPC_BINARY: unset",
-                $"~/.opensysml/bin/{Name}: no home directory, since ${BinaryResolver.HomeVariable} is unset",
+                $"~/.opensysml/bin/{Name}: no home directory, since ${BinaryResolver.HomeVariable} is unset, so no release can be kept there",
                 "$PATH: unset or empty",
             ],
             error.SearchedLocations);
+        Assert.Null(error.InnerException);
+    }
+
+    [Fact]
+    public async Task WithoutAHomeAReleaseAskedForFailsRatherThanFallingBackToPath()
+    {
+        Executable("path");
+
+        var error = await Assert.ThrowsAsync<ServiceStartException>(() =>
+            Resolve(new ConnectionOptions { DownloadVersion = "v1.0.0" }, Environment(null, null, Path.Combine(root, "path"))));
+
+        Assert.StartsWith($"sysml-grpc v1.0.0 of {ReleaseServer.Repo} was asked for, but ${BinaryResolver.HomeVariable} is unset", error.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -157,7 +167,7 @@ public sealed class BinaryResolverTests : IDisposable
         var binary = Executable("bin", "contents of a binary");
         var digest = Convert.ToHexStringLower(SHA256.HashData("contents of a binary"u8));
 
-        var resolved = await BinaryResolver.ResolveAsync(new ConnectionOptions { BinaryPath = binary, ExpectedBinarySha256 = digest.ToUpperInvariant() }, Environment(null, null, null), Token);
+        var resolved = await Resolve(new ConnectionOptions { BinaryPath = binary, ExpectedBinarySha256 = digest.ToUpperInvariant() }, Environment(null, null, null));
 
         Assert.Equal(new ResolvedBinary(BinaryResolver.Canonical(binary), digest), resolved);
     }
@@ -170,7 +180,7 @@ public sealed class BinaryResolverTests : IDisposable
         var expected = new string('A', 64);
 
         var error = await Assert.ThrowsAsync<ChecksumMismatchException>(() =>
-            BinaryResolver.ResolveAsync(new ConnectionOptions { BinaryPath = binary, ExpectedBinarySha256 = expected }, Environment(null, null, null), Token));
+            Resolve(new ConnectionOptions { BinaryPath = binary, ExpectedBinarySha256 = expected }, Environment(null, null, null)));
 
         Assert.Equal(BinaryResolver.Canonical(binary), error.BinaryPath);
         Assert.Equal(new string('a', 64), error.ExpectedSha256);
@@ -188,7 +198,7 @@ public sealed class BinaryResolverTests : IDisposable
         File.SetUnixFileMode(binary, UnixFileMode.UserExecute);
 
         var error = await Assert.ThrowsAsync<ServiceStartException>(() =>
-            BinaryResolver.ResolveAsync(new ConnectionOptions { BinaryPath = binary }, Environment(null, null, null), Token));
+            Resolve(new ConnectionOptions { BinaryPath = binary }, Environment(null, null, null)));
 
         Assert.StartsWith($"sysml-grpc at {binary} could not be read: ", error.Message, StringComparison.Ordinal);
         Assert.IsType<UnauthorizedAccessException>(error.InnerException);
@@ -235,10 +245,7 @@ public sealed class BinaryResolverTests : IDisposable
         }
 
         var digest = Convert.ToHexStringLower(SHA256.HashData("the selected binary"u8));
-        var resolved = await BinaryResolver.ResolveAsync(
-            new ConnectionOptions { BinaryPath = selected, ExpectedBinarySha256 = digest },
-            Environment(null, null, null),
-            Token);
+        var resolved = await Resolve(new ConnectionOptions { BinaryPath = selected, ExpectedBinarySha256 = digest }, Environment(null, null, null));
 
         Assert.Equal(new ResolvedBinary(BinaryResolver.Canonical(binary), digest), resolved);
     }
@@ -258,7 +265,7 @@ public sealed class BinaryResolverTests : IDisposable
         var selected = Path.Combine(parent, "..", "bin", Name);
 
         Assert.Throws<BinaryNotFoundException>(() =>
-            BinaryResolver.Find(new ConnectionOptions { BinaryPath = selected }, Environment(null, null, null)));
+            BinaryResolver.FindNamed(new ConnectionOptions { BinaryPath = selected }, Environment(null, null, null)));
         Assert.True(File.Exists(binary));
     }
 
@@ -272,7 +279,7 @@ public sealed class BinaryResolverTests : IDisposable
         File.CreateSymbolicLink(b, a);
 
         Assert.Throws<IOException>(() => BinaryResolver.Canonical(a));
-        var error = Assert.Throws<BinaryNotFoundException>(() => BinaryResolver.Find(new ConnectionOptions { BinaryPath = a }, Environment(null, null, null)));
+        var error = Assert.Throws<BinaryNotFoundException>(() => BinaryResolver.FindNamed(new ConnectionOptions { BinaryPath = a }, Environment(null, null, null)));
         Assert.Contains($"{a}, which is a loop of links", error.Message, StringComparison.Ordinal);
     }
 
@@ -299,6 +306,10 @@ public sealed class BinaryResolverTests : IDisposable
         {
         }
     }
+
+    // Nothing here downloads: a source refusing every connection proves it.
+    private static Task<ResolvedBinary> Resolve(ConnectionOptions options, Func<string, string?> environment) =>
+        BinaryResolver.ResolveAsync(options, environment, ReleaseServer.Offline(), Token);
 
     private static Func<string, string?> Environment(string? binary, string? home, string? path)
     {

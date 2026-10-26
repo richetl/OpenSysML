@@ -21,6 +21,9 @@ internal sealed record CacheMetadata(string Version, string Sha256, string? Repo
     /// <summary>The most of a record that is read; a longer file is no record any client wrote.</summary>
     internal const int MaxBytes = 64 * 1024;
 
+    /// <summary>The problem <see cref="Read"/> reports when there is no record at all.</summary>
+    internal const string Absent = "absent";
+
     /// <summary>Reads a record, saying what is wrong with it when it is not one.</summary>
     /// <param name="path">The record's path.</param>
     /// <returns>The record, or why there is none.</returns>
@@ -31,7 +34,7 @@ internal sealed record CacheMetadata(string Version, string Sha256, string? Repo
         {
             if (!File.Exists(path))
             {
-                return new(null, Directory.Exists(path) ? "a directory" : "absent");
+                return new(null, Directory.Exists(path) ? "a directory" : Absent);
             }
 
             using var file = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);

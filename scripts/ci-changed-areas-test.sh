@@ -60,6 +60,7 @@ case_ java-manifest java,mdk,python client/java/pom.xml
 case_ node-only node client/node/src/node/binary.ts
 case_ node-manifest node,python client/node/package.json
 case_ python-only python client/python/opensysml/connection.py
+case_ signed-release-fixture dotnet,python client/python/tests/fixtures/signed_release/SHA256SUMS.txt.bundle
 case_ rust-only rust client/rust/opensysml/src/connection.rs
 case_ rust-manifest python,rust client/rust/opensysml/Cargo.toml
 case_ rust-lock python,rust client/rust/Cargo.lock

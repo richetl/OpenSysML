@@ -37,6 +37,23 @@ public sealed class ConnectionOptionsTests
         { "ExpectedBinarySha256 describes a private service, but ConnectionOptions.Address", handler => new ConnectionOptions { Address = FakeServiceHandler.Address, HttpMessageHandler = handler, ExpectedBinarySha256 = new string('a', 64) } },
         { "IsolatedService describes a private service, but ConnectionOptions.Address", handler => new ConnectionOptions { Address = FakeServiceHandler.Address, HttpMessageHandler = handler, IsolatedService = true } },
         { "IsolatedService describes a private service, but ConnectionOptions.AutoStart is false", handler => new ConnectionOptions { HttpMessageHandler = handler, AutoStart = false, IsolatedService = true } },
+        { "DownloadVersion is \"\", which is neither \"latest\" nor a release tag", handler => new ConnectionOptions { HttpMessageHandler = handler, DownloadVersion = string.Empty } },
+        { "DownloadVersion is \" \"", handler => new ConnectionOptions { HttpMessageHandler = handler, DownloadVersion = " " } },
+        { "DownloadVersion is \"v1/../../x\"", handler => new ConnectionOptions { HttpMessageHandler = handler, DownloadVersion = "v1/../../x" } },
+        { "DownloadVersion is \"..\"", handler => new ConnectionOptions { HttpMessageHandler = handler, DownloadVersion = ".." } },
+        { "DownloadVersion is \"-v1\"", handler => new ConnectionOptions { HttpMessageHandler = handler, DownloadVersion = "-v1" } },
+        { "DownloadVersion is \"v1?x=1\"", handler => new ConnectionOptions { HttpMessageHandler = handler, DownloadVersion = "v1?x=1" } },
+        { "DownloadVersion is \"v1\n\"", handler => new ConnectionOptions { HttpMessageHandler = handler, DownloadVersion = "v1\n" } },
+        { "GithubRepo is \"Open-MBEE\", which is not an owner/repo", handler => new ConnectionOptions { HttpMessageHandler = handler, GithubRepo = "Open-MBEE" } },
+        { "GithubRepo is \"a/b/c\"", handler => new ConnectionOptions { HttpMessageHandler = handler, GithubRepo = "a/b/c" } },
+        { "GithubRepo is \"../repo\"", handler => new ConnectionOptions { HttpMessageHandler = handler, GithubRepo = "../repo" } },
+        { "GithubRepo is \"owner/...\"", handler => new ConnectionOptions { HttpMessageHandler = handler, GithubRepo = "owner/..." } },
+        { "GithubRepo is \"owner/re po\"", handler => new ConnectionOptions { HttpMessageHandler = handler, GithubRepo = "owner/re po" } },
+        { "GithubRepo is \"/repo\"", handler => new ConnectionOptions { HttpMessageHandler = handler, GithubRepo = "/repo" } },
+        { "DownloadVersion describes a release to download, but ConnectionOptions.BinaryPath names the binary to start", handler => new ConnectionOptions { HttpMessageHandler = handler, BinaryPath = "/bin/sysml-grpc", DownloadVersion = "v1.0.0" } },
+        { "GithubRepo describes a release to download, but ConnectionOptions.BinaryPath names the binary to start", handler => new ConnectionOptions { HttpMessageHandler = handler, BinaryPath = "/bin/sysml-grpc", GithubRepo = "a/b" } },
+        { "DownloadVersion describes a private service, but ConnectionOptions.Address names a running one", handler => new ConnectionOptions { Address = FakeServiceHandler.Address, HttpMessageHandler = handler, DownloadVersion = "latest" } },
+        { "GithubRepo describes a private service, but ConnectionOptions.AutoStart is false", handler => new ConnectionOptions { HttpMessageHandler = handler, AutoStart = false, GithubRepo = "a/b" } },
     };
 
     [Fact]
@@ -59,12 +76,18 @@ public sealed class ConnectionOptionsTests
         Assert.Null(options.BinaryPath);
         Assert.Null(options.ExpectedBinarySha256);
         Assert.False(options.IsolatedService);
+        Assert.Null(options.DownloadVersion);
+        Assert.Null(options.GithubRepo);
         Assert.Equal(TimeSpan.FromSeconds(30), options.StartupTimeout);
         Assert.Equal(TimeSpan.FromSeconds(5), options.ShutdownTimeout);
         Assert.Equal(options.StartupTimeout, ConnectionOptions.DefaultStartupTimeout);
         Assert.Equal(options.ShutdownTimeout, ConnectionOptions.DefaultShutdownTimeout);
         Assert.Equal("OPENSYSML_SERVICE", ConnectionOptions.ServiceVariable);
         Assert.Equal("OPENSYSML_GRPC_BINARY", ConnectionOptions.BinaryVariable);
+        Assert.Equal("OPENSYSML_GRPC_VERSION", ConnectionOptions.VersionVariable);
+        Assert.Equal("OPENSYSML_GITHUB_REPO", ConnectionOptions.GithubRepoVariable);
+        Assert.Equal("OPENSYSML_ALLOW_UNPINNED_DOWNLOAD", ConnectionOptions.AllowUnpinnedDownloadVariable);
+        Assert.Equal("Open-MBEE/OpenSysML", ConnectionOptions.DefaultGithubRepo);
         Assert.Equal(options.RequestTimeout, ConnectionOptions.Default.RequestTimeout);
         Assert.Equal(options.MaxResponseSize, ConnectionOptions.Default.MaxResponseSize);
         Assert.True(ConnectionOptions.Default.AutoStart);
@@ -127,7 +150,7 @@ public sealed class ConnectionOptionsTests
         var error = await Assert.ThrowsAsync<BinaryNotFoundException>(() => Connection.OpenAsync(null, _ => null, TestContext.Current.CancellationToken));
 
         Assert.Equal("$OPENSYSML_GRPC_BINARY: unset", error.SearchedLocations[0]);
-        Assert.Contains("does not download one", error.Message, StringComparison.Ordinal);
+        Assert.Contains("ConnectionOptions.DownloadVersion or $OPENSYSML_GRPC_VERSION", error.Message, StringComparison.Ordinal);
     }
 
     [Fact]

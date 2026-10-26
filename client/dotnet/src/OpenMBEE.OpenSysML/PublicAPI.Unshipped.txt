@@ -75,9 +75,13 @@ const OpenMBEE.OpenSysML.Capabilities.VerificationArguments = "verification_argu
 const OpenMBEE.OpenSysML.Capabilities.VerificationObjectiveAuthoring = "verification_objective_authoring" -> string!
 const OpenMBEE.OpenSysML.Capabilities.VerificationQuestions = "verification_questions" -> string!
 const OpenMBEE.OpenSysML.Capabilities.VerificationVerdicts = "verification_verdicts" -> string!
+const OpenMBEE.OpenSysML.ConnectionOptions.AllowUnpinnedDownloadVariable = "OPENSYSML_ALLOW_UNPINNED_DOWNLOAD" -> string!
 const OpenMBEE.OpenSysML.ConnectionOptions.BinaryVariable = "OPENSYSML_GRPC_BINARY" -> string!
+const OpenMBEE.OpenSysML.ConnectionOptions.DefaultGithubRepo = "Open-MBEE/OpenSysML" -> string!
 const OpenMBEE.OpenSysML.ConnectionOptions.DefaultMaxMessageSize = 536870912 -> int
+const OpenMBEE.OpenSysML.ConnectionOptions.GithubRepoVariable = "OPENSYSML_GITHUB_REPO" -> string!
 const OpenMBEE.OpenSysML.ConnectionOptions.ServiceVariable = "OPENSYSML_SERVICE" -> string!
+const OpenMBEE.OpenSysML.ConnectionOptions.VersionVariable = "OPENSYSML_GRPC_VERSION" -> string!
 OpenMBEE.OpenSysML.AttributeInfo
 OpenMBEE.OpenSysML.AttributeInfo.<Clone>$() -> OpenMBEE.OpenSysML.AttributeInfo!
 OpenMBEE.OpenSysML.AttributeInfo.AttributeInfo(string! name, string! type, OpenMBEE.OpenSysML.Value? value, string! unit) -> void
@@ -88,6 +92,7 @@ OpenMBEE.OpenSysML.AttributeInfo.Unit.get -> string!
 OpenMBEE.OpenSysML.AttributeInfo.Value.get -> OpenMBEE.OpenSysML.Value?
 OpenMBEE.OpenSysML.BinaryNotFoundException
 OpenMBEE.OpenSysML.BinaryNotFoundException.BinaryNotFoundException(string! message, System.Collections.Generic.IEnumerable<string!>! searchedLocations) -> void
+OpenMBEE.OpenSysML.BinaryNotFoundException.BinaryNotFoundException(string! message, System.Collections.Generic.IEnumerable<string!>! searchedLocations, System.Exception? innerException) -> void
 OpenMBEE.OpenSysML.BinaryNotFoundException.SearchedLocations.get -> OpenMBEE.OpenSysML.ValueList<string!>
 OpenMBEE.OpenSysML.Capabilities
 OpenMBEE.OpenSysML.Capabilities.Capabilities(System.Collections.Generic.IEnumerable<string!>! names) -> void
@@ -124,10 +129,14 @@ OpenMBEE.OpenSysML.ConnectionOptions.AutoStart.init -> void
 OpenMBEE.OpenSysML.ConnectionOptions.BinaryPath.get -> string?
 OpenMBEE.OpenSysML.ConnectionOptions.BinaryPath.init -> void
 OpenMBEE.OpenSysML.ConnectionOptions.ConnectionOptions() -> void
+OpenMBEE.OpenSysML.ConnectionOptions.DownloadVersion.get -> string?
+OpenMBEE.OpenSysML.ConnectionOptions.DownloadVersion.init -> void
 OpenMBEE.OpenSysML.ConnectionOptions.Encoding.get -> OpenMBEE.OpenSysML.MessageEncoding
 OpenMBEE.OpenSysML.ConnectionOptions.Encoding.init -> void
 OpenMBEE.OpenSysML.ConnectionOptions.ExpectedBinarySha256.get -> string?
 OpenMBEE.OpenSysML.ConnectionOptions.ExpectedBinarySha256.init -> void
+OpenMBEE.OpenSysML.ConnectionOptions.GithubRepo.get -> string?
+OpenMBEE.OpenSysML.ConnectionOptions.GithubRepo.init -> void
 OpenMBEE.OpenSysML.ConnectionOptions.Headers.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string!>!
 OpenMBEE.OpenSysML.ConnectionOptions.Headers.init -> void
 OpenMBEE.OpenSysML.ConnectionOptions.HttpMessageHandler.get -> System.Net.Http.HttpMessageHandler?
@@ -409,6 +418,11 @@ OpenMBEE.OpenSysML.UnitTerm.Factors.get -> OpenMBEE.OpenSysML.ValueList<OpenMBEE
 OpenMBEE.OpenSysML.UnitTerm.ScaleDenominator.get -> double
 OpenMBEE.OpenSysML.UnitTerm.ScaleNumerator.get -> double
 OpenMBEE.OpenSysML.UnitTerm.UnitTerm(double scaleNumerator, double scaleDenominator, System.Collections.Generic.IEnumerable<OpenMBEE.OpenSysML.UnitFactor!>! factors) -> void
+OpenMBEE.OpenSysML.UnpinnedReleaseException
+OpenMBEE.OpenSysML.UnpinnedReleaseException.Asset.get -> string!
+OpenMBEE.OpenSysML.UnpinnedReleaseException.Repository.get -> string!
+OpenMBEE.OpenSysML.UnpinnedReleaseException.UnpinnedReleaseException(string! repository, string! version, string! asset, string! message) -> void
+OpenMBEE.OpenSysML.UnpinnedReleaseException.Version.get -> string!
 OpenMBEE.OpenSysML.UnsupportedPlatformException
 OpenMBEE.OpenSysML.UnsupportedPlatformException.Platform.get -> string!
 OpenMBEE.OpenSysML.UnsupportedPlatformException.UnsupportedPlatformException(string! platform, string! message) -> void

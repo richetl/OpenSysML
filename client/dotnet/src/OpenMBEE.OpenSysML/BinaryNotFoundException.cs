@@ -15,7 +15,18 @@ public class BinaryNotFoundException : ServiceStartException
     /// <exception cref="ArgumentNullException">An argument is null.</exception>
     /// <exception cref="ArgumentException">A location is null.</exception>
     public BinaryNotFoundException(string message, IEnumerable<string> searchedLocations)
-        : base(message)
+        : this(message, searchedLocations, null)
+    {
+    }
+
+    /// <summary>Creates the exception with the failure that left nothing to start, such as a release that could not be downloaded.</summary>
+    /// <param name="message">What was looked for and how to provide it.</param>
+    /// <param name="searchedLocations">Every place looked at, in order, each saying what was found there.</param>
+    /// <param name="innerException">The failure that left nothing to start; null when there was none.</param>
+    /// <exception cref="ArgumentNullException">An argument is null.</exception>
+    /// <exception cref="ArgumentException">A location is null.</exception>
+    public BinaryNotFoundException(string message, IEnumerable<string> searchedLocations, Exception? innerException)
+        : base(message, innerException)
     {
         SearchedLocations = new ValueList<string>(searchedLocations ?? throw new ArgumentNullException(nameof(searchedLocations)));
     }

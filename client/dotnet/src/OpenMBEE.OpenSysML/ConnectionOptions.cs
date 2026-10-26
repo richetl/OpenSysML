@@ -26,6 +26,29 @@ public sealed class ConnectionOptions
     /// </summary>
     public const string BinaryVariable = "OPENSYSML_GRPC_BINARY";
 
+    /// <summary>
+    /// The environment variable naming the release to download for a private service when
+    /// <see cref="DownloadVersion"/> does not: a tag, as <c>v0.10.1</c>, or <c>latest</c>.
+    /// </summary>
+    public const string VersionVariable = "OPENSYSML_GRPC_VERSION";
+
+    /// <summary>
+    /// The environment variable naming the repository, <c>owner/repo</c>, releases are downloaded from when
+    /// <see cref="GithubRepo"/> does not.
+    /// </summary>
+    public const string GithubRepoVariable = "OPENSYSML_GITHUB_REPO";
+
+    /// <summary>
+    /// The environment variable that accepts a release this client pins no digest for on the strength of the
+    /// checksum served beside it: <c>1</c> for any repository, or a comma-separated list of the <c>owner/repo</c>
+    /// repositories it is granted for. That is same-origin trust, which detects corruption but not a compromised
+    /// release; a warning says so whenever it is relied on.
+    /// </summary>
+    public const string AllowUnpinnedDownloadVariable = "OPENSYSML_ALLOW_UNPINNED_DOWNLOAD";
+
+    /// <summary>The repository releases are downloaded from unless another is named: <c>Open-MBEE/OpenSysML</c>.</summary>
+    public const string DefaultGithubRepo = "Open-MBEE/OpenSysML";
+
     /// <summary>The default largest request and response message, in bytes: 512 MiB.</summary>
     public const int DefaultMaxMessageSize = 512 * 1024 * 1024;
 
@@ -81,21 +104,47 @@ public sealed class ConnectionOptions
 
     /// <summary>
     /// The <c>sysml-grpc</c> binary to start as a private service, or null to look for one: the binary
-    /// <see cref="BinaryVariable"/> names, else <c>~/.opensysml/bin/sysml-grpc</c> (<c>sysml-grpc.exe</c>
-    /// on Windows), else the first on <c>PATH</c>. A binary named here or by <see cref="BinaryVariable"/>
-    /// that is not an executable file fails the open with <see cref="BinaryNotFoundException"/>
-    /// rather than another being looked for. Only for a private service: refused with
-    /// <see cref="Address"/> set or <see cref="AutoStart"/> false.
+    /// <see cref="BinaryVariable"/> names, else the release asked for in the shared cache
+    /// <c>~/.opensysml/bin</c>, downloaded and verified there when it is not already (see
+    /// <see cref="DownloadVersion"/>), else the first <c>sysml-grpc</c> on <c>PATH</c> when the release this
+    /// client was built with cannot be had. A binary named here or by <see cref="BinaryVariable"/> that is not
+    /// an executable file fails the open with <see cref="BinaryNotFoundException"/> rather than another being
+    /// looked for, and is never downloaded. Only for a private service: refused with <see cref="Address"/> set
+    /// or <see cref="AutoStart"/> false.
     /// </summary>
     public string? BinaryPath { get; init; }
 
     /// <summary>
     /// The SHA-256 digest, as 64 hexadecimal digits in either case, the private service's binary
     /// must have, or null to require none. A binary with another fails the open with
-    /// <see cref="ChecksumMismatchException"/> before it is started. Only for a private service:
-    /// refused with <see cref="Address"/> set or <see cref="AutoStart"/> false.
+    /// <see cref="ChecksumMismatchException"/> before it is started, and a release whose pinned or served
+    /// digest is another is not downloaded. A cached binary that has it is started without looking for a
+    /// release only when no release was explicitly requested; <see cref="DownloadVersion"/> and
+    /// <see cref="VersionVariable"/> remain constraints, and any committed pin for a recorded cache release
+    /// is enforced too. Only for a private service: refused with <see cref="Address"/> set or
+    /// <see cref="AutoStart"/> false.
     /// </summary>
     public string? ExpectedBinarySha256 { get; init; }
+
+    /// <summary>
+    /// The release of <c>sysml-grpc</c> a private service is started from when no binary is named: a tag, as
+    /// <c>v0.10.1</c>, or <c>latest</c>, which the GitHub releases API resolves once per open. When null,
+    /// <see cref="VersionVariable"/> names it, and when that is unset too, it is the release this client was built
+    /// with. The release is kept in the shared cache <c>~/.opensysml/bin</c>, downloaded there and verified when
+    /// the cache does not already hold it. A release asked for here or by <see cref="VersionVariable"/> is that
+    /// release or a failure; the release this client was built with gives way to the cache, or to a
+    /// <c>sysml-grpc</c> on <c>PATH</c>, when it cannot be had. Only for a private service whose binary is looked
+    /// for: refused with <see cref="Address"/> or <see cref="BinaryPath"/> set or <see cref="AutoStart"/> false.
+    /// </summary>
+    public string? DownloadVersion { get; init; }
+
+    /// <summary>
+    /// The repository, <c>owner/repo</c>, releases are downloaded from, or null for the one
+    /// <see cref="GithubRepoVariable"/> names, else <see cref="DefaultGithubRepo"/>. A cached release of another
+    /// repository is not taken for one of this. Only for a private service whose binary is looked for: refused
+    /// with <see cref="Address"/> or <see cref="BinaryPath"/> set or <see cref="AutoStart"/> false.
+    /// </summary>
+    public string? GithubRepo { get; init; }
 
     /// <summary>
     /// Whether the private service is this connection's alone, rather than shared with the other
@@ -273,10 +322,30 @@ public sealed class ConnectionOptions
                 "ConnectionOptions.ExpectedBinarySha256 is not a SHA-256 digest: it must be 64 hexadecimal digits.");
         }
 
+        if (DownloadVersion is not null && !ReleaseRequest.IsVersion(DownloadVersion))
+        {
+            throw new InvalidRequestException(
+                $"ConnectionOptions.DownloadVersion is \"{DownloadVersion}\", which is neither \"{ReleaseRequest.Latest}\" nor a release tag "
+                + "of letters, digits, '.', '-', '_' and '+'; leave it null for the release this client was built with.");
+        }
+
+        if (GithubRepo is not null && !ReleaseRequest.IsRepo(GithubRepo))
+        {
+            throw new InvalidRequestException(
+                $"ConnectionOptions.GithubRepo is \"{GithubRepo}\", which is not an owner/repo of letters, digits, '.', '-' and '_'; leave it null for {DefaultGithubRepo}.");
+        }
+
+        var download = DownloadVersion is not null ? nameof(DownloadVersion) : GithubRepo is not null ? nameof(GithubRepo) : null;
+        if (download is not null && BinaryPath is not null)
+        {
+            throw new InvalidRequestException(
+                $"ConnectionOptions.{download} describes a release to download, but ConnectionOptions.BinaryPath names the binary to start, which is never downloaded; set one or the other.");
+        }
+
         var named = BinaryPath is not null ? nameof(BinaryPath)
             : ExpectedBinarySha256 is not null ? nameof(ExpectedBinarySha256)
             : IsolatedService ? nameof(IsolatedService)
-            : null;
+            : download;
         if (named is null)
         {
             return;

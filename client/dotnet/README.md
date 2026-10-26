@@ -4,7 +4,8 @@
 of this repository and consumed by `ProjectReference`. It is not published to NuGet.
 
 > **Status:** the client connects to a `sysml-grpc` that is already running, or starts a
-> private one from a binary installed locally, over gRPC or the Connect protocol with protobuf
+> private one from a binary installed locally or from a release it downloads and verifies, over
+> gRPC or the Connect protocol with protobuf
 > or JSON bodies; reports what that service is and can do; and calls any of its methods
 > through a raw, schema-checked escape hatch. It loads models from a file, from inline
 > notation or from several documents, and reads them: symbols and name lookup, diagnostics,
@@ -23,10 +24,11 @@ of this repository and consumed by `ProjectReference`. It is not published to Nu
 > graphs, imports data and compares a SysML v1 tool's results with
 > runs](#exporting-graphs-importing-data-and-comparing-results). Its [conformance
 > runner](#conformance) runs the shared suite through that API, every RPC of the service
-> covered. It does not download a release of the service, though it starts one another
-> client cached in the [shared cache](#the-shared-cache), under the same lock; the other clients
-> ([Python](../python/), [Java](../java/), [Rust](../rust/), [Node](../node/)) are the ones to
-> use for that today.
+> covered. It [downloads releases of the service](#downloading-releases) into the
+> [shared cache](#the-shared-cache) every client uses, under the same lock, and verifies them
+> against the digests this checkout pins; unlike the [Python](../python/), [Java](../java/) and
+> [Node](../node/) clients, and like the [Rust](../rust/) one, it does not verify a release's
+> signature, so a release it pins no digest for is refused.
 
 ## Requirements
 
@@ -122,12 +124,15 @@ blocks, and its last 20 lines, each cut at 1,024 characters, are kept for error 
 `AutoStart` false, a connection that names no service fails with `ServiceStartException`.
 
 The binary is, in order, the one `ConnectionOptions.BinaryPath` names, the one the
-`OPENSYSML_GRPC_BINARY` environment variable names, `~/.opensysml/bin/sysml-grpc`
-(`sysml-grpc.exe` on Windows, under `%USERPROFILE%`), where every client installs its
-download, and the first `sysml-grpc` on `PATH`. A binary named by the option or the variable
-that is not an executable file fails the open with `BinaryNotFoundException` rather than
-another being used, and finding none lists every place looked at in `SearchedLocations`. This
-release does not download a release of the service. The binary is hashed before it is
+`OPENSYSML_GRPC_BINARY` environment variable names, the release asked for in the shared cache
+`~/.opensysml/bin/sysml-grpc` (`sysml-grpc.exe` on Windows, under `%USERPROFILE%`), which is
+downloaded and verified there when the cache does not hold it (see
+[Downloading releases](#downloading-releases)), and, only when the release this client was
+built with cannot be had, the first `sysml-grpc` on `PATH`. A binary named by the option or
+the variable that is not an executable file fails the open with `BinaryNotFoundException`
+rather than another being used, and a named binary is never downloaded; finding none lists
+every place looked at in `SearchedLocations`, and why no release could be had. The binary is
+hashed before it is
 started, with symbolic links followed before any subsequent `..` component, including in
 link targets; a missing directory or regular file cannot be traversed by `..`. A binary found
 in the shared cache is not started at that path but from its snapshot under its own digest,
@@ -171,10 +176,12 @@ started it; each line of its output goes to that logger at `Trace`.
 `StartupTimeout` (30 seconds by default) bounds the wait for the address. A child that
 reports something other than a loopback `host:port`, exits or ends its output first, or
 reports nothing in time is stopped, and the open fails with `ServiceStartException` quoting
-how it ended and what it last wrote. `BinaryPath`, `ExpectedBinarySha256` and
-`IsolatedService` only describe a private service, so they are refused alongside `Address` or
-with `AutoStart` false; when `OPENSYSML_SERVICE` names a service instead, they are unused and a
-warning says so.
+how it ended and what it last wrote. `BinaryPath`, `ExpectedBinarySha256`, `IsolatedService`,
+`DownloadVersion` and `GithubRepo` only describe a private service, so they are refused
+alongside `Address` or with `AutoStart` false; when `OPENSYSML_SERVICE` names a service instead,
+they are unused and a warning says so. `DownloadVersion` and `GithubRepo` describe a release to
+download, so they are refused alongside `BinaryPath` too, and when `OPENSYSML_GRPC_BINARY`
+names the binary instead, they are unused and a warning says so.
 
 These guarantees hold where the tests that prove them run: Linux, macOS and Windows, the
 platforms CI runs the whole suite on (see [Building and testing](#building-and-testing)). On
@@ -188,8 +195,8 @@ the executable `sysml-grpc` (`sysml-grpc.exe` on Windows), its record `sysml-grp
 the release it is (`{"version": …, "sha256": …, "repo": …}`, written as Python's `json.dump`
 writes it), the lock `sysml-grpc.lock` every client holds while it changes them, and
 snapshots `sysml-grpc-<first 16 hex digits of the digest>`, the executable linked under its
-own digest. This client reads the cache only with its lock held, and does not yet download
-into it.
+own digest. This client reads the cache, decides whether to use it, and installs a release
+into it only with its lock held.
 
 The lock is three locks, taken in this order and released in reverse:
 
@@ -220,13 +227,14 @@ executable that is a symbolic link is followed before its file is linked under i
 Where the file system cannot hard link, the
 executable is copied there instead, with a warning; where it can be neither linked nor copied,
 or the cache cannot be locked because this user may not write there, the executable is started
-where it is, with a warning that a release installed over it may be started instead. Old
+where it is, with a warning that a release installed over it may be started instead; nothing
+can be installed in a cache that cannot be locked, so a release asked for then fails. Old
 snapshots are not removed.
 
-This client installs no release yet, but the transaction it reads the cache through is also
-the one a release is installed through: the release is staged in the cache directory, verified
-against the digest required of it, and published by an atomic rename, executable first and its
-record second. Cancellation is checked immediately before the executable is published,
+A release is installed through the same transaction the cache is read through: the release is
+streamed into a file staged in the cache directory (mode 0700 on POSIX), verified against the
+digest required of it, and published by an atomic rename, executable first and its record
+second. Cancellation is checked immediately before the executable is published,
 leaving the previous executable and record unchanged when cancelled; once published, its
 record is completed even if the caller cancels.
 Bytes without the digest required are never published. A record vouches for the executable
@@ -237,6 +245,71 @@ release field, is unusable metadata with a diagnostic reason. What an interrupte
 transaction staged, named `<file>.dotnet-<16 hex digits>.tmp`, is removed by the next, which
 holds the lock every transaction that stages files holds; other clients' staged files are
 left alone.
+
+### Downloading releases
+
+When no binary is named, the private service is started from a release of `sysml-grpc` kept in
+the shared cache:
+
+| What | Taken from, in order |
+| --- | --- |
+| The release | `ConnectionOptions.DownloadVersion`, the `OPENSYSML_GRPC_VERSION` variable, the release this client was built with (`v` and the `Version` in `Directory.Build.props`) |
+| The repository | `ConnectionOptions.GithubRepo`, the `OPENSYSML_GITHUB_REPO` variable, `Open-MBEE/OpenSysML` |
+| The asset | `sysml-grpc-<goos>-<goarch>` for this machine: `linux-amd64`, `linux-arm64`, `darwin-amd64`, `darwin-arm64` or `windows-amd64` (with `.exe`); any other platform fails with `UnsupportedPlatformException` naming it |
+
+A release is a tag, as `v0.10.1`, or `latest`, which the GitHub releases API resolves once for
+each open. A tag or repository that is not one URL path segment (or `owner/repo` of two) is
+refused, from an option or a variable, with `InvalidRequestException` before anything is
+fetched. The whole decision is made with the cache's lock held:
+
+| The cache holds | What happens |
+| --- | --- |
+| The release asked for, of the repository asked for, by a record that vouches for it | It is started from its snapshot after checking any committed pin and `ExpectedBinarySha256`; nothing is fetched |
+| The binary `ExpectedBinarySha256` requires, and no release was explicitly asked for | It is started after checking any committed pin for its recorded release; nothing is fetched |
+| An executable with no record at all, and no release was asked for | It is taken for a build installed by hand, and started as it is |
+| Another release, a release of another repository, an executable its record does not vouch for, or nothing | The release asked for is downloaded, with a warning when it replaces something; it replaces the cache only once it has the digest required of it |
+
+A release asked for, by the option or the variable, is that release or a failure. The release
+this client was built with gives way: when it cannot be had (the network is down, it is not
+published, as for an unreleased checkout, or it is not pinned), a working cache is kept with a
+warning, and with nothing cached the first `sysml-grpc` on `PATH` is started, with a warning.
+When `latest` cannot be resolved, a release of the repository asked for that the cache holds is
+kept, with a warning; anything else fails. An explicit release and `ExpectedBinarySha256`
+must both hold: a matching cached digest never overrides a tag or suppresses the lookup of
+`latest`. An API response with invalid Unicode is an unavailable release, reported as
+`ServiceStartException`; the same cache fallback applies.
+
+**Trust.** A release is downloaded only when this checkout pins the SHA-256 digest of its asset
+(`src/OpenMBEE.OpenSysML/release-digests.json`, embedded in the assembly; see
+[Version and pinned release digests](#version-and-pinned-release-digests)). The `.sha256` the
+release serves beside the binary must agree with the pin, and the bytes downloaded must have it;
+`ConnectionOptions.ExpectedBinarySha256` must agree with it too, and is checked before the
+binary is fetched. Any disagreement fails with `ChecksumMismatchException`, never answered from
+the cache or `PATH`, and leaves the cache as it was. A cached release whose record agrees with
+its executable is also checked against any committed pin for that repository, tag and platform,
+including on offline fallback and when the cache must be read unlocked. A matching record
+or caller-supplied digest never excuses a contradictory pin. A hand-installed executable with
+no usable release record cannot be identified as a pinned release.
+This client does not verify the signature
+on a release's `SHA256SUMS.txt`, as the Python, Java and Node clients do: the .NET Sigstore
+library evaluated for it trusts a timestamp without checking its signature and a bundle without
+proof of its transparency-log entry, which the other clients' libraries refuse. So a release it pins no digest for fails with `UnpinnedReleaseException`
+before anything is fetched, signed or not. The only way past that is same-origin trust:
+`OPENSYSML_ALLOW_UNPINNED_DOWNLOAD=1` (any repository) or `=owner/repo,…` (those exactly), as
+every client reads it, which takes the digest the release serves beside the binary, with a
+warning. That detects corruption but not a compromised release, and it never excuses a digest
+that contradicts a pin or `ExpectedBinarySha256`.
+
+**Transfers.** Releases are fetched from `https://github.com` and the API at
+`https://api.github.com`, over HTTPS alone: every redirect is checked, and one to plain HTTP is
+not followed. A response that sends nothing for 15 seconds, its headers included, is abandoned;
+each transport read has its own idle deadline, so partial headers and compressed-body progress
+reset the wait, and local file writes do not consume it. A slow download that keeps sending
+is not abandoned. A binary may be 512 MiB and a checksum or API answer
+8 MiB, counted after any decompression; a larger declared length is refused before the body is
+read. A download is streamed into its staged file and nothing it staged is left behind,
+whatever ends it. Cancelling the open cancels it with the caller's token. A download is never
+retried.
 
 ### Protocols
 
@@ -292,12 +365,14 @@ use after disposal, which are the standard exceptions:
 
 | What happened | Exception |
 | --- | --- |
-| An option, address, header or raw method/message pairing is invalid | `InvalidRequestException`, before anything is sent |
+| An option, address, header or raw method/message pairing is invalid, or `OPENSYSML_GRPC_VERSION` or `OPENSYSML_GITHUB_REPO` names no release or repository | `InvalidRequestException`, before anything is sent |
 | No service is named and `AutoStart` is false, or the private service did not start | `ServiceStartException` |
 | The shared cache stayed locked by another client or process for two minutes | `ServiceStartException` naming the lock |
-| No service is named and no binary was found to start | `BinaryNotFoundException`, a `ServiceStartException` with `SearchedLocations` |
-| The binary does not have `ExpectedBinarySha256` | `ChecksumMismatchException`, a `ServiceStartException` with `BinaryPath`, `ExpectedSha256` and `ActualSha256` |
-| This platform cannot start a process | `UnsupportedPlatformException`, a `ServiceStartException` with `Platform` |
+| A release asked for could not be downloaded or installed, or `latest` could not be resolved | `ServiceStartException`, with the cause as `InnerException` |
+| No service is named, no binary was found to start, and the release this client was built with could not be had | `BinaryNotFoundException`, a `ServiceStartException` with `SearchedLocations` and why no release could be had as `InnerException` |
+| The binary does not have `ExpectedBinarySha256`; or a release's served checksum, its bytes or `ExpectedBinarySha256` contradict its pin, or the checksum it serves under same-origin trust | `ChecksumMismatchException`, a `ServiceStartException` with `BinaryPath` (the release's URL for a release not downloaded), `ExpectedSha256` and `ActualSha256` |
+| A release asked for is one this checkout pins no digest for, and same-origin trust was not granted | `UnpinnedReleaseException`, a `ServiceStartException` with `Repository`, `Version` and `Asset` |
+| This platform cannot start a process, or no release is published for it and one was asked for | `UnsupportedPlatformException`, a `ServiceStartException` with `Platform` |
 | The private service exited on its own, or was stopped by `StopSharedServicesAsync` | `TransportException` with `Unavailable`, saying which |
 | `StopSharedServicesAsync` could not stop some services cleanly | `ServiceStopException`, with one of `Failures` for each |
 | The service is not the `Version` asked for | `StaleServiceException` |
@@ -1005,6 +1080,20 @@ They need Python, a JDK (`JAVA_HOME` or `PATH`, with
 OPENSYSML_REQUIRE_INTEROP=1 OPENSYSML_GRPC_BINARY="$PWD/bin/sysml-grpc" OPENSYSML_REQUIRE_SERVICE=1 make dotnet-test
 ```
 
+No test reaches the network. Downloads are tested against a release host and releases API of
+the tests' own, [`ReleaseServer`](test/OpenMBEE.OpenSysML.Tests/ReleaseServer.cs), which speaks
+HTTP/1.1 on a loopback port the kernel chooses and misbehaves on purpose: a checksum that
+contradicts its pin, bytes that contradict both, a body that stalls before or after its
+headers, never ends, trickles, claims a length it does not have or arrives gzipped to many times
+its size, and redirects that loop, say not where, or leave for plain HTTP. Each runs against a
+cache of the test's own, through the same resolution an open makes, and must leave a working
+cache as it was and nothing staged. The signed-release fixtures the Python client's verifier is
+tested against are served as a release nothing pins, valid, valid only historically, by another
+identity, over a changed manifest, and unsigned, and every one must be refused as unpinned
+without its signature being fetched: this client verifies pins alone, so no signature passes as
+verified. The real binary is published there too, under a pin of its digest, and a private
+service must start from its download, over each protocol, and a second open must fetch nothing.
+
 CI runs the whole suite on Linux against the service its build job makes, then both
 conformance targets, and, in the full tier, natively on macOS and Windows against a
 `sysml-grpc` built on that runner, with the same minimum test count. Every one of those jobs
@@ -1232,9 +1321,14 @@ alone.
 The client's version is the `Version` in `Directory.Build.props`, the SemVer spelling of
 the core version it is released with. `python3 client/python/scripts/check_version.py
 --tag v<version> --dotnet` checks it, and the Python suite fails when it disagrees with
-the Python client's version.
+the Python client's version. It also names the release a private service is downloaded from
+when none is asked for: `v` and that version.
 
 `src/OpenMBEE.OpenSysML/release-digests.json` is a copy of
-[`client/release-digests.json`](../release-digests.json), embedded in the assembly. Do not
-edit it: `python3 scripts/sync-release-digests.py` rewrites it, and its `--check` and the
-tests fail when it drifts.
+[`client/release-digests.json`](../release-digests.json), embedded in the assembly: the digests
+a downloaded release must have, and the only ones this client trusts (see
+[Downloading releases](#downloading-releases)). Do not edit it:
+`python3 scripts/sync-release-digests.py` rewrites it, and its `--check` and the tests fail
+when it drifts. A checkout whose version is not yet released pins nothing for it, so its
+default download is refused and gives way to the cache or `PATH`; ask for a pinned release
+with `DownloadVersion` or `OPENSYSML_GRPC_VERSION` to download one.

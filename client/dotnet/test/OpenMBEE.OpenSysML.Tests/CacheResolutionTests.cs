@@ -30,7 +30,7 @@ public sealed class CacheResolutionTests : IDisposable
     [Fact]
     public async Task TheSharedCacheIsStartedFromItsExecutableLinkedUnderItsDigest()
     {
-        await cache.InstallAsync(First, "v1.0.0");
+        await cache.InstallAsync(First, ReleaseRequest.BuiltAgainst);
         var logger = new ListLogger();
 
         var first = await Resolve(new ConnectionOptions { Logger = logger });
@@ -39,12 +39,13 @@ public sealed class CacheResolutionTests : IDisposable
         Assert.Contains(logger.Entries, entry => entry.Level == LogLevel.Debug
             && entry.Message == $"Starting the shared cache's {Layout.Executable} as {first.Path} (Linked)");
 
-        await cache.InstallAsync(Second, "v2.0.0");
+        await cache.InstallAsync(Second, ReleaseRequest.BuiltAgainst);
         var second = await Resolve(new ConnectionOptions());
 
         Assert.Equal(First, File.ReadAllBytes(first.Path));
         Assert.Equal(new ResolvedBinary(BinaryResolver.Canonical(Layout.Snapshot(TestCache.Sha256(Second))), TestCache.Sha256(Second)), second);
         Assert.Equal(cache.SettledFiles(first.Path, second.Path), cache.Files());
+        Assert.DoesNotContain(logger.Entries, entry => entry.Level >= LogLevel.Warning);
     }
 
     [Fact]
@@ -83,7 +84,7 @@ public sealed class CacheResolutionTests : IDisposable
     [Fact]
     public async Task ADigestRequiredOfTheCacheIsCheckedAgainstWhatWouldStart()
     {
-        await cache.InstallAsync(First);
+        await cache.InstallAsync(First, ReleaseRequest.BuiltAgainst);
         var snapshot = BinaryResolver.Canonical(Layout.Snapshot(TestCache.Sha256(First)));
 
         var error = await Assert.ThrowsAsync<ChecksumMismatchException>(() => Resolve(new ConnectionOptions { ExpectedBinarySha256 = TestCache.Sha256(Second) }));
@@ -95,12 +96,12 @@ public sealed class CacheResolutionTests : IDisposable
     [Fact]
     public async Task ResolvingTheCacheWaitsForItsLockAndTheWaitCanBeCancelled()
     {
-        await cache.InstallAsync(First);
+        await cache.InstallAsync(First, ReleaseRequest.BuiltAgainst);
         await using var holder = await cache.HeldByAnotherClientAsync();
         using var cancel = CancellationTokenSource.CreateLinkedTokenSource(Token);
         cancel.CancelAfter(300);
 
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => BinaryResolver.ResolveAsync(new ConnectionOptions(), Environment(), cancel.Token));
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => BinaryResolver.ResolveAsync(new ConnectionOptions(), Environment(), ReleaseServer.Offline(), cancel.Token));
         Assert.False(File.Exists(Layout.Snapshot(TestCache.Sha256(First))), "the cache was linked while another client held its lock");
 
         var waiting = Resolve(new ConnectionOptions());
@@ -158,7 +159,7 @@ public sealed class CacheResolutionTests : IDisposable
         var registry = new ServiceRegistry(PrivateService.StartAsync);
         var options = new ConnectionOptions { HttpMessageHandler = handler, ShutdownTimeout = TimeSpan.FromSeconds(10) };
 
-        var connection = await Connection.OpenAsync(options, Environment(), registry, Token);
+        var connection = await Connection.OpenAsync(options, Environment(), registry, ReleaseServer.Offline(), Token);
         var entry = Assert.Single(registry.Entries());
         await connection.DisposeAsync();
 
@@ -168,9 +169,9 @@ public sealed class CacheResolutionTests : IDisposable
     }
 
     [Fact]
-    public async Task ACacheRemovedWhileItsLockWasAwaitedIsLookedForAgain()
+    public async Task ACacheRemovedWhileItsLockWasAwaitedIsNotStartedAndPathIsUsedInstead()
     {
-        await cache.InstallAsync(First);
+        await cache.InstallAsync(First, ReleaseRequest.BuiltAgainst);
         var path = Path.Combine(cache.Root, "path");
         Directory.CreateDirectory(path);
         var onPath = Path.Combine(path, BinaryResolver.ExecutableName);
@@ -180,13 +181,17 @@ public sealed class CacheResolutionTests : IDisposable
             File.SetUnixFileMode(onPath, UnixFileMode.UserRead | UnixFileMode.UserExecute);
         }
 
+        var logger = new ListLogger();
         await using var holder = await cache.HeldByAnotherClientAsync();
-        var waiting = BinaryResolver.ResolveAsync(new ConnectionOptions(), Environment(path), Token);
+        var waiting = BinaryResolver.ResolveAsync(new ConnectionOptions { Logger = logger }, Environment(path), ReleaseServer.Offline(), Token);
         await Task.Delay(300, Token);
         File.Delete(Layout.Executable);
         await TestCache.ReleaseAsync(holder);
 
         Assert.Equal(new ResolvedBinary(BinaryResolver.Canonical(onPath), TestCache.Sha256(Second)), await waiting.WaitAsync(TimeSpan.FromSeconds(10), Token));
+        var warning = Assert.Single(logger.Entries, entry => entry.Level == LogLevel.Warning);
+        Assert.StartsWith($"Starting {onPath} from $PATH: sysml-grpc {ReleaseRequest.BuiltAgainst} of {ReleaseServer.Repo} could not be had (sysml-grpc {ReleaseRequest.BuiltAgainst} of {ReleaseServer.Repo} was not downloaded: this client pins no SHA-256 digest", warning.Message, StringComparison.Ordinal);
+        Assert.False(File.Exists(Layout.Snapshot(TestCache.Sha256(First))), "the removed executable's snapshot was made");
     }
 
     public void Dispose() => cache.Dispose();
@@ -197,5 +202,6 @@ public sealed class CacheResolutionTests : IDisposable
         return name => variables.GetValueOrDefault(name);
     }
 
-    private Task<ResolvedBinary> Resolve(ConnectionOptions options) => BinaryResolver.ResolveAsync(options, Environment(), Token);
+    // Nothing here downloads: a source refusing every connection, and pinning nothing, proves it.
+    private Task<ResolvedBinary> Resolve(ConnectionOptions options) => BinaryResolver.ResolveAsync(options, Environment(), ReleaseServer.Offline(), Token);
 }
