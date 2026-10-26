@@ -9,7 +9,7 @@ namespace OpenMBEE.OpenSysML.Tests;
 [Trait(Category.Name, Category.Unit)]
 public sealed class TestCategoryTests
 {
-    private static readonly string[] Categories = [Category.Unit, Category.Integration];
+    private static readonly string[] Categories = [Category.Unit, Category.Integration, Category.Interop];
 
     [Fact]
     public void EveryTestDeclaresExactlyOneKnownCategory()

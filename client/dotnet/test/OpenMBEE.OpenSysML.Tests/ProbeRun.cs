@@ -14,7 +14,7 @@ using Xunit;
 namespace OpenMBEE.OpenSysML.Tests;
 
 /// <summary>
-/// One run of a lifecycle probe (test/OpenMBEE.OpenSysML.OrphanProbe or LoadContextProbe) as a process
+/// One run of a probe (test/OpenMBEE.OpenSysML.OrphanProbe, LoadContextProbe or CacheProbe) as a process
 /// of its own. Every process id it reports is recorded as it is read, and disposal kills the probe and
 /// every one of them that still runs, so a failed assertion leaves nothing behind.
 /// </summary>
@@ -25,6 +25,9 @@ internal sealed class ProbeRun : IAsyncDisposable
 
     /// <summary>The load-context probe's project and assembly name.</summary>
     internal const string LoadContext = "OpenMBEE.OpenSysML.LoadContextProbe";
+
+    /// <summary>The cache probe's project and assembly name.</summary>
+    internal const string Cache = "OpenMBEE.OpenSysML.CacheProbe";
 
     private static readonly TimeSpan ReadTimeout = TimeSpan.FromSeconds(60);
     private static readonly string[] ProcessIdFields = ["probe", "service"];
@@ -45,7 +48,7 @@ internal sealed class ProbeRun : IAsyncDisposable
     internal int ProcessId => process.Id;
 
     /// <summary>Starts a probe with arguments, with no service named in its environment.</summary>
-    /// <param name="probe"><see cref="Orphan"/> or <see cref="LoadContext"/>.</param>
+    /// <param name="probe"><see cref="Orphan"/>, <see cref="LoadContext"/> or <see cref="Cache"/>.</param>
     /// <param name="arguments">Its arguments.</param>
     /// <returns>The run, which the caller disposes.</returns>
     internal static ProbeRun Start(string probe, params string[] arguments)
@@ -148,6 +151,14 @@ internal sealed class ProbeRun : IAsyncDisposable
 
         Assert.True(process.ExitCode == 0, $"The probe exited with code {process.ExitCode}.\n{Errors}");
         return read;
+    }
+
+    /// <summary>Writes a line to the probe's input, which its waiting modes take as the go-ahead.</summary>
+    /// <returns>When it is written.</returns>
+    internal async Task SendLineAsync()
+    {
+        await process.StandardInput.WriteLineAsync();
+        await process.StandardInput.FlushAsync();
     }
 
     /// <summary>Kills the probe alone, leaving whatever it started to fend for itself.</summary>

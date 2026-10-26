@@ -23,7 +23,8 @@ of this repository and consumed by `ProjectReference`. It is not published to Nu
 > graphs, imports data and compares a SysML v1 tool's results with
 > runs](#exporting-graphs-importing-data-and-comparing-results). Its [conformance
 > runner](#conformance) runs the shared suite through that API, every RPC of the service
-> covered. It does not download a release of the service; the other clients
+> covered. It does not download a release of the service, though it starts one another
+> client cached in the [shared cache](#the-shared-cache), under the same lock; the other clients
 > ([Python](../python/), [Java](../java/), [Rust](../rust/), [Node](../node/)) are the ones to
 > use for that today.
 
@@ -128,7 +129,10 @@ that is not an executable file fails the open with `BinaryNotFoundException` rat
 another being used, and finding none lists every place looked at in `SearchedLocations`. This
 release does not download a release of the service. The binary is hashed before it is
 started, with symbolic links followed before any subsequent `..` component, including in
-link targets; a missing directory or regular file cannot be traversed by `..`.
+link targets; a missing directory or regular file cannot be traversed by `..`. A binary found
+in the shared cache is not started at that path but from its snapshot under its own digest,
+taken with the cache locked (see [The shared cache](#the-shared-cache)); a binary named
+explicitly or found on `PATH` is started as it is.
 `ConnectionOptions.ExpectedBinarySha256` requires a digest, and a binary without it
 fails with `ChecksumMismatchException` and is never executed. A platform that cannot start a
 process, such as a browser, fails with `UnsupportedPlatformException`.
@@ -176,6 +180,63 @@ These guarantees hold where the tests that prove them run: Linux, macOS and Wind
 platforms CI runs the whole suite on (see [Building and testing](#building-and-testing)). On
 any other platform the client starts a private service the same way, but nothing proves that
 it ends with the process or that an unloaded copy is collected.
+
+### The shared cache
+
+`~/.opensysml/bin` is one cache every OpenSysML client shares, under the names they all use:
+the executable `sysml-grpc` (`sysml-grpc.exe` on Windows), its record `sysml-grpc.json` of
+the release it is (`{"version": …, "sha256": …, "repo": …}`, written as Python's `json.dump`
+writes it), the lock `sysml-grpc.lock` every client holds while it changes them, and
+snapshots `sysml-grpc-<first 16 hex digits of the digest>`, the executable linked under its
+own digest. This client reads the cache only with its lock held, and does not yet download
+into it.
+
+The lock is three locks, taken in this order and released in reverse:
+
+1. a semaphore of this copy of the client, so its threads wait without polling;
+2. `sysml-grpc.lock.dotnet`, a guard file of this client's own beside the lock, held with
+   `flock` on POSIX and an unshared open on Windows, which belong to the open file rather than
+   the process. It shuts out another copy of the client loaded into another load context of the
+   same process before that copy opens the lock file: the lock below belongs to the process, so
+   that copy would otherwise take it too, and closing its descriptor would drop it;
+3. `sysml-grpc.lock` itself, held as the Python, Java and Rust clients hold it: `lockf` over
+   the whole file on a descriptor libc's `open(2)` opened, never a `FileStream`'s, whose
+   implicit `flock` conflicts with the other clients' locks on macOS; `LockFileEx` over the
+   whole file on Windows.
+
+Descriptors are opened close-on-exec, so no process started while the lock is held, a private
+service included, inherits any of it; the guard is never removed. Each lock is attempted
+without blocking and retried after pauses doubling from 10 ms to 250 ms, so a wait is
+cancelled by the caller's token and sees a release within a quarter second. After two seconds
+a warning names the lock and who holds it; after two minutes, as long as the Java client
+waits, the open fails with `ServiceStartException`. A holder that ends, however it ends,
+releases everything with it.
+
+With the lock held, the executable is hashed and linked under its digest, and that snapshot is
+what starts, so a release another client installs over the cache later never changes a
+running or starting service. A snapshot already there is used only when it has its digest
+and is not a symbolic link; otherwise it is replaced with a warning. A hand-installed
+executable that is a symbolic link is followed before its file is linked under its digest.
+Where the file system cannot hard link, the
+executable is copied there instead, with a warning; where it can be neither linked nor copied,
+or the cache cannot be locked because this user may not write there, the executable is started
+where it is, with a warning that a release installed over it may be started instead. Old
+snapshots are not removed.
+
+This client installs no release yet, but the transaction it reads the cache through is also
+the one a release is installed through: the release is staged in the cache directory, verified
+against the digest required of it, and published by an atomic rename, executable first and its
+record second. Cancellation is checked immediately before the executable is published,
+leaving the previous executable and record unchanged when cancelled; once published, its
+record is completed even if the caller cancels.
+Bytes without the digest required are never published. A record vouches for the executable
+only while the digest it records is the executable's, so an interruption between the two
+leaves an executable no record vouches for rather than a torn pair taken for a release; a
+record another client was still writing in place, or one with invalid Unicode in a name or
+release field, is unusable metadata with a diagnostic reason. What an interrupted .NET
+transaction staged, named `<file>.dotnet-<16 hex digits>.tmp`, is removed by the next, which
+holds the lock every transaction that stages files holds; other clients' staged files are
+left alone.
 
 ### Protocols
 
@@ -233,6 +294,7 @@ use after disposal, which are the standard exceptions:
 | --- | --- |
 | An option, address, header or raw method/message pairing is invalid | `InvalidRequestException`, before anything is sent |
 | No service is named and `AutoStart` is false, or the private service did not start | `ServiceStartException` |
+| The shared cache stayed locked by another client or process for two minutes | `ServiceStartException` naming the lock |
 | No service is named and no binary was found to start | `BinaryNotFoundException`, a `ServiceStartException` with `SearchedLocations` |
 | The binary does not have `ExpectedBinarySha256` | `ChecksumMismatchException`, a `ServiceStartException` with `BinaryPath`, `ExpectedSha256` and `ActualSha256` |
 | This platform cannot start a process | `UnsupportedPlatformException`, a `ServiceStartException` with `Platform` |
@@ -877,7 +939,8 @@ dotnet test --solution client/dotnet/OpenSysML.slnx -c Release --no-build --filt
 
 `dotnet test` runs on Microsoft.Testing.Platform, which `global.json` selects; the VSTest
 form `dotnet test <solution>` is not supported. Every test declares a `Category` trait,
-`Unit` or `Integration`, and a test enforces that, so a filter never silently drops one.
+`Unit`, `Integration` or `Interop`, and a test enforces that, so a filter never silently
+drops one.
 
 Integration tests run against the binary `OPENSYSML_GRPC_BINARY` names, which they start
 themselves on ports the kernel chooses and reach by address: once serving its default
@@ -921,9 +984,31 @@ failed assertion still releases successful connections, and a ten-second cleanup
 falls back to killing and awaiting only the scope's owned processes while reporting the
 timeout as a failure.
 
+A third probe, [`test/OpenMBEE.OpenSysML.CacheProbe`](test/OpenMBEE.OpenSysML.CacheProbe/),
+holds and tries the shared cache's lock from a process of its own: through the client, or the
+cross-client lock alone with its own system calls, as another client would, so that a change
+to how the client locks cannot also change what checks it. It also loads two copies of the
+client into collectible load contexts, which must shut each other out and be collected, and
+runs a cache transaction that stops at a chosen step to be killed, after which the lock must
+be free and nothing torn trusted. Interop tests run holders that take the lock with the
+Python, Java and Rust clients' exact calls, in [`test/interop`](test/interop/): each client
+must shut the other out both ways, wait for and see the other's release, and take the lock of
+a killed holder of the other, and the Python client must read and write the cache's record
+byte for byte as this one does. A failed holder acquisition stops and awaits its process
+before reporting the failure, including when it times out or receives unexpected output.
+They need Python, a JDK (`JAVA_HOME` or `PATH`, with
+`javac`) and Cargo, which builds the Rust holder from its locked manifest into
+`bin/dotnet/interop`; each test whose toolchain is missing skips naming it, and with
+`OPENSYSML_REQUIRE_INTEROP=1`, as CI sets, fails instead:
+
+```bash
+OPENSYSML_REQUIRE_INTEROP=1 OPENSYSML_GRPC_BINARY="$PWD/bin/sysml-grpc" OPENSYSML_REQUIRE_SERVICE=1 make dotnet-test
+```
+
 CI runs the whole suite on Linux against the service its build job makes, then both
 conformance targets, and, in the full tier, natively on macOS and Windows against a
-`sysml-grpc` built on that runner, with the same minimum test count.
+`sysml-grpc` built on that runner, with the same minimum test count. Every one of those jobs
+installs the Python, Java and Rust toolchains and requires the interop tests.
 The Python gates use ASCII success markers so preflight, sample and coverage reports
 also work with legacy Windows console encodings.
 

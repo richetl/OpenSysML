@@ -14,4 +14,7 @@ internal static class Category
 
     /// <summary>Needs a sysml-grpc binary; see <see cref="ServiceGate"/>.</summary>
     internal const string Integration = "Integration";
+
+    /// <summary>Needs the Python, Java and Rust toolchains, whose clients' cache lock it is run against; see <see cref="InteropGate"/>.</summary>
+    internal const string Interop = "Interop";
 }

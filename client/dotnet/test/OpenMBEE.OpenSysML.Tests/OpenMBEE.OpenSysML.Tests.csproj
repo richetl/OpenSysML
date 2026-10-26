@@ -24,5 +24,7 @@
     <!-- Likewise the lifecycle probes, which the orphan and load-context tests run as processes of their own. -->
     <ProjectReference Include="../OpenMBEE.OpenSysML.OrphanProbe/OpenMBEE.OpenSysML.OrphanProbe.csproj" ReferenceOutputAssembly="false" Private="false" />
     <ProjectReference Include="../OpenMBEE.OpenSysML.LoadContextProbe/OpenMBEE.OpenSysML.LoadContextProbe.csproj" ReferenceOutputAssembly="false" Private="false" />
+    <!-- And the cache probe, which holds, tries and crashes the shared cache's lock in processes and load contexts of its own. -->
+    <ProjectReference Include="../OpenMBEE.OpenSysML.CacheProbe/OpenMBEE.OpenSysML.CacheProbe.csproj" ReferenceOutputAssembly="false" Private="false" />
   </ItemGroup>
 </Project>

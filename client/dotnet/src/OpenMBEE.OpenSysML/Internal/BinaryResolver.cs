@@ -13,14 +13,20 @@ namespace OpenMBEE.OpenSysML.Internal;
 /// <param name="Sha256">The digest of its contents, in lower-case hexadecimal.</param>
 internal sealed record ResolvedBinary(string Path, string Sha256);
 
+/// <summary>A binary as found, before its links are followed.</summary>
+/// <param name="Path">The path of an executable file.</param>
+/// <param name="Cache">The shared cache, when that is where it was found.</param>
+internal sealed record FoundBinary(string Path, CacheLayout? Cache);
+
 /// <summary>
 /// Finds the <c>sysml-grpc</c> binary a private service is started from: the one
 /// <see cref="ConnectionOptions.BinaryPath"/> names, else the one <see cref="ConnectionOptions.BinaryVariable"/>
 /// names, else the shared cache every client installs into, <c>~/.opensysml/bin</c>, else the first on
 /// <c>PATH</c>. A binary named explicitly that is not there fails rather than another being used. The
 /// binary is hashed whichever way it was found, and checked against
-/// <see cref="ConnectionOptions.ExpectedBinarySha256"/> before anything executes it. Releases are not
-/// downloaded.
+/// <see cref="ConnectionOptions.ExpectedBinarySha256"/> before anything executes it. The shared cache is
+/// read with its lock held, and what is started is its executable linked under its own digest, which no
+/// later install replaces. Releases are not downloaded.
 /// </summary>
 internal static partial class BinaryResolver
 {
@@ -43,12 +49,12 @@ internal static partial class BinaryResolver
     /// <summary>Finds, hashes and checks the binary to start.</summary>
     /// <param name="options">The connection's options, already validated.</param>
     /// <param name="environment">Reads an environment variable; null when it is unset.</param>
-    /// <param name="cancellationToken">Cancels the hashing.</param>
+    /// <param name="cancellationToken">Cancels the hashing, and waiting for the shared cache's lock.</param>
     /// <returns>The binary.</returns>
     /// <exception cref="UnsupportedPlatformException">This platform cannot start a process.</exception>
     /// <exception cref="BinaryNotFoundException">No executable binary was found where it was looked for.</exception>
     /// <exception cref="ChecksumMismatchException">The binary does not have the digest required of it.</exception>
-    /// <exception cref="ServiceStartException">The binary could not be read.</exception>
+    /// <exception cref="ServiceStartException">The binary could not be read, or the shared cache stayed locked.</exception>
     internal static async Task<ResolvedBinary> ResolveAsync(ConnectionOptions options, Func<string, string?> environment, CancellationToken cancellationToken)
     {
         RequireProcesses(ProcessLessPlatform);
@@ -57,12 +63,35 @@ internal static partial class BinaryResolver
         string digest;
         try
         {
-            canonical = Canonical(found);
-            digest = await Sha256Async(canonical, cancellationToken).ConfigureAwait(false);
+            for (var attempt = 1; ; attempt++)
+            {
+                if (found.Cache is null)
+                {
+                    canonical = Canonical(found.Path);
+                    digest = await Sha256Async(canonical, cancellationToken).ConfigureAwait(false);
+                    break;
+                }
+
+                if (await SnapshotAsync(found.Cache, options.Logger, cancellationToken).ConfigureAwait(false) is { } snapshot)
+                {
+                    canonical = Canonical(snapshot.Path);
+                    digest = snapshot.Sha256;
+                    LogFromCache(options.Logger, found.Path, canonical, snapshot.Kind);
+                    break;
+                }
+
+                // Removed while its lock was awaited: look again, as if it had never been there.
+                if (attempt == 3)
+                {
+                    throw new ServiceStartException($"{found.Path} was removed each time its lock was taken, {attempt} times; nothing is left to start there.");
+                }
+
+                found = Find(options, environment);
+            }
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException)
         {
-            throw new ServiceStartException($"sysml-grpc at {found} could not be read: {error.Message}", error);
+            throw new ServiceStartException($"sysml-grpc at {found.Path} could not be read: {error.Message}", error);
         }
 
         if (options.ExpectedBinarySha256 is { } expected && !string.Equals(expected, digest, StringComparison.OrdinalIgnoreCase))
@@ -95,36 +124,34 @@ internal static partial class BinaryResolver
     /// <summary>The binary to start, as found, before its links are followed.</summary>
     /// <param name="options">The connection's options.</param>
     /// <param name="environment">Reads an environment variable.</param>
-    /// <returns>The path of an executable file.</returns>
+    /// <returns>The path of an executable file, and the shared cache when it is there.</returns>
     /// <exception cref="BinaryNotFoundException">None was found.</exception>
-    internal static string Find(ConnectionOptions options, Func<string, string?> environment)
+    internal static FoundBinary Find(ConnectionOptions options, Func<string, string?> environment)
     {
         if (options.BinaryPath is { } option)
         {
-            return Named(option, "ConnectionOptions.BinaryPath");
+            return new FoundBinary(Named(option, "ConnectionOptions.BinaryPath"), null);
         }
 
         var variable = environment(ConnectionOptions.BinaryVariable);
         if (!string.IsNullOrWhiteSpace(variable))
         {
-            return Named(variable, "$" + ConnectionOptions.BinaryVariable);
+            return new FoundBinary(Named(variable, "$" + ConnectionOptions.BinaryVariable), null);
         }
 
         var searched = new List<string> { $"${ConnectionOptions.BinaryVariable}: unset" };
-        var home = environment(HomeVariable);
-        if (string.IsNullOrWhiteSpace(home))
+        if (CacheLayout.InHome(environment) is not { } cache)
         {
             searched.Add($"~/.opensysml/bin/{ExecutableName}: no home directory, since ${HomeVariable} is unset");
         }
         else
         {
-            var cached = Path.Combine(home, ".opensysml", "bin", ExecutableName);
-            if (IsExecutable(cached, out var why))
+            if (IsExecutable(cache.Executable, out var why))
             {
-                return cached;
+                return new FoundBinary(cache.Executable, cache);
             }
 
-            searched.Add($"{cached}: {why}");
+            searched.Add($"{cache.Executable}: {why}");
         }
 
         var directories = (environment("PATH") ?? string.Empty).Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
@@ -133,7 +160,7 @@ internal static partial class BinaryResolver
             var candidate = Path.Combine(directory, ExecutableName);
             if (IsExecutable(candidate, out _))
             {
-                return candidate;
+                return new FoundBinary(candidate, null);
             }
         }
 
@@ -289,7 +316,11 @@ internal static partial class BinaryResolver
         : Path.IsPathRooted(path) ? Path.GetFullPath(path, parent)
         : Path.Combine(parent, path);
 
-    private static async Task<string> Sha256Async(string path, CancellationToken cancellationToken)
+    /// <summary>The SHA-256 digest of a file's contents, in lower-case hexadecimal.</summary>
+    /// <param name="path">The file.</param>
+    /// <param name="cancellationToken">Cancels the reading.</param>
+    /// <returns>The digest.</returns>
+    internal static async Task<string> Sha256Async(string path, CancellationToken cancellationToken)
     {
         var file = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete, 1 << 16, FileOptions.Asynchronous | FileOptions.SequentialScan);
         await using (file.ConfigureAwait(false))
@@ -298,6 +329,35 @@ internal static partial class BinaryResolver
         }
     }
 
+    // A cache that cannot be locked, being where this user may not write, is used as the other clients use it:
+    // unlocked, with a warning, as itself.
+    private static async Task<CacheSnapshot?> SnapshotAsync(CacheLayout cache, ILogger logger, CancellationToken cancellationToken)
+    {
+        CacheTransaction transaction;
+        try
+        {
+            transaction = await CacheTransaction.BeginAsync(cache, logger, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException)
+        {
+            LogUnlocked(logger, cache.Lock, cache.Executable, error.Message);
+            return File.Exists(cache.Executable)
+                ? new CacheSnapshot(cache.Executable, await Sha256Async(cache.Executable, cancellationToken).ConfigureAwait(false), SnapshotKind.Unsnapshotted)
+                : null;
+        }
+
+        await using (transaction.ConfigureAwait(false))
+        {
+            return await transaction.SnapshotAsync(cancellationToken).ConfigureAwait(false);
+        }
+    }
+
     [LoggerMessage(Level = LogLevel.Debug, Message = "Resolved the private service's binary to {Path}, SHA-256 {Sha256}")]
     private static partial void LogResolved(ILogger logger, string path, string sha256);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Starting the shared cache's {Executable} as {Snapshot} ({Kind})")]
+    private static partial void LogFromCache(ILogger logger, string executable, string snapshot, SnapshotKind kind);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Could not lock {Lock} ({Reason}); using {Executable} unlocked, so a release another client installs over it may be started instead")]
+    private static partial void LogUnlocked(ILogger logger, string @lock, string executable, string reason);
 }

@@ -44,10 +44,12 @@ public sealed class BinaryResolverTests : IDisposable
         var onPath = Executable("path");
         var environment = Environment(variable, home, Path.Combine(root, "empty-dir") + Path.PathSeparator + Path.Combine(root, "path"));
 
-        Assert.Equal(option, BinaryResolver.Find(new ConnectionOptions { BinaryPath = option }, environment));
-        Assert.Equal(variable, BinaryResolver.Find(new ConnectionOptions(), environment));
-        Assert.Equal(cached, BinaryResolver.Find(new ConnectionOptions(), Environment("  ", home, Path.Combine(root, "path"))));
-        Assert.Equal(onPath, BinaryResolver.Find(new ConnectionOptions(), Environment(null, Path.Combine(root, "no-home"), Path.Combine(root, "path"))));
+        Assert.Equal(new FoundBinary(option, null), BinaryResolver.Find(new ConnectionOptions { BinaryPath = option }, environment));
+        Assert.Equal(new FoundBinary(variable, null), BinaryResolver.Find(new ConnectionOptions(), environment));
+        var fromCache = BinaryResolver.Find(new ConnectionOptions(), Environment("  ", home, Path.Combine(root, "path")));
+        Assert.Equal(cached, fromCache.Path);
+        Assert.Equal(cached, fromCache.Cache?.Executable);
+        Assert.Equal(new FoundBinary(onPath, null), BinaryResolver.Find(new ConnectionOptions(), Environment(null, Path.Combine(root, "no-home"), Path.Combine(root, "path"))));
     }
 
     [Fact]
@@ -59,8 +61,8 @@ public sealed class BinaryResolverTests : IDisposable
         Directory.CreateDirectory(Path.Combine(blank, Name));
         var path = string.Join(Path.PathSeparator, Path.Combine(root, "missing"), blank, " ", Path.Combine(root, "first"), Path.Combine(root, "second"));
 
-        Assert.Equal(first, BinaryResolver.Find(new ConnectionOptions(), Environment(null, null, path)));
-        Assert.Equal(second, BinaryResolver.Find(new ConnectionOptions(), Environment(null, null, Path.Combine(root, "second"))));
+        Assert.Equal(new FoundBinary(first, null), BinaryResolver.Find(new ConnectionOptions(), Environment(null, null, path)));
+        Assert.Equal(new FoundBinary(second, null), BinaryResolver.Find(new ConnectionOptions(), Environment(null, null, Path.Combine(root, "second"))));
     }
 
     [Theory]

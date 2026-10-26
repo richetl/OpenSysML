@@ -1483,17 +1483,33 @@ jobs:
       - name: Install the sysml-grpc binary
         run: chmod +x bin/sysml-grpc
 
-      # A test that needs the service fails rather than skips without one.
+      # The interop tests hold the shared cache's lock against the Java and Rust
+      # clients' own calls; Python is the runner's. Rust is the Rust client job's pin.
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Install Rust 1.83
+        run: |
+          rustup toolchain install 1.83.0 --profile minimal
+          rustup default 1.83.0
+          cargo --version
+
+      # A test that needs the service, or another client's toolchain, fails rather than skips without it.
       - name: Run .NET client tests
         env:
           OPENSYSML_GRPC_BINARY: ${{ github.workspace }}/bin/sysml-grpc
           OPENSYSML_REQUIRE_SERVICE: "1"
+          OPENSYSML_REQUIRE_INTEROP: "1"
         run: make dotnet-test
 
       - name: Measure .NET client coverage
         env:
           OPENSYSML_GRPC_BINARY: ${{ github.workspace }}/bin/sysml-grpc
           OPENSYSML_REQUIRE_SERVICE: "1"
+          OPENSYSML_REQUIRE_INTEROP: "1"
         run: make dotnet-coverage
 
       # Every protocol and the withheld configuration, through the public API, against the
@@ -1524,10 +1540,11 @@ jobs:
           if-no-files-found: ignore
 
   # The .NET client's private-service lifecycle on the platforms the Linux job does
-  # not stand for: the whole suite, with the orphan, load-context and race tests,
-  # against a sysml-grpc built natively here. A missing service fails rather than
-  # skips, and the minimum test count is the Makefile's, so no platform passes by
-  # running less. Windows checks out with LF endings, as the client's files are.
+  # not stand for: the whole suite, with the orphan, load-context, race and shared
+  # cache lock interop tests, against a sysml-grpc built natively here. A missing
+  # service or lock-holder toolchain fails rather than skips, and the minimum test
+  # count is the Makefile's, so no platform passes by running less. Windows checks
+  # out with LF endings, as the client's files are.
   dotnet-native:
     name: .NET client tests (${{ matrix.os }})
     needs: changes
@@ -1575,6 +1592,20 @@ jobs:
         with:
           python-version: '3.12'
 
+      # The interop tests hold the shared cache's lock against the Python, Java and
+      # Rust clients' own calls, natively here too.
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Install Rust 1.83
+        run: |
+          rustup toolchain install 1.83.0 --profile minimal
+          rustup default 1.83.0
+          cargo --version
+
       - name: Install the .NET SDK root global.json pins
         uses: actions/setup-dotnet@v4
         env:
@@ -1596,6 +1627,7 @@ jobs:
       - name: Run .NET client tests
         env:
           OPENSYSML_REQUIRE_SERVICE: "1"
+          OPENSYSML_REQUIRE_INTEROP: "1"
         run: |
           minimum=$(sed -n 's/^DOTNET_MIN_TESTS := //p' Makefile)
           test -n "$minimum"
