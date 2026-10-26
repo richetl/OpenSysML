@@ -1795,7 +1795,7 @@ func (s *stateRegion) takeRoutes(k *deferral, always []*sysmlv1.Element) (taker 
 				switch {
 				case l.port == nil && direct:
 					taken = append(taken, "from the object itself")
-				case l.port != nil && containsElement(ports, l.port):
+				case l.port != nil && slices.Contains(ports, l.port):
 					taken = append(taken, "via "+s.m.nameFor(l.port))
 				default:
 					kept = append(kept, l)
@@ -1812,16 +1812,6 @@ func (s *stateRegion) takeRoutes(k *deferral, always []*sysmlv1.Element) (taker 
 		return taker, ""
 	}
 	return taker, theTransition(taker) + " out of the state accepts the signal " + strings.Join(taken, " and ") + ", which in v1 takes precedence over deferring it, so no loop keeps it there"
-}
-
-// containsElement reports whether es holds e.
-func containsElement(es []*sysmlv1.Element, e *sysmlv1.Element) bool {
-	for _, x := range es {
-		if x == e {
-			return true
-		}
-	}
-	return false
 }
 
 // loopCount is how many accept loops the encoding writes in all.
@@ -2378,7 +2368,7 @@ func (m *migration) referencedBehavior(kw, head string, b, owner *sysmlv1.Elemen
 		return false
 	}
 	if cat, _ := m.classify(b); cat != catActionDef {
-		m.aside(kw + " " + qualifiedName(b) + " is written as a " + cat.keyword() + ", which no state runs")
+		m.aside(kw + " " + qualifiedName(b) + " is written as " + article(cat.keyword()) + cat.keyword() + ", which no state runs")
 		m.downgrade(b, describe(owner)+" names it as its "+kw+", which a "+cat.keyword()+" cannot be")
 		m.add(owner, Approximated, "", "its "+kw+" "+qualifiedName(b)+notRun+"it is written as a "+cat.keyword())
 		return false

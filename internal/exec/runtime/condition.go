@@ -58,6 +58,14 @@ type Condition struct {
 	// their types, outermost first: each one's parameter values mask the
 	// enclosing ones', which mask the checked element's. empty reads the latter alone.
 	Constraints []*symbols.Symbol
+
+	// Circular is the requirement a `require r` names while r's own conditions
+	// are being collected: a reference back into the check, stating nothing evaluable.
+	Circular *symbols.Symbol
+
+	// Subrequirement is the requirement usage whose check Group states, its assumptions
+	// implying its required conditions (RequirementCheck::result); nil for a body's conjunction.
+	Subrequirement *symbols.Symbol
 }
 
 // BodySteps is the statements one constraint body performs before its
@@ -144,7 +152,7 @@ type conditionEnv struct {
 // A member states its condition either directly (`require x < y;`, `assert x < y;`)
 // or through the body of an anonymous nested constraint (`require constraint { x < y }`).
 func (ctx *Context) conditionsOf(sym *symbols.Symbol, members []scopedMember) []Condition {
-	return ctx.appendMemberConditions(nil, sym, members, true, nil)
+	return ctx.appendMemberConditions(nil, sym, members, true, map[*symbols.Symbol]bool{sym: true})
 }
 
 // appendMemberConditions appends the conditions sym's members state, leaving out
@@ -167,7 +175,7 @@ func (ctx *Context) appendMemberConditions(out []Condition, sym *symbols.Symbol,
 	var stepScope *symbols.Scope
 	var stepNode ast.Node
 	for _, member := range members {
-		if owner := ctx.namedConstraintOf(member); owner != nil && owner != sym && owner.Name != "" {
+		if owner := ctx.conditionOwnerOf(member); owner != nil && owner != sym && owner.Name != "" {
 			if effective == nil {
 				effective = ctx.effectiveMembers(sym)
 			}
@@ -220,6 +228,29 @@ func (ctx *Context) namedConstraintOf(member scopedMember) *symbols.Symbol {
 		return nil
 	}
 	return body.Owner()
+}
+
+// conditionOwnerOf returns the usage a member states its conditions through: the
+// constraint usage of a require/assume member, or a subrequirement; nil otherwise.
+func (ctx *Context) conditionOwnerOf(member scopedMember) *symbols.Symbol {
+	if owner := ctx.namedConstraintOf(member); owner != nil {
+		return owner
+	}
+	return ctx.subrequirementOf(member.node, member.scope)
+}
+
+// subrequirementOf returns the subrequirement a requirement body member declares (SysML v2
+// §7.21.2), nil for any other member; an abstract one, like the library's `subrequirements`, is none.
+func (ctx *Context) subrequirementOf(node ast.Node, scope *symbols.Scope) *symbols.Symbol {
+	usage, ok := node.(*ast.Usage)
+	if !ok || usage.IsAbstract {
+		return nil
+	}
+	sym := memberSymbol(scope, node)
+	if sym == nil || !ctx.model.semantics.IsSubrequirement(sym) {
+		return nil
+	}
+	return sym
 }
 
 // effectiveMembers is the set of members sym has: MembersOf as a set.
@@ -303,12 +334,34 @@ func (ctx *Context) appendConditions(out []Condition, node ast.Node, scope *symb
 		out = ctx.appendRequirementConditions(out, m, m.Expression, m.Body, scope, false, seen)
 	case *ast.Membership:
 		out = ctx.appendConditions(out, m.Member, scope, required, negated, seen)
+	case *ast.Usage:
+		if sub := ctx.subrequirementOf(m, scope); sub != nil {
+			out = ctx.appendSubrequirementConditions(out, sub, scope, required, seen)
+		}
 	default:
 		// A member stating neither a condition nor a step — an expression, a
 		// declaration — states nothing here; the body's steps were collected by
 		// the caller that knew the body.
 	}
 	return out
+}
+
+// appendSubrequirementConditions appends sub as one constraint of its container (Requirements.sysml
+// `subrequirements :> requirementChecks, constraints`): a group valued by sub's own check over its chain.
+func (ctx *Context) appendSubrequirementConditions(out []Condition, sub *symbols.Symbol, scope *symbols.Scope,
+	required bool, seen map[*symbols.Symbol]bool) []Condition {
+	if seen[sub] {
+		return append(out, Condition{Scope: scope, Required: required, Circular: sub})
+	}
+	if seen == nil {
+		seen = map[*symbols.Symbol]bool{}
+	}
+	seen[sub] = true
+	defer delete(seen, sub)
+	start := len(out)
+	out = ctx.appendMemberConditions(out, sub, ctx.chainMembers(sub, scope), true, seen)
+	group := append([]Condition(nil), out[start:]...)
+	return append(out[:start], Condition{Group: group, Required: required, Subrequirement: sub, Constraints: []*symbols.Symbol{sub}})
 }
 
 // appendRequirementConditions appends what a require/assume member states: the
@@ -362,12 +415,14 @@ func (ctx *Context) appendOwnedConditions(out []Condition, member ast.Node, body
 	return out
 }
 
-// setConstraint marks conds as stated by owner, enclosing any nested named
-// constraint already marked: the innermost usage's parameter values win.
+// setConstraint marks conds as stated by owner, enclosing any nested named constraint already
+// marked (the innermost usage's parameter values win); a subrequirement's group is marked as a whole.
 func setConstraint(conds []Condition, owner *symbols.Symbol) {
 	for i := range conds {
 		conds[i].Constraints = append([]*symbols.Symbol{owner}, conds[i].Constraints...)
-		setConstraint(conds[i].Group, owner)
+		if conds[i].Subrequirement == nil {
+			setConstraint(conds[i].Group, owner)
+		}
 	}
 }
 
@@ -498,7 +553,7 @@ func (ctx *Context) appendReferencedConditions(out []Condition, decl ast.Node, r
 		return ctx.appendOwnedConditions(out, decl, body, scope, required, seen)
 	}
 	if seen[sym] {
-		return out
+		return append(out, Condition{Scope: scope, Required: required, Circular: sym})
 	}
 	if seen == nil {
 		seen = map[*symbols.Symbol]bool{}
@@ -528,12 +583,14 @@ func (ctx *Context) referencingConstraintOf(member ast.Node, scope *symbols.Scop
 	return body.Owner()
 }
 
-// setAssumed turns conds, groups included, into assumptions when assumed is set;
-// the assumptions among them stay assumptions either way.
+// setAssumed turns conds, groups included, into assumptions when assumed is set; the assumptions
+// among them stay assumptions either way, and what a subrequirement's group states stays its own check.
 func setAssumed(conds []Condition, assumed bool) {
 	for i := range conds {
 		conds[i].Required = conds[i].Required && !assumed
-		setAssumed(conds[i].Group, assumed)
+		if conds[i].Subrequirement == nil {
+			setAssumed(conds[i].Group, assumed)
+		}
 	}
 }
 
@@ -583,6 +640,9 @@ type conditionCheck struct {
 	// negated inverts the verdict: the element asserts that its required
 	// conditions do not all hold (`assert not …`, Invariant::isNegated).
 	negated bool
+
+	// about is the requirement whose claim a satisfaction judges; nil reads sym.
+	about *symbols.Symbol
 }
 
 // name returns how the checked element is named in messages.
@@ -597,12 +657,20 @@ func (c conditionCheck) name() string {
 // one holds, or — for a negated element — whether one of them fails. check.self
 // is the subject already, as checkSubject resolved it.
 func (ctx *Context) evaluateConditions(check conditionCheck, conds []Condition) (bool, error) {
-	if len(conds) == 0 {
-		return false, fmt.Errorf("%s %s: %w", check.kind, check.name(), ErrNoConditions)
-	}
 	if conflict := conflictingResultExpression(conds); conflict != nil {
 		return false, fmt.Errorf("%s %s: %s evaluation failed: %s: %w; a redefinition keeps the inherited condition and tightens it with a nested `assert constraint { … }`",
 			check.kind, check.name(), check.what, conflictText(conflict), errConflictingResultExpressions)
+	}
+	// A requirement over no required constraint is true whatever its assumptions
+	// read, so they are not evaluated; a constraint stating nothing has no verdict.
+	if check.isRequirementCheck() && !requiresAny(conds) {
+		if check.negated {
+			return false, &ViolationError{Kind: check.kind, Element: check.name(), What: check.what, Condition: vacuousClaim(check.claimed())}
+		}
+		return true, nil
+	}
+	if len(conds) == 0 {
+		return false, fmt.Errorf("%s %s: %w", check.kind, check.name(), ErrNoConditions)
 	}
 	features := ctx.conditionFeatures(check.sym)
 	self := check.self
@@ -616,6 +684,9 @@ func (ctx *Context) evaluateConditions(check conditionCheck, conds []Condition) 
 	required := false
 	for _, cond := range conds {
 		required = required || cond.Required
+		if err := ctx.circularCondition(check, cond); err != nil {
+			return false, err
+		}
 		if cond.Steps != nil && !cond.Negated {
 			// The body's steps ran once; each condition it left is judged on its
 			// own Required, as the conditions of a body stating no steps are.
@@ -642,14 +713,109 @@ func (ctx *Context) evaluateConditions(check conditionCheck, conds []Condition) 
 		}
 	}
 	if check.negated {
-		// An assumption is trusted rather than checked, so a negated element
-		// stating only assumptions denies nothing.
+		// A constraint's assumption is trusted rather than checked, so a negated
+		// constraint stating only assumptions denies nothing.
 		if !required {
 			return false, fmt.Errorf("%s %s: %w", check.kind, check.name(), ErrNoConditions)
 		}
 		return false, &ViolationError{Kind: check.kind, Element: check.name(), What: check.what, Condition: negatedText(conds)}
 	}
 	return true, nil
+}
+
+// circularCondition is the error for a condition that, reached in order, names
+// the requirement being checked; nil for one that does not.
+func (ctx *Context) circularCondition(check conditionCheck, cond Condition) error {
+	cycle := circularReference([]Condition{cond})
+	if cycle == nil {
+		return nil
+	}
+	return fmt.Errorf("%s %s: %w: require %s names the requirement being checked",
+		check.kind, check.name(), ErrNoConditions, cycle.Name)
+}
+
+// requiresAny reports whether any of conds is required rather than assumed; a required
+// subrequirement requires what its own conditions require, an assumed one nothing.
+func requiresAny(conds []Condition) bool {
+	for _, cond := range conds {
+		if cond.Subrequirement != nil {
+			if cond.Required && requiresAny(cond.Group) {
+				return true
+			}
+			continue
+		}
+		if cond.Required {
+			return true
+		}
+	}
+	return false
+}
+
+// isRequirementCheck reports whether the checked element is a requirement
+// (a requirement, concern, viewpoint or objective usage, or a satisfaction of
+// one), whose verdict is Requirements::RequirementConstraintCheck::result.
+func (c conditionCheck) isRequirementCheck() bool {
+	switch c.kind {
+	case "requirement", "satisfaction", "objective":
+		return true
+	}
+	return false
+}
+
+// vacuity is why a requirement check over no required condition is true:
+// `allTrue(assumptions()) implies allTrue(constraints())` over no constraint is
+// true (SysML v2 9.2.11 Requirements; KerML 9.2.3 ControlFunctions::allTrue over
+// an empty sequence). "" for a check that is not vacuous.
+func vacuity(check conditionCheck, conds []Condition) string {
+	if !check.isRequirementCheck() || requiresAny(conds) {
+		return ""
+	}
+	return "vacuous: " + vacuousClaim(check.claimed())
+}
+
+// claimed is the requirement whose claim the check judges.
+func (c conditionCheck) claimed() *symbols.Symbol {
+	if c.about != nil {
+		return c.about
+	}
+	return c.sym
+}
+
+// vacuousClaim says what a requirement over no required condition claims.
+func vacuousClaim(sym *symbols.Symbol) string {
+	return fmt.Sprintf("%s %s states no required constraint, so it holds vacuously", requirementKeyword(sym), sym.Name)
+}
+
+// requirementKeyword is the keyword a requirement was declared with
+// (`requirement`, `concern`, `viewpoint`, `objective`), `requirement` when it has none.
+func requirementKeyword(sym *symbols.Symbol) string {
+	if sym != nil {
+		switch d := sym.Decl.(type) {
+		case *ast.Usage:
+			if d.Keyword != "" {
+				return d.Keyword
+			}
+		case *ast.Definition:
+			if d.Keyword != "" {
+				return d.Keyword
+			}
+		}
+	}
+	return "requirement"
+}
+
+// circularReference is the requirement a condition of conds names back into the
+// check, nil when none does.
+func circularReference(conds []Condition) *symbols.Symbol {
+	for _, cond := range conds {
+		if cond.Circular != nil {
+			return cond.Circular
+		}
+		if nested := circularReference(cond.Group); nested != nil {
+			return nested
+		}
+	}
+	return nil
 }
 
 // evaluateStepsConditions is the loop of evaluateConditions for one body that
@@ -672,6 +838,9 @@ func (ctx *Context) evaluateStepsConditions(activation int64, check conditionChe
 			check.kind, check.name(), check.what, ErrNoConditions)
 	}
 	for _, sub := range cond.Group {
+		if err := ctx.circularCondition(check, sub); err != nil {
+			return false, err
+		}
 		holds, err := ctx.conditionHoldsAt(activation, sub, scoped, self, check.frames, bindings, &stepFrame)
 		if err != nil {
 			return false, fmt.Errorf("%s %s: %s evaluation failed: %w", check.kind, check.name(), check.what, err)
@@ -859,20 +1028,38 @@ func (ctx *Context) heldObjectIDs() map[int64]bool {
 }
 
 // carriersUnder returns the objects reachable from roots whose type carries the
-// features owner declares, roots included, in identity order; a destroyed object is
-// passed over with what it holds. A declaration is
-// descended into once per path, so recursive composition is a finite search, and
-// one object stands for each declaration reached, so objects a multiplicity
-// repeated are one candidate however deep the named declaration sits in them.
+// features owner declares, roots included, one object standing for each declaration
+// reached, in identity order: the subject a check that names a declaration is about,
+// so objects a multiplicity repeated are one candidate however deep the named
+// declaration sits in them, while two declarations feeding one collection are two.
 func (ctx *Context) carriersUnder(roots []*Instance, owner *symbols.Symbol) []carrier {
-	return ctx.carriersWhere(roots, func(inst *Instance) bool { return ctx.modelConforms(inst.Type, owner) })
+	return sortedCarriers(oneCarrierPerOccurrence(ctx.reachCarriers(roots, ctx.objectOf(owner))))
 }
 
-// carriersWhere is carriersUnder with the carrying objects chosen by carries.
+// objectsUnder returns every object reachable from roots whose type carries the
+// features owner declares, roots included, in identity order: each one is an object a
+// feature owner declares is a feature of, the objects a multiplicity repeated each on their own.
+func (ctx *Context) objectsUnder(roots []*Instance, owner *symbols.Symbol) []carrier {
+	return ctx.carriersWhere(roots, ctx.objectOf(owner))
+}
+
+// objectOf chooses the objects whose type conforms to owner.
+func (ctx *Context) objectOf(owner *symbols.Symbol) func(*Instance) bool {
+	return func(inst *Instance) bool { return ctx.modelConforms(inst.Type, owner) }
+}
+
+// carriersWhere is objectsUnder with the carrying objects chosen by carries.
 func (ctx *Context) carriersWhere(roots []*Instance, carries func(*Instance) bool) []carrier {
+	return sortedCarriers(ctx.reachCarriers(roots, carries))
+}
+
+// reachCarriers walks the objects reachable from roots, roots included, and returns
+// each one carries chooses in the order reached, with the declaration it occurs as; a
+// destroyed object is passed over with what it holds. A declaration is descended into
+// once per path, so recursive composition is a finite search.
+func (ctx *Context) reachCarriers(roots []*Instance, carries func(*Instance) bool) []carrier {
 	var out []carrier
 	seen := make(map[int64]bool, len(roots))
-	declared := make(map[carrierOccurrence]bool)
 	path := make(map[*symbols.Symbol]bool)
 	var descend func(root, inst *Instance, through string, features []string)
 	descend = func(root, inst *Instance, through string, features []string) {
@@ -881,10 +1068,9 @@ func (ctx *Context) carriersWhere(roots []*Instance, carries func(*Instance) boo
 			return
 		}
 		seen[inst.ID] = true
-		occurrence := carrierOccurrence{through: through, decl: inst.Type}
-		if carries(inst) && !declared[occurrence] {
-			declared[occurrence] = true
-			out = append(out, carrier{instance: inst, root: root, features: features})
+		if carries(inst) {
+			occurrence := carrierOccurrence{through: through, decl: inst.Type}
+			out = append(out, carrier{instance: inst, root: root, features: features, occurrence: occurrence})
 		}
 		if inst.Type != nil {
 			if path[inst.Type] {
@@ -901,8 +1087,26 @@ func (ctx *Context) carriersWhere(roots []*Instance, carries func(*Instance) boo
 	for _, root := range roots {
 		descend(root, root, ctx.rootPath(root), nil)
 	}
-	sort.Slice(out, func(i, j int) bool { return out[i].instance.ID < out[j].instance.ID })
 	return out
+}
+
+// oneCarrierPerOccurrence keeps the first carrier reached of each declaration occurrence.
+func oneCarrierPerOccurrence(carriers []carrier) []carrier {
+	out := make([]carrier, 0, len(carriers))
+	declared := make(map[carrierOccurrence]bool, len(carriers))
+	for _, c := range carriers {
+		if !declared[c.occurrence] {
+			declared[c.occurrence] = true
+			out = append(out, c)
+		}
+	}
+	return out
+}
+
+// sortedCarriers orders carriers by object identity.
+func sortedCarriers(carriers []carrier) []carrier {
+	sort.Slice(carriers, func(i, j int) bool { return carriers[i].instance.ID < carriers[j].instance.ID })
+	return carriers
 }
 
 // rootPath is the path a subject search starts a root at: the objects one usage denotes share
@@ -917,16 +1121,18 @@ func (ctx *Context) rootPath(root *Instance) string {
 // carrier is an object a search reached: the object the search started from and
 // the features walked from it name a nested one, which has no name of its own.
 type carrier struct {
-	instance *Instance
-	root     *Instance
-	features []string
+	instance   *Instance
+	root       *Instance
+	features   []string
+	occurrence carrierOccurrence
 }
 
 // carrierOccurrence identifies the declaration an object occurs as: the features
 // walked through to reach it, each quoted so any name is one segment, and the
 // declaration it materializes. Objects a multiplicity repeated share both, while
 // ones a collection gathers from different declarations — the features
-// subsetting it — do not.
+// subsetting it — do not. A check about a declaration resolves one object per
+// occurrence; a sweep over the objects of a type visits every one.
 type carrierOccurrence struct {
 	through string
 	decl    *symbols.Symbol
@@ -1145,7 +1351,12 @@ func (ctx *Context) conditionHoldsAt(activation int64, cond Condition, features 
 		}
 	}
 	holds := true
-	if cond.Group != nil {
+	if cond.Subrequirement != nil {
+		var err error
+		if holds, err = ctx.subrequirementHoldsAt(activation, cond, features, self, frames, bindings, stepFrame); err != nil {
+			return false, err
+		}
+	} else if cond.Group != nil {
 		for _, sub := range cond.Group {
 			subHolds, err := ctx.conditionHoldsAt(activation, sub, features, self, frames, bindings, stepFrame)
 			if err != nil {
@@ -1173,6 +1384,7 @@ func (ctx *Context) conditionHoldsAt(activation int64, cond Condition, features 
 		if u := result.Undetermined(); u != nil {
 			return false, fmt.Errorf("%w: condition is undetermined: %s", ErrNoValue, u.Reason())
 		}
+		result = soleElement(result)
 		if result.Kind != ValConst || result.Const.Kind != semantics.ValBool {
 			return false, fmt.Errorf("condition must evaluate to boolean, got %v", result.Kind)
 		}
@@ -1182,6 +1394,26 @@ func (ctx *Context) conditionHoldsAt(activation int64, cond Condition, features 
 		holds = !holds
 	}
 	return holds, nil
+}
+
+// subrequirementHoldsAt is a subrequirement's RequirementCheck::result within its container's
+// check: `allTrue(assumptions()) implies allTrue(constraints())` over its group, true over no required one.
+func (ctx *Context) subrequirementHoldsAt(activation int64, cond Condition, features map[string]scopedExpr, self *Instance, frames []frame, bindings frame, stepFrame *frame) (bool, error) {
+	for _, required := range []bool{false, true} {
+		for _, sub := range cond.Group {
+			if sub.Required != required {
+				continue
+			}
+			holds, err := ctx.conditionHoldsAt(activation, sub, features, self, frames, bindings, stepFrame)
+			if err != nil {
+				return false, err
+			}
+			if !holds {
+				return !required, nil
+			}
+		}
+	}
+	return true, nil
 }
 
 // negatedText renders what a negated element asserted and did not get: that not
@@ -1249,6 +1481,16 @@ func (ctx *Context) constraintScope(features map[string]scopedExpr, bindings fra
 		out[name] = feat
 	}
 	inner := &conditionEnv{features: out, bindings: unmasked(bindings, own)}
+	if names, value, ok := ctx.subrequirementSubject(constraint, bindings); ok {
+		vars := make(map[string]Value, len(inner.bindings.vars)+len(names))
+		for name, v := range inner.bindings.vars {
+			vars[name] = v
+		}
+		for _, name := range names {
+			vars[name] = value
+		}
+		inner.bindings = inner.bindings.withVars(vars)
+	}
 	for name, feat := range own {
 		feat.env = inner
 		if isArgument(feat.decl) {
@@ -1257,6 +1499,27 @@ func (ctx *Context) constraintScope(features map[string]scopedExpr, bindings fra
 		out[name] = feat
 	}
 	return out, inner.bindings
+}
+
+// subrequirementSubject is the container's subject value a subrequirement owning no subject declaration
+// binds under its inherited subject names (SysML v2 §7.21.2); ok is false otherwise or when it is unbound.
+func (ctx *Context) subrequirementSubject(sub *symbols.Symbol, bindings frame) (names []string, value Value, ok bool) {
+	if !ctx.model.semantics.IsSubrequirement(sub) {
+		return nil, Value{}, false
+	}
+	if owned, _ := ctx.model.semantics.SubjectsOf(sub); len(owned) > 0 {
+		return nil, Value{}, false
+	}
+	names = ctx.subjectParameterNames(sub)
+	if len(names) == 0 {
+		return nil, Value{}, false
+	}
+	for _, name := range ctx.subjectParameterNames(declaringType(sub)) {
+		if value, ok := bindings.lookup(name); ok {
+			return names, value, true
+		}
+	}
+	return nil, Value{}, false
 }
 
 // isArgument reports whether a parameter value was written on a usage rather
@@ -1310,13 +1573,22 @@ func conditionLabel(cond Condition) string {
 	if cond.Conflict != nil {
 		return "conflicting result expression"
 	}
+	if cond.Circular != nil {
+		return "require " + cond.Circular.Name
+	}
 	text := conditionText(cond.Expr)
 	if cond.Group != nil {
 		parts := make([]string, 0, len(cond.Group))
 		for _, sub := range cond.Group {
+			if cond.Subrequirement != nil && !sub.Required {
+				continue
+			}
 			parts = append(parts, conditionLabel(sub))
 		}
 		text = "{ " + strings.Join(parts, "; ") + " }"
+		if cond.Subrequirement != nil {
+			text = requirementKeyword(cond.Subrequirement) + " " + cond.Subrequirement.Name + " " + text
+		}
 	}
 	if cond.Negated {
 		text = "not " + text
@@ -1326,6 +1598,21 @@ func conditionLabel(cond Condition) string {
 
 // ConditionText is the text a NoValueError names the expression n by.
 func ConditionText(n ast.Node) string { return conditionText(n) }
+
+// qualifiedNameText writes a qualified name as the notation does, each segment
+// quoted when it needs quoting.
+func qualifiedNameText(qn *ast.QualifiedName) string {
+	if qn == nil {
+		return ""
+	}
+	names := make([]string, 0, len(qn.Parts))
+	for _, seg := range qn.Parts {
+		if seg.Text != "" {
+			names = append(names, seg.Text)
+		}
+	}
+	return source.QualifiedNameOf(names)
+}
 
 // conditionText renders a condition compactly, so a violation names the
 // condition that failed rather than only the element that states it.
@@ -1343,9 +1630,9 @@ func conditionText(n ast.Node) string {
 		}
 		return "false"
 	case *ast.FeatureReference:
-		return qualifiedNameToString(e.Name)
+		return qualifiedNameText(e.Name)
 	case *ast.FeatureChainExpr:
-		return conditionText(e.Operand) + "." + qualifiedNameToString(e.Member)
+		return conditionText(e.Operand) + "." + qualifiedNameText(e.Member)
 	case *ast.OperatorExpr:
 		switch len(e.Operands) {
 		case 1:
@@ -1358,7 +1645,7 @@ func conditionText(n ast.Node) string {
 		for _, arg := range e.Args {
 			args = append(args, conditionText(arg))
 		}
-		return qualifiedNameToString(e.Type) + "(" + strings.Join(args, ", ") + ")"
+		return qualifiedNameText(e.Type) + "(" + strings.Join(args, ", ") + ")"
 	case *ast.IndexExpr:
 		// The bracket form is a quantity, `1.0 [m]`; `#` indexes a sequence.
 		if e.Bracket {

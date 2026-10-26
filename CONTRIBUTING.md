@@ -1,7 +1,7 @@
-# Contributing to the OpenSysML REDK
+# Contributing to the OpenSysML MDK
 
 Thank you for your interest in contributing to the OpenSysML Runtime Environment and Development
-Kit (REDK). This document describes how to set up a
+Kit (MDK). This document describes how to set up a
 development environment, the standards a change is expected to meet, and how contributions are
 reviewed and released.
 
@@ -278,7 +278,7 @@ needs to require.
 
 **The full tier** runs on every push to a non-draft pull request, when a draft is marked ready
 for review, and on any pull request carrying the label `ci:full`. It gates: gofmt, `go vet`,
-`make lint`, the race-enabled test suite (six shards, `make test-shard`), the binaries, the
+`make lint`, the race-enabled test suite (nine shards, `make test-shard`), the binaries, the
 client suites, the conformance suite over each transport, the protobuf lint and
 wire-compatibility checks, the documentation hygiene checks (`make docs-check`,
 `make man-check` and the census check), the site build, and in each client's job the

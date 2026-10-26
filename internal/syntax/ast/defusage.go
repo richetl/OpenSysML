@@ -381,6 +381,9 @@ type Relationship struct {
 	// Multiplicity is the end multiplicity written ahead of a connector end this
 	// relationship states: the `[0..1]` of `bind [0..1] a = b` (SysML.xtext:1020).
 	Multiplicity *Multiplicity
+	// TypedBy spans the `typed by` a typing was spelled with (KerML.xtext:600);
+	// zero for `:` or `defined by`, and on later targets of the same clause.
+	TypedBy source.Span
 }
 
 // Multiplicity is a `[n]` / `[lo..hi]` / `[*]` bound on a usage. Bounds are
@@ -410,6 +413,8 @@ type Definition struct {
 	IsConstant    bool // 'constant' feature modifier
 	IsEvent       bool // 'event' modifier for event-driven occurrences
 	IsIndividual  bool // 'individual' modifier: `individual part def` (SysML v2 8.3.9.11)
+	// IndividualKeyword spans the `individual` written, zero when none was.
+	IndividualKeyword source.Span
 	// IsParallel is the `parallel` before a state body: the state's substates
 	// are orthogonal (SysML v2 StateDefinition::isParallel).
 	IsParallel    bool
@@ -446,6 +451,8 @@ type Usage struct {
 	IsConstant    bool // 'constant' feature modifier
 	IsEvent       bool // 'event' modifier for event-driven occurrences
 	IsIndividual  bool // 'individual' modifier: OccurrenceUsage::isIndividual
+	// IndividualKeyword spans the `individual` written, zero when none was.
+	IndividualKeyword source.Span
 	// Portion is the `snapshot` or `timeslice` prefix of an occurrence usage
 	// (OccurrenceUsage::portionKind, SysML v2 8.3.9.11).
 	Portion  PortionKind

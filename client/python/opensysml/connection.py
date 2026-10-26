@@ -56,8 +56,10 @@ from opensysml.capabilities import (
     CAPABILITY_SELF_CHECK,
     CAPABILITY_STATE_TRACE,
     CAPABILITY_QUERY,
+    CAPABILITY_QUERY_ORDER_BY,
     CAPABILITY_RENDER_DOCUMENT,
     CAPABILITY_RENDER_DOCUMENT_HTML,
+    CAPABILITY_RENDER_DOCUMENT_ASCIIDOC,
     CAPABILITY_RENDER_VIEW,
     CAPABILITY_CHECK,
     CAPABILITY_EXPORT_GRAPHS,
@@ -1791,7 +1793,8 @@ class Connection:
             )
         return result_of(response)
 
-    def query(self, model_hash, payload=None, scope=None, select=None, where=None):
+    def query(self, model_hash, payload=None, scope=None, select=None, where=None,
+              order_by=None):
         """Run a SysML v2 API & Services Query over a loaded model.
 
         The query is the standard's JSON object, so a cookbook payload works
@@ -1803,27 +1806,29 @@ class Connection:
             scope (list, optional): Elements to consider; empty is the whole model
             select (list, optional): Properties to report; empty reports every one
             where (dict, optional): Constraint to filter by
+            order_by (list, optional): Properties to sort by, in order of
+                precedence, each ascending; empty keeps declaration order
 
         Returns:
-            list[QueryElement]: The elements selected, in declaration order
+            list[QueryElement]: The elements selected, in ``order_by`` order,
+            or declaration order without one
 
         Raises:
             QueryError: If the query is not one the standard's model describes
-            MissingCapabilityError: If the service cannot query
+            MissingCapabilityError: If the service cannot query, or cannot sort
+                and the query has an ``orderBy``
             InvalidRequestError: If a property or scope is unknown to the service
             ModelNotFoundError: If the model is no longer cached
         """
-        require(
-            self.server_info(),
-            CAPABILITY_QUERY,
-            upgrade_remedy(CAPABILITY_QUERY),
-        )
-        request = sysml_pb2.QueryRequest(
-            model_hash=model_hash,
-            query=build_query(payload, scope=scope, select=select, where=where),
-        )
+        query = build_query(payload, scope=scope, select=select, where=where,
+                            order_by=order_by)
+        needed = (CAPABILITY_QUERY, CAPABILITY_QUERY_ORDER_BY) if query.order_by \
+            else (CAPABILITY_QUERY,)
+        for capability in needed:
+            require(self.server_info(), capability, upgrade_remedy(capability))
+        request = sysml_pb2.QueryRequest(model_hash=model_hash, query=query)
         with translate_rpc_errors(
-            unimplemented=self._capability_refusal((CAPABILITY_QUERY,))
+            unimplemented=self._capability_refusal(needed)
         ):
             response = self._stub.Query(request)
         return elements_of(response)
@@ -1897,26 +1902,30 @@ class Connection:
         Args:
             model_hash (str): Hash of the model holding the document
             document_id (str): Qualified name of the document
-            form (str): ``"markdown"`` (the default) or ``"html"``, the
+            form (str): ``"markdown"`` (the default), ``"html"``, the
                 standalone page with the default stylesheet that the CLI's
-                ``-doc-form html`` writes
+                ``-doc-form html`` writes, or ``"asciidoc"``, the document
+                ``-doc-form asciidoc`` writes
 
         Returns:
             str: The rendered document in the form asked for
 
         Raises:
-            ValueError: If ``form`` is neither ``"markdown"`` nor ``"html"``
+            ValueError: If ``form`` is none of ``"markdown"``, ``"html"`` and
+                ``"asciidoc"``
             MissingCapabilityError: If the service cannot render documents, or
-                cannot render HTML when that form is asked for
+                cannot render HTML or AsciiDoc when that form is asked for
             InvalidRequestError: If the symbol named is not a document
             SymbolNotFoundError: If the model does not declare the document
             ModelNotFoundError: If the model is no longer cached
         """
-        if form not in ("markdown", "html"):
-            raise ValueError("form must be 'markdown' or 'html'")
+        if form not in ("markdown", "html", "asciidoc"):
+            raise ValueError("form must be 'markdown', 'html' or 'asciidoc'")
         capabilities = [CAPABILITY_RENDER_DOCUMENT]
         if form == "html":
             capabilities.append(CAPABILITY_RENDER_DOCUMENT_HTML)
+        elif form == "asciidoc":
+            capabilities.append(CAPABILITY_RENDER_DOCUMENT_ASCIIDOC)
         for capability in capabilities:
             require(self.server_info(), capability, upgrade_remedy(capability))
         request = sysml_pb2.RenderDocumentRequest(
@@ -1929,7 +1938,11 @@ class Connection:
             unimplemented=self._capability_refusal(capabilities),
         ):
             response = self._stub.RenderDocument(request)
-        return response.html if form == "html" else response.markdown
+        if form == "html":
+            return response.html
+        if form == "asciidoc":
+            return response.asciidoc
+        return response.markdown
 
     def diagnostics(self, model_hash, disable_lint=(), enable_lint=()):
         """Ask the service for a model's diagnostics now, under a lint selection.
@@ -1960,10 +1973,13 @@ class Connection:
             raise ModelError(response.error)
         return [Diagnostic(d) for d in response.diagnostics]
 
-    def render_view(self, model_hash, view_name, ports="minimal", show=None, depth=0):
-        """Render a named view with minimal or full ports, the optional notation elements named and, above 0, a depth bound."""
+    def render_view(self, model_hash, view_name, ports="minimal", show=None, depth=0,
+                    compartments="positioned"):
+        """Render a named view with minimal or full ports, the optional notation elements named, above 0 a depth bound and the compartment folding named."""
         if ports not in ("minimal", "full"):
             raise ValueError("ports must be 'minimal' or 'full'")
+        if compartments not in ("positioned", "most", "ports"):
+            raise ValueError("compartments must be 'positioned', 'most' or 'ports'")
         if not isinstance(depth, int) or isinstance(depth, bool) or depth < 0:
             raise ValueError("depth must be a non-negative integer")
         require(self.server_info(), CAPABILITY_RENDER_VIEW, upgrade_remedy(CAPABILITY_RENDER_VIEW))
@@ -1973,6 +1989,7 @@ class Connection:
             ports="" if ports == "minimal" else ports,
             show=list(show or ()),
             depth=depth,
+            compartments="" if compartments == "positioned" else compartments,
         )
         with translate_rpc_errors(
             not_found=lambda message, code: ViewNotFoundError(

@@ -224,7 +224,7 @@ func newActionExecutorOfGraph(
 			return nil, err
 		}
 		if found != nil {
-			graph, err = lower.ToActionInterface(held.Decl, DeclScope(held))
+			graph, err = ctx.model.actionInterface(held)
 			if err != nil {
 				return nil, fmt.Errorf("lower action interface: %w", err)
 			}
@@ -261,10 +261,15 @@ func newActionExecutorOn(
 		firedBreakpoints: make(map[breakpointVisit]bool),
 	}
 	exec.performances.thisOccurrence = exec.materializeOccurrence
-	exec.features = exec.performanceFeatures()
-	exec.root = exec.newRootFrame()
+	shape := exec.performanceShape()
+	exec.features = shape.attributes
+	exec.root = exec.newRootFrame(shape)
+	exec.through = ctx.performedPinBindings(performed, graph, self)
 	exec.owner = exec
 	exec.flow = exec
+	if occurrence != nil {
+		ctx.registerActionExecutor(exec)
+	}
 	exec.driven.exec = exec
 	ctx.clock.attach(exec)
 	ctx.run.notePerformer(exec)
@@ -294,7 +299,7 @@ func (e *ActionExecutor) performanceFeatures() []lower.Attribute {
 		}
 		if i, ok := declared[name]; ok {
 			if features[i].Value == nil && features[i].Node == ast.Node(usage) {
-				features[i].Value, features[i].Scope = e.ctx.model.semantics.ParameterDefault(member)
+				features[i].Value, features[i].Scope, features[i].Binding = e.inheritedValue(member)
 			}
 			features[i].Optional = e.ctx.admitsNoValue(member)
 			continue
@@ -330,13 +335,28 @@ func (e *ActionExecutor) performanceFeatures() []lower.Attribute {
 // inheritedAttribute is the attribute a performance holds for an inherited member,
 // valued by the default of the member or of what it redefines.
 func (e *ActionExecutor) inheritedAttribute(member *symbols.Symbol, usage *ast.Usage, name string, shadowed bool) lower.Attribute {
-	value, scope := e.ctx.model.semantics.ParameterDefault(member)
+	value, scope, binding := e.inheritedValue(member)
 	return lower.Attribute{
 		Name: name, Direction: usage.Direction, IsResult: usage.IsResult, Type: lower.TypeText(usage),
 		Value: value, Node: usage, Scope: scope, Optional: e.ctx.admitsNoValue(member),
-		Binding: value != nil && !usage.ValueIsInitial && !usage.ValueIsDefault,
-		Symbol:  member, Shadowed: shadowed,
+		Binding: binding, Symbol: member, Shadowed: shadowed,
 	}
+}
+
+// inheritedValue is the value member takes from the nearest declaration along its
+// redefinitions, the scope it resolves in, and whether that declaration binds it
+// live (`= x + 1`) rather than once (`:=`, `default`): a redefining feature valued
+// by nothing of its own is bound as the one it redefines is.
+func (e *ActionExecutor) inheritedValue(member *symbols.Symbol) (ast.Node, *symbols.Scope, bool) {
+	for _, p := range e.ctx.model.semantics.ParameterRedefinitionChain(member) {
+		usage, ok := p.Decl.(*ast.Usage)
+		if !ok || usage.Value == nil {
+			continue
+		}
+		return usage.Value, p.OwnerScope, !usage.ValueIsInitial && !usage.ValueIsDefault
+	}
+	value, scope := e.ctx.model.semantics.ParameterDefault(member)
+	return value, scope, false
 }
 
 // holdVisible marks the feature attr declares and every feature it redefines as held.
@@ -1479,6 +1499,27 @@ func (e *ActionExecutor) streamInitialOutput(name string, value Value) error {
 
 // declaresAttribute reports whether the action declares an attribute of this
 // name, which its performance holds rather than the object performing it.
+// mirrorOccurrenceWrite carries a write to one of the occurrence's declared
+// features into the run's data, under every name the data holds it by.
+func (e *ActionExecutor) mirrorOccurrenceWrite(fv *FeatureValue) {
+	if e.occurrence == nil || e.root == nil {
+		return
+	}
+	for _, attr := range e.features {
+		if attr.Shadowed || e.occurrence.FeatureValues[attr.Name] != fv {
+			continue
+		}
+		key := e.root.key(attr.Name)
+		if _, held := e.root.data[key]; !held {
+			continue
+		}
+		if cell := e.root.cells.existingCell(key); cell != nil && e.ctx.derivingValue(&cell.fv) {
+			continue
+		}
+		e.ctx.writeBodyValue(e.root.cells, e.root.data, key, fv.HeldValue())
+	}
+}
+
 func (e *ActionExecutor) declaresAttribute(name string) bool {
 	for _, attr := range e.features {
 		if attr.Name == name {
@@ -1515,6 +1556,7 @@ func (e *ActionExecutor) materializeOccurrence() (*Instance, error) {
 	inst.explicit = true
 	e.occurrence = inst
 	e.performances.occurrence = inst
+	e.ctx.registerActionExecutor(e)
 	for _, attr := range e.features {
 		if attr.Shadowed {
 			continue // the performance's alone: the occurrence's slots are keyed by name
@@ -1685,6 +1727,16 @@ func (e *ActionExecutor) hasFlow() bool {
 		e.dynamicsKind != lower.NotStateSpace)
 }
 
+// performedByFlow reports whether a performance of sym runs the flow its body
+// states, rather than the tool or state-space dynamics initialize dispatches to.
+func (ctx *Context) performedByFlow(sym *symbols.Symbol) (bool, error) {
+	_, tool, err := ctx.toolPerformance(sym, sym)
+	if err != nil || tool != nil {
+		return false, err
+	}
+	return ctx.stateSpaceKindOf(sym) == lower.NotStateSpace, nil
+}
+
 // completeRoot freezes the root bindings and ends its performance.
 func (e *ActionExecutor) completeRoot() error {
 	if err := e.ctx.freezeBodyCells(e.root.cells); err != nil {
@@ -1692,6 +1744,7 @@ func (e *ActionExecutor) completeRoot() error {
 	}
 	e.state = StateCompleted
 	e.endRootPerformance()
+	e.ctx.unregisterActionExecutor(e)
 	return nil
 }
 
@@ -1893,7 +1946,7 @@ func (e *ActionExecutor) stepToken(tokenIdx int) error {
 	}
 	id := e.tokens[tokenIdx].ID
 	defer e.beginTokenStep(id)()
-	defer e.ctx.underControl(e.tokens[tokenIdx].controlSerials())()
+	defer e.ctx.releaseControl(e.ctx.underControl(e.tokens[tokenIdx].controlSerials()))
 	if err := e.stepTokenAt(tokenIdx); err != nil {
 		return e.endTerminatedFor(id, err)
 	}
@@ -2222,7 +2275,8 @@ func guardResult(ec *EvalContext, guard ast.Node) (Value, error) {
 	if guard == nil {
 		return boolValue(true), nil
 	}
-	return ec.Eval(guard)
+	result, err := ec.Eval(guard)
+	return soleElement(result), err
 }
 
 // probeGuard reads the guard of the succession at position i out of a decision
@@ -2851,7 +2905,7 @@ func (e *ActionExecutor) stepNestedAction(tokenIdx int) error {
 	work := &usageWork{exec: e, token: token.ID, perf: perf, graph: graph, usage: usage}
 	if isCaseStep(usage) {
 		work.isCase = true
-	} else if inv, ok := nestedInvocationInGraph(graph, usage); ok {
+	} else if inv, ok := nodeInvocation(graph, perf, usage); ok {
 		work.inv, work.performs = inv, true
 	}
 	return e.runBody(tokenIdx, work)
@@ -2913,6 +2967,11 @@ func (e *ActionExecutor) awaitSignal(token *Token, accept lower.Accept, usage *a
 	if tr := e.trace(); tr != nil {
 		tr.RecordAccept(TraceOrigin{At: e.ctx.clock.now, Object: e.self, Behavior: e.action},
 			msg.Serial, acceptedEventName(msg), msg.Payload)
+	}
+	if accepting, err := e.materializeOccurrence(); err != nil {
+		return nil, false, err
+	} else if err := e.ctx.recordTransfer(msg, accepting, e.self); err != nil {
+		return nil, false, err
 	}
 	if accept.ParamName == "" {
 		return nil, true, nil
@@ -3009,6 +3068,7 @@ func (e *ActionExecutor) triggerHolds(token *Token, accept lower.Accept) (bool, 
 			if err != nil {
 				return false, fmt.Errorf("eval accept condition: %w", err)
 			}
+			result = soleElement(result)
 			if result.Kind != ValConst || result.Const.Kind != semantics.ValBool {
 				return false, fmt.Errorf("%w: accept when: condition must evaluate to boolean, got %v", ErrTypeMismatch, result.Kind)
 			}

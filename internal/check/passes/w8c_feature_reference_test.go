@@ -453,12 +453,14 @@ package Q { filter @Safety; }`,
 	}
 }
 
-// A behavior definition is the occurrence its `this` denotes: `this.<feature>`
-// inside a def reads the def's own features, so an enclosing object's feature
-// does not resolve through it — while a usage's bare feature read still reaches
-// the object lexically.
+// `this` written in a behavior definition keeps its declared type
+// (Occurrences::Occurrence::this : Occurrence[1]), so `this.<feature>` inside a def
+// resolves no feature of the enclosing part def nor of the def itself, at
+// package level or nested — while a usage's `this` chain still reaches the
+// object lexically.
 func TestW8CFeatureReferenceThisInsideBehaviorDef(t *testing.T) {
-	src := `package P {
+	for _, tc := range []struct{ name, src, feature string }{
+		{"nested def reads the part's feature", `package P {
 	private import ScalarValues::*;
 	part def H {
 		attribute level : Integer = 0;
@@ -466,16 +468,37 @@ func TestW8CFeatureReferenceThisInsideBehaviorDef(t *testing.T) {
 			action step { assign this.level := 1; }
 		}
 	}
-}`
-	msgs := w8cLibraryErrorsIn(t, "<t>.sysml", src)
-	found := false
-	for _, m := range msgs {
-		if strings.Contains(m, "level") {
-			found = true
-		}
+}`, "level"},
+		{"package-level def reads its own feature", `package P {
+	private import ScalarValues::*;
+	action def Probe {
+		attribute count : Integer = 1;
+		attribute viaThis : Integer = this.count;
 	}
-	if !found || len(msgs) == 0 {
-		t.Errorf("this.level inside action def Nudge should not resolve to H's level, got %v", msgs)
+}`, "count"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			msgs := w8cLibraryErrorsIn(t, "<t>.sysml", tc.src)
+			found := false
+			for _, m := range msgs {
+				if strings.Contains(m, tc.feature) {
+					found = true
+				}
+			}
+			if !found {
+				t.Errorf("this.%s inside a definition should not resolve, got %v", tc.feature, msgs)
+			}
+		})
+	}
+	src := `package P {
+	private import ScalarValues::*;
+	part def H {
+		attribute level : Integer = 0;
+		action nudge { assign this.level := 1; }
+	}
+}`
+	if msgs := w8cLibraryErrorsIn(t, "<t>.sysml", src); len(msgs) != 0 {
+		t.Errorf("this.level inside a usage should resolve to H's level, got %v", msgs)
 	}
 }
 
@@ -881,9 +904,8 @@ func TestW8CFeatureReferenceViaBoundaries(t *testing.T) {
 			item def E;
 			part def Owner {
 				port x;
-				action def A {
-					in ref context : Owner;
-					action r accept e : E via this.context.x;
+				action a {
+					action r accept e : E via this.x;
 				}
 			}
 		}`,
@@ -1031,5 +1053,20 @@ func TestW8CFeatureReferenceProbabilityReadsFromTheSuccession(t *testing.T) {
 		if w8cCount(msgs, want) != 1 {
 			t.Errorf("%s: want one %q, got %v", name, want, msgs)
 		}
+	}
+}
+
+// The operand of a classification is an expression: a definition's name there
+// is a feature reference to a non-feature, as it is under `istype`.
+func TestW8CFeatureReferenceClassificationOperand(t *testing.T) {
+	const src = `metadata def Safety;
+	#Safety part def Belt;
+	part belt : Belt;
+	attribute ok : ScalarValues::Boolean = belt @ Safety;
+	attribute bad : ScalarValues::Boolean = Belt @ Safety;
+	attribute worse : ScalarValues::Boolean = Belt istype Safety;`
+	msgs := w8cLibraryMessagesIn(t, "<t>.sysml", src)
+	if w8cCount(msgs, msgReferentIsFeature) != 2 {
+		t.Errorf("want two %q, got %v", msgReferentIsFeature, msgs)
 	}
 }

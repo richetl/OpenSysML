@@ -19,9 +19,8 @@ type LibraryFacts struct {
 	// by, which leaves the whole set to be derived from the declaration.
 	Supers []ElementRef
 
-	// ImpliedSupers are the entries of Supers that are base library usages the
-	// declaration's kind implies it subsets rather than states. The typing its
-	// kind implies stays an ordinary entry, its type being read from Supers.
+	// ImpliedSupers are the entries of Supers the declaration's kind implies
+	// rather than states: its base definition and the base usage it subsets.
 	ImpliedSupers []ElementRef
 
 	// Unit is the reduction of a measurement unit to base units. Nil for a
@@ -35,6 +34,10 @@ type LibraryFacts struct {
 	// Abstract records that the declaration is abstract. False means concrete or
 	// not recorded, which leaves the declaration to say.
 	Abstract bool
+
+	// LibraryPackage records that the declaration is a `library package` (or a
+	// `standard library package`). False means a plain package or not recorded.
+	LibraryPackage bool
 
 	// Recorded marks the facts of an interface-record symbol, one installed with
 	// no declaration at all (see DocumentRecord). Every field below is then
@@ -395,7 +398,7 @@ type BoundFacts struct {
 
 // Modifiers is the set of boolean modifiers a declaration states, as a
 // recorded fact reads them.
-type Modifiers uint32
+type Modifiers uint64
 
 // The modifiers a declaration can state (KerML 8.3.3, SysML v2 8.3.9).
 const (
@@ -437,6 +440,9 @@ const (
 	ModValued
 	// ModMayTimeVary marks a SysML usage whose derived Usage::mayTimeVary holds (SysML v2 §8.3.6.4).
 	ModMayTimeVary
+	// ModAnnotatesOthers marks a metadata usage written with an `about` clause,
+	// whether or not the elements it names resolve (see AnnotatesOthers).
+	ModAnnotatesOthers
 )
 
 // Has reports whether every modifier of mask is set.
@@ -447,6 +453,20 @@ func (m Modifiers) Has(mask Modifiers) bool { return m&mask == mask }
 // the declaration answers such a symbol with ErrNeedsHydration.
 func (s *Symbol) Recorded() bool {
 	return s != nil && s.Decl == nil && s.Facts != nil && s.Facts.Recorded
+}
+
+// IsLibraryPackage reports whether sym is declared `library package` (or
+// `standard library package`), reading the installed facts for a symbol with no
+// declaration and the declaration otherwise.
+func IsLibraryPackage(sym *Symbol) bool {
+	if sym == nil {
+		return false
+	}
+	if sym.Facts != nil && sym.Facts.LibraryPackage {
+		return true
+	}
+	pkg, ok := sym.Decl.(*ast.Package)
+	return ok && (pkg.IsLibrary || pkg.IsStandard)
 }
 
 // IsAbstract reports whether sym is declared abstract, reading the installed

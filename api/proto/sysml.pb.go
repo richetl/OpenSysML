@@ -180,14 +180,23 @@ func (EditFailure) EnumDescriptor() ([]byte, []int) {
 	return file_sysml_proto_rawDescGZIP(), []int{1}
 }
 
-// PrimitiveOperator is the standard's PrimitiveConstraint.operator.
+// PrimitiveOperator is the standard's PrimitiveConstraint.operator, the seven
+// literals of API & Services §7.1.4.
 type PrimitiveOperator int32
 
 const (
-	PrimitiveOperator_PRIMITIVE_OPERATOR_UNSPECIFIED PrimitiveOperator = 0 // unset; fails the call
-	PrimitiveOperator_PRIMITIVE_OPERATOR_EQUAL       PrimitiveOperator = 1 // "="
-	PrimitiveOperator_PRIMITIVE_OPERATOR_GREATER     PrimitiveOperator = 2 // ">"
-	PrimitiveOperator_PRIMITIVE_OPERATOR_LESS        PrimitiveOperator = 3 // "<"
+	PrimitiveOperator_PRIMITIVE_OPERATOR_UNSPECIFIED   PrimitiveOperator = 0 // unset; fails the call
+	PrimitiveOperator_PRIMITIVE_OPERATOR_EQUAL         PrimitiveOperator = 1 // "="
+	PrimitiveOperator_PRIMITIVE_OPERATOR_GREATER       PrimitiveOperator = 2 // ">"
+	PrimitiveOperator_PRIMITIVE_OPERATOR_LESS          PrimitiveOperator = 3 // "<"
+	PrimitiveOperator_PRIMITIVE_OPERATOR_LESS_EQUAL    PrimitiveOperator = 4 // "<="
+	PrimitiveOperator_PRIMITIVE_OPERATOR_GREATER_EQUAL PrimitiveOperator = 5 // ">="
+	// "in": the property's value is one of the listed values.
+	PrimitiveOperator_PRIMITIVE_OPERATOR_IN PrimitiveOperator = 6
+	// "instanceOf": the element's metaclass (`property` must be "@type")
+	// conforms to one of the listed metaclasses, so a PartUsage is an instance
+	// of Usage, Feature and Element.
+	PrimitiveOperator_PRIMITIVE_OPERATOR_INSTANCE_OF PrimitiveOperator = 7
 )
 
 // Enum value maps for PrimitiveOperator.
@@ -197,12 +206,20 @@ var (
 		1: "PRIMITIVE_OPERATOR_EQUAL",
 		2: "PRIMITIVE_OPERATOR_GREATER",
 		3: "PRIMITIVE_OPERATOR_LESS",
+		4: "PRIMITIVE_OPERATOR_LESS_EQUAL",
+		5: "PRIMITIVE_OPERATOR_GREATER_EQUAL",
+		6: "PRIMITIVE_OPERATOR_IN",
+		7: "PRIMITIVE_OPERATOR_INSTANCE_OF",
 	}
 	PrimitiveOperator_value = map[string]int32{
-		"PRIMITIVE_OPERATOR_UNSPECIFIED": 0,
-		"PRIMITIVE_OPERATOR_EQUAL":       1,
-		"PRIMITIVE_OPERATOR_GREATER":     2,
-		"PRIMITIVE_OPERATOR_LESS":        3,
+		"PRIMITIVE_OPERATOR_UNSPECIFIED":   0,
+		"PRIMITIVE_OPERATOR_EQUAL":         1,
+		"PRIMITIVE_OPERATOR_GREATER":       2,
+		"PRIMITIVE_OPERATOR_LESS":          3,
+		"PRIMITIVE_OPERATOR_LESS_EQUAL":    4,
+		"PRIMITIVE_OPERATOR_GREATER_EQUAL": 5,
+		"PRIMITIVE_OPERATOR_IN":            6,
+		"PRIMITIVE_OPERATOR_INSTANCE_OF":   7,
 	}
 )
 
@@ -10824,6 +10841,11 @@ type ServerInfoResponse struct {
 	//	               and answers with typed rows.
 	//	"render_document" - the RenderDocument RPC renders a named document to
 	//	               Markdown.
+	//	"query_order_by" - Query.order_by sorts the matched elements; a service
+	//	               without it would ignore the field, so a client checks.
+	//	"render_document_html" - RenderDocumentRequest.form takes "html".
+	//	"render_document_asciidoc" - RenderDocumentRequest.form takes "asciidoc"
+	//	               and the response carries the document in `asciidoc`.
 	//	"render_view" - the RenderView RPC renders a declared view or targeted
 	//	               pseudo-view as machine-readable diagram data.
 	//	"export_graphs" - the ExportGraphs RPC exports the lowered graph of an
@@ -11035,7 +11057,11 @@ type Query struct {
 	// Properties to report for each matched element. Empty reports all of them.
 	Select []string `protobuf:"bytes,2,rep,name=select,proto3" json:"select,omitempty"`
 	// Filter every considered element must satisfy. Unset matches all of them.
-	Where         *Constraint `protobuf:"bytes,3,opt,name=where,proto3" json:"where,omitempty"`
+	Where *Constraint `protobuf:"bytes,3,opt,name=where,proto3" json:"where,omitempty"`
+	// Properties the matched elements are sorted by, in order of precedence,
+	// each ascending; elements equal under every one keep declaration order.
+	// Corresponds to the standard's `orderBy`. An unknown one fails the call.
+	OrderBy       []string `protobuf:"bytes,4,rep,name=order_by,json=orderBy,proto3" json:"order_by,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -11087,6 +11113,13 @@ func (x *Query) GetSelect() []string {
 func (x *Query) GetWhere() *Constraint {
 	if x != nil {
 		return x.Where
+	}
+	return nil
+}
+
+func (x *Query) GetOrderBy() []string {
+	if x != nil {
+		return x.OrderBy
 	}
 	return nil
 }
@@ -11185,8 +11218,8 @@ type PrimitiveConstraint struct {
 	Property string            `protobuf:"bytes,2,opt,name=property,proto3" json:"property,omitempty"`
 	Operator PrimitiveOperator `protobuf:"varint,3,opt,name=operator,proto3,enum=sysml.PrimitiveOperator" json:"operator,omitempty"`
 	// Values to compare against. The standard writes one value, and its clients
-	// also write a list for `@type`; with `=` the element matches any of them,
-	// while `>` and `<` require exactly one.
+	// also write a list for `@type`; with `=`, `in` and `instanceOf` the element
+	// matches any of them, while `<`, `<=`, `>` and `>=` require exactly one.
 	Value         []string `protobuf:"bytes,4,rep,name=value,proto3" json:"value,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -11250,8 +11283,9 @@ func (x *PrimitiveConstraint) GetValue() []string {
 	return nil
 }
 
-// CompositeConstraint combines constraints. An empty constraint list fails the
-// call: it has no defensible verdict.
+// CompositeConstraint combines constraints. The standard combines at least two
+// (`constraint : Constraint [2..*]`): an empty list has no defensible verdict,
+// and a one-member list is that member, so either fails the call.
 type CompositeConstraint struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Operator      CompositeOperator      `protobuf:"varint,1,opt,name=operator,proto3,enum=sysml.CompositeOperator" json:"operator,omitempty"`
@@ -14153,10 +14187,12 @@ type RenderDocumentRequest struct {
 	// FQN of the document to render. Fails with NOT_FOUND when the model does
 	// not declare it, and INVALID_ARGUMENT when it declares something else.
 	DocumentId string `protobuf:"bytes,2,opt,name=document_id,json=documentId,proto3" json:"document_id,omitempty"`
-	// Form to render: "markdown" (the default when empty) or "html", the
+	// Form to render: "markdown" (the default when empty), "html", the
 	// standalone page with the default stylesheet that the CLI's -doc-form html
-	// writes. Any other form fails with INVALID_ARGUMENT; PDF needs the CLI's
-	// converter toolchain and is not offered here.
+	// writes, or "asciidoc", the document the CLI's -doc-form asciidoc writes
+	// (under the render_document_asciidoc capability). Any other form fails
+	// with INVALID_ARGUMENT; PDF needs the CLI's converter toolchain and is not
+	// offered here.
 	Form          string `protobuf:"bytes,3,opt,name=form,proto3" json:"form,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -14215,11 +14251,13 @@ func (x *RenderDocumentRequest) GetForm() string {
 
 // RenderDocumentResponse carries the rendered document in the form requested,
 // byte-for-byte what the CLI's -render-document writes: markdown for the
-// Markdown form, html for the HTML form, the other left empty.
+// Markdown form, html for the HTML form, asciidoc for the AsciiDoc form, the
+// others left empty.
 type RenderDocumentResponse struct {
 	state    protoimpl.MessageState `protogen:"open.v1"`
 	Markdown string                 `protobuf:"bytes,1,opt,name=markdown,proto3" json:"markdown,omitempty"`
 	Html     string                 `protobuf:"bytes,2,opt,name=html,proto3" json:"html,omitempty"`
+	Asciidoc string                 `protobuf:"bytes,4,opt,name=asciidoc,proto3" json:"asciidoc,omitempty"`
 	// The file a rendered set writes this document to in the requested form
 	// (-render-documents), which the other documents' links to it name.
 	// Populated under the render_document_file_name capability.
@@ -14272,6 +14310,13 @@ func (x *RenderDocumentResponse) GetHtml() string {
 	return ""
 }
 
+func (x *RenderDocumentResponse) GetAsciidoc() string {
+	if x != nil {
+		return x.Asciidoc
+	}
+	return ""
+}
+
 func (x *RenderDocumentResponse) GetFileName() string {
 	if x != nil {
 		return x.FileName
@@ -14294,7 +14339,13 @@ type RenderViewRequest struct {
 	Show []string `protobuf:"bytes,4,rep,name=show,proto3" json:"show,omitempty"`
 	// How many levels of nested elements to draw below each exposed element,
 	// overriding the depth the view states; 0 draws every level.
-	Depth         int32 `protobuf:"varint,5,opt,name=depth,proto3" json:"depth,omitempty"`
+	Depth int32 `protobuf:"varint,5,opt,name=depth,proto3" json:"depth,omitempty"`
+	// How a tree rendering folds a node's owned members into compartment rows,
+	// as view.ParseCompartments reads it: "" or "positioned" (the default, only
+	// the layout-less members of a tree some Layout positions), "most" (every
+	// owned usage no Layout, nested definition or package keeps a node) or
+	// "ports" (the port usages with the ports nested under them).
+	Compartments  string `protobuf:"bytes,6,opt,name=compartments,proto3" json:"compartments,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -14362,6 +14413,13 @@ func (x *RenderViewRequest) GetDepth() int32 {
 		return x.Depth
 	}
 	return 0
+}
+
+func (x *RenderViewRequest) GetCompartments() string {
+	if x != nil {
+		return x.Compartments
+	}
+	return ""
 }
 
 // RenderViewResponse carries all machine-readable fields of the rendering.
@@ -14507,8 +14565,11 @@ type RenderNode struct {
 	Ports           []*RenderPort          `protobuf:"bytes,10,rep,name=ports,proto3" json:"ports,omitempty"`
 	Origin          *Span                  `protobuf:"bytes,11,opt,name=origin,proto3" json:"origin,omitempty"`
 	// Unset when no layout annotates the node; unplaced when the layout only folds or hides it.
-	Geometry      *RenderGeometry `protobuf:"bytes,12,opt,name=geometry,proto3" json:"geometry,omitempty"`
-	Style         *RenderStyle    `protobuf:"bytes,13,opt,name=style,proto3" json:"style,omitempty"`
+	Geometry *RenderGeometry `protobuf:"bytes,12,opt,name=geometry,proto3" json:"geometry,omitempty"`
+	Style    *RenderStyle    `protobuf:"bytes,13,opt,name=style,proto3" json:"style,omitempty"`
+	// The compartment of the parent node this node is drawn as a row of
+	// ("attributes", "parts", "ports", ...); unset for a node drawn as a box.
+	Compartment   string `protobuf:"bytes,14,opt,name=compartment,proto3" json:"compartment,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -14632,6 +14693,13 @@ func (x *RenderNode) GetStyle() *RenderStyle {
 		return x.Style
 	}
 	return nil
+}
+
+func (x *RenderNode) GetCompartment() string {
+	if x != nil {
+		return x.Compartment
+	}
+	return ""
 }
 
 // RenderPort is a feature drawn on a node's border.
@@ -17687,11 +17755,12 @@ const file_sysml_proto_rawDesc = "" +
 	"\n" +
 	"oslc_query\x18\x03 \x01(\tR\toslcQuery\"F\n" +
 	"\rQueryResponse\x125\n" +
-	"\belements\x18\x01 \x03(\v2\x19.sysml.QueryResultElementR\belements\"^\n" +
+	"\belements\x18\x01 \x03(\v2\x19.sysml.QueryResultElementR\belements\"y\n" +
 	"\x05Query\x12\x14\n" +
 	"\x05scope\x18\x01 \x03(\tR\x05scope\x12\x16\n" +
 	"\x06select\x18\x02 \x03(\tR\x06select\x12'\n" +
-	"\x05where\x18\x03 \x01(\v2\x11.sysml.ConstraintR\x05where\"\x92\x01\n" +
+	"\x05where\x18\x03 \x01(\v2\x11.sysml.ConstraintR\x05where\x12\x19\n" +
+	"\border_by\x18\x04 \x03(\tR\aorderBy\"\x92\x01\n" +
 	"\n" +
 	"Constraint\x12:\n" +
 	"\tprimitive\x18\x01 \x01(\v2\x1a.sysml.PrimitiveConstraintH\x00R\tprimitive\x12:\n" +
@@ -17982,18 +18051,20 @@ const file_sysml_proto_rawDesc = "" +
 	"model_hash\x18\x01 \x01(\tR\tmodelHash\x12\x1f\n" +
 	"\vdocument_id\x18\x02 \x01(\tR\n" +
 	"documentId\x12\x12\n" +
-	"\x04form\x18\x03 \x01(\tR\x04form\"e\n" +
+	"\x04form\x18\x03 \x01(\tR\x04form\"\x81\x01\n" +
 	"\x16RenderDocumentResponse\x12\x1a\n" +
 	"\bmarkdown\x18\x01 \x01(\tR\bmarkdown\x12\x12\n" +
-	"\x04html\x18\x02 \x01(\tR\x04html\x12\x1b\n" +
-	"\tfile_name\x18\x03 \x01(\tR\bfileName\"\x86\x01\n" +
+	"\x04html\x18\x02 \x01(\tR\x04html\x12\x1a\n" +
+	"\basciidoc\x18\x04 \x01(\tR\basciidoc\x12\x1b\n" +
+	"\tfile_name\x18\x03 \x01(\tR\bfileName\"\xaa\x01\n" +
 	"\x11RenderViewRequest\x12\x1d\n" +
 	"\n" +
 	"model_hash\x18\x01 \x01(\tR\tmodelHash\x12\x12\n" +
 	"\x04view\x18\x02 \x01(\tR\x04view\x12\x14\n" +
 	"\x05ports\x18\x03 \x01(\tR\x05ports\x12\x12\n" +
 	"\x04show\x18\x04 \x03(\tR\x04show\x12\x14\n" +
-	"\x05depth\x18\x05 \x01(\x05R\x05depth\"\xec\x02\n" +
+	"\x05depth\x18\x05 \x01(\x05R\x05depth\x12\"\n" +
+	"\fcompartments\x18\x06 \x01(\tR\fcompartments\"\xec\x02\n" +
 	"\x12RenderViewResponse\x12\x12\n" +
 	"\x04view\x18\x01 \x01(\tR\x04view\x12\x12\n" +
 	"\x04kind\x18\x02 \x01(\tR\x04kind\x12\x16\n" +
@@ -18006,7 +18077,7 @@ const file_sysml_proto_rawDesc = "" +
 	"\x05notes\x18\t \x03(\v2\x11.sysml.RenderNoteR\x05notes\x12\x18\n" +
 	"\anotices\x18\n" +
 	" \x03(\tR\anotices\x12\x14\n" +
-	"\x05shown\x18\v \x03(\tR\x05shown\"\x8d\x03\n" +
+	"\x05shown\x18\v \x03(\tR\x05shown\"\xaf\x03\n" +
 	"\n" +
 	"RenderNode\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
@@ -18022,7 +18093,8 @@ const file_sysml_proto_rawDesc = "" +
 	" \x03(\v2\x11.sysml.RenderPortR\x05ports\x12#\n" +
 	"\x06origin\x18\v \x01(\v2\v.sysml.SpanR\x06origin\x121\n" +
 	"\bgeometry\x18\f \x01(\v2\x15.sysml.RenderGeometryR\bgeometry\x12(\n" +
-	"\x05style\x18\r \x01(\v2\x12.sysml.RenderStyleR\x05style\"b\n" +
+	"\x05style\x18\r \x01(\v2\x12.sysml.RenderStyleR\x05style\x12 \n" +
+	"\vcompartment\x18\x0e \x01(\tR\vcompartment\"b\n" +
 	"\n" +
 	"RenderPort\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
@@ -18245,12 +18317,16 @@ const file_sysml_proto_rawDesc = "" +
 	"\x1eEDIT_FAILURE_DELETE_REFERENCED\x10\x0f\x12$\n" +
 	" EDIT_FAILURE_OWNER_INSIDE_TARGET\x10\x10\x12 \n" +
 	"\x1cEDIT_FAILURE_MOVE_REFERENCED\x10\x11\x12%\n" +
-	"!EDIT_FAILURE_REFERENCED_ELSEWHERE\x10\x12*\x92\x01\n" +
+	"!EDIT_FAILURE_REFERENCED_ELSEWHERE\x10\x12*\x9a\x02\n" +
 	"\x11PrimitiveOperator\x12\"\n" +
 	"\x1ePRIMITIVE_OPERATOR_UNSPECIFIED\x10\x00\x12\x1c\n" +
 	"\x18PRIMITIVE_OPERATOR_EQUAL\x10\x01\x12\x1e\n" +
 	"\x1aPRIMITIVE_OPERATOR_GREATER\x10\x02\x12\x1b\n" +
-	"\x17PRIMITIVE_OPERATOR_LESS\x10\x03*n\n" +
+	"\x17PRIMITIVE_OPERATOR_LESS\x10\x03\x12!\n" +
+	"\x1dPRIMITIVE_OPERATOR_LESS_EQUAL\x10\x04\x12$\n" +
+	" PRIMITIVE_OPERATOR_GREATER_EQUAL\x10\x05\x12\x19\n" +
+	"\x15PRIMITIVE_OPERATOR_IN\x10\x06\x12\"\n" +
+	"\x1ePRIMITIVE_OPERATOR_INSTANCE_OF\x10\a*n\n" +
 	"\x11CompositeOperator\x12\"\n" +
 	"\x1eCOMPOSITE_OPERATOR_UNSPECIFIED\x10\x00\x12\x1a\n" +
 	"\x16COMPOSITE_OPERATOR_AND\x10\x01\x12\x19\n" +

@@ -305,7 +305,7 @@ class Model:
         """
         return Editor(self._hash, self.connection)
 
-    def query(self, payload=None, scope=None, select=None, where=None):
+    def query(self, payload=None, scope=None, select=None, where=None, order_by=None):
         """Run a SysML v2 API & Services Query over this model.
 
         Takes the standard's ``Query`` JSON, so a payload written for the
@@ -319,9 +319,12 @@ class Model:
                 empty considers the whole loaded model
             select (list, optional): Properties to report; empty reports every one
             where (dict, optional): Constraint to filter by
+            order_by (list, optional): Properties to sort by, in order of
+                precedence, each ascending; empty keeps declaration order
 
         Returns:
-            list[QueryElement]: The elements selected, in declaration order
+            list[QueryElement]: The elements selected, in ``order_by`` order,
+            or declaration order without one
 
         Raises:
             QueryError: If the query is not one the standard's model describes
@@ -336,7 +339,7 @@ class Model:
             [Demo::vehicle (PartUsage)]
         """
         return self.connection.query(
-            self._hash, payload, scope=scope, select=select, where=where,
+            self._hash, payload, scope=scope, select=select, where=where, order_by=order_by,
         )
 
     def run_document_query(self, query_id, bindings=None):
@@ -384,16 +387,18 @@ class Model:
 
         Args:
             document_id (str): Qualified name of the document
-            form (str): ``"markdown"`` (the default) or ``"html"``, the
-                standalone page the CLI's ``-doc-form html`` writes
+            form (str): ``"markdown"`` (the default), ``"html"``, the
+                standalone page the CLI's ``-doc-form html`` writes, or
+                ``"asciidoc"``, the document ``-doc-form asciidoc`` writes
 
         Returns:
             str: The rendered document in the form asked for
 
         Raises:
-            ValueError: If ``form`` is neither ``"markdown"`` nor ``"html"``
+            ValueError: If ``form`` is none of ``"markdown"``, ``"html"`` and
+                ``"asciidoc"``
             MissingCapabilityError: If the service cannot render documents, or
-                cannot render HTML when that form is asked for
+                cannot render HTML or AsciiDoc when that form is asked for
             InvalidRequestError: If the symbol named is not a document
             SymbolNotFoundError: If this model does not declare the document
             ModelNotFoundError: If the service no longer holds this model
@@ -408,7 +413,8 @@ class Model:
         """
         return self.connection.render_document(self._hash, document_id, form=form)
 
-    def render_view(self, view_name, ports="minimal", show=None, depth=0) -> RenderedView:
+    def render_view(self, view_name, ports="minimal", show=None, depth=0,
+                    compartments="positioned") -> RenderedView:
         """Render one named view as typed diagram data.
 
         Args:
@@ -423,19 +429,28 @@ class Model:
             depth (int): How many levels of nested elements to draw below each
                 exposed element, overriding the view's own ``depth``; ``0`` (the
                 default) draws every level the view allows
+            compartments (str): How a tree rendering folds a node's owned
+                members into compartment rows of its box: ``"positioned"`` (the
+                default) folds only the layout-less members of a tree some
+                Layout positions, ``"most"`` every owned usage no Layout, nested
+                definition or package keeps a node, ``"ports"`` the port usages
+                with the ports nested under them; a row is a node whose
+                ``compartment`` names the compartment of its ``parent``
 
         Returns:
             RenderedView: Ordered nodes, edges, table data and optional layout
 
         Raises:
-            ValueError: If ``ports`` is neither ``"minimal"`` nor ``"full"``
+            ValueError: If ``ports`` is neither ``"minimal"`` nor ``"full"``, or
+                ``compartments`` none of its three foldings
             MissingCapabilityError: If the service cannot render views
             InvalidRequestError: If the view is malformed or does not render
             ViewNotFoundError: If the view or pseudo-view target is missing;
                 also a SymbolNotFoundError and KeyError
             ModelNotFoundError: If the service no longer holds this model
         """
-        return self.connection.render_view(self._hash, view_name, ports=ports, show=show, depth=depth)
+        return self.connection.render_view(self._hash, view_name, ports=ports, show=show, depth=depth,
+                                           compartments=compartments)
 
 
     def check_action(self, action_symbol_id, inputs=None, performer=None, properties=(), diverge=(),

@@ -487,6 +487,18 @@ func (fc *funcCompiler) declaredResult(sym *symbols.Symbol, body []ast.Node) (bi
 			} else if m != MultOne {
 				return binding{}, fc.unsupported("an untyped result declaring a multiplicity")
 			}
+			held, err := fc.resultHeld(sym.Scope, u)
+			if err != nil {
+				return binding{}, err
+			}
+			if held {
+				// The value fixes the count; one is held as a one-element sequence.
+				unique, err := fc.uniqueOf(sym.Scope, u, name)
+				if err != nil {
+					return binding{}, err
+				}
+				return binding{m: MultAny, shaped: true, unique: unique}, nil
+			}
 			return binding{m: MultOne}, nil
 		}
 		if anything, err := fc.typedAnything(sym.Scope, u, name); err != nil {
@@ -494,6 +506,9 @@ func (fc *funcCompiler) declaredResult(sym *symbols.Symbol, body []ast.Node) (bi
 		} else if anything {
 			m, err := fc.multOf(u, resultWhere)
 			if err != nil {
+				return binding{}, err
+			}
+			if fc.fn.HeldResult, err = fc.resultHeld(sym.Scope, u); err != nil {
 				return binding{}, err
 			}
 			b := binding{m: m, shaped: true}
@@ -508,10 +523,41 @@ func (fc *funcCompiler) declaredResult(sym *symbols.Symbol, body []ast.Node) (bi
 		if err != nil {
 			return binding{}, err
 		}
+		if fc.fn.HeldResult, err = fc.resultHeld(sym.Scope, u); err != nil {
+			return binding{}, err
+		}
 		b.shaped = true
 		return fc.c.slotted(b, slot{key: fc.key}), nil
 	}
-	return binding{m: MultAny}, nil
+	// No owned result: the inherited one, ultimately Evaluation::result `[0..*]`,
+	// holds the value in that shape.
+	held := true
+	if inherited := fc.c.model.ResultParameterOf(sym); inherited != nil {
+		m, err := fc.multFromRange(fc.c.model.EffectiveParameterRange(inherited), resultWhere)
+		if err != nil {
+			return binding{}, err
+		}
+		held = m.MultiValued()
+	}
+	return binding{m: MultAny, shaped: held}, nil
+}
+
+// resultHeld reports a result that states no multiplicity and whose effective one
+// is multi-valued: the compiled value stays the scalar the body computes, held
+// as a one-element sequence when it leaves the program (Func.HeldResult).
+func (fc *funcCompiler) resultHeld(scope *symbols.Scope, u *ast.Usage) (bool, error) {
+	if _, stated := fc.c.model.RangeOf(u.Multiplicity); stated {
+		return false, nil
+	}
+	sym := fc.symbolOf(scope, u, resultWhere)
+	if sym == nil || !semantics.IsParameter(sym) {
+		return false, nil
+	}
+	m, err := fc.multFromRange(fc.c.model.EffectiveParameterRange(sym), resultWhere)
+	if err != nil {
+		return false, err
+	}
+	return m.MultiValued(), nil
 }
 
 // typedAnything reports a usage typed by Base::Anything, which classifies every
@@ -533,6 +579,11 @@ func (fc *funcCompiler) multOf(u *ast.Usage, what string) (Mult, error) {
 	if !ok {
 		return MultOne, nil
 	}
+	return fc.multFromRange(rng, what)
+}
+
+// multFromRange is rng as a compiled multiplicity.
+func (fc *funcCompiler) multFromRange(rng semantics.Range, what string) (Mult, error) {
 	bound := func(b semantics.Bound) (int64, error) {
 		switch {
 		case b.Infinite:
@@ -581,21 +632,29 @@ func (fc *funcCompiler) declaredBinding(scope *symbols.Scope, u *ast.Usage, name
 // uniqueOf is the effective uniqueness of the feature a usage declares: what
 // the interpreter checks when the feature is written (semantics.Model.IsUnique).
 func (fc *funcCompiler) uniqueOf(scope *symbols.Scope, u *ast.Usage, name string) (bool, error) {
-	if sym, ok := fc.c.resolver.LookupName(scope, name); ok && sym != nil && sym.Decl == u {
+	if sym := fc.symbolOf(scope, u, name); sym != nil {
 		return fc.c.model.IsUnique(sym), nil
-	}
-	// An anonymous `return` is declared without a name to look up.
-	for s := scope; s != nil; s = s.Parent() {
-		for _, sym := range s.AllMembers() {
-			if sym.Decl == u {
-				return fc.c.model.IsUnique(sym), nil
-			}
-		}
 	}
 	if name == "" {
 		name = resultWhere
 	}
 	return false, fc.unsupported(fmt.Sprintf("%s: the declaration does not resolve in its scope", name))
+}
+
+// symbolOf is the symbol a usage declares in scope, nil where none resolves.
+func (fc *funcCompiler) symbolOf(scope *symbols.Scope, u *ast.Usage, name string) *symbols.Symbol {
+	if sym, ok := fc.c.resolver.LookupName(scope, name); ok && sym != nil && sym.Decl == u {
+		return sym
+	}
+	// An anonymous `return` is declared without a name to look up.
+	for s := scope; s != nil; s = s.Parent() {
+		for _, sym := range s.AllMembers() {
+			if sym.Decl == u {
+				return sym
+			}
+		}
+	}
+	return nil
 }
 
 // inheritsShape reports a usage redefining or subsetting another feature, whose type,
@@ -644,7 +703,7 @@ func (c *Compiler) typingOf(scope *symbols.Scope, u *ast.Usage, name string) (*s
 		}
 		resolved, ok := c.resolver.ResolveQualified(scope, qn)
 		if !ok {
-			return nil, fmt.Sprintf("%s: type %s does not resolve", name, qnText(qn))
+			return nil, fmt.Sprintf("%s: type %s does not resolve", name, qn.Text())
 		}
 		if typ != nil {
 			return nil, fmt.Sprintf("%s is typed more than once", name)
@@ -1153,7 +1212,7 @@ func (fc *funcCompiler) compileName(qn *ast.QualifiedName) (Expr, error) {
 					return v, nil
 				}
 				if fc.libraryFunction(sym) {
-					f, err := fc.functionValueOf(sym, "a read of "+qnText(qn))
+					f, err := fc.functionValueOf(sym, "a read of "+qn.Text())
 					if err != nil {
 						return nil, err
 					}
@@ -1163,13 +1222,13 @@ func (fc *funcCompiler) compileName(qn *ast.QualifiedName) (Expr, error) {
 		}
 	}
 	if sym, isFn := fc.functionValueName(qn); isFn {
-		f, err := fc.functionValueOf(sym, "a read of "+qnText(qn))
+		f, err := fc.functionValueOf(sym, "a read of "+qn.Text())
 		if err != nil {
 			return nil, err
 		}
 		return fc.fnRead(f), nil
 	}
-	return nil, fc.unsupported(fmt.Sprintf("reference to %s, which is not a parameter, body-local attribute or compiled library constant", qnText(qn)))
+	return nil, fc.unsupported(fmt.Sprintf("reference to %s, which is not a parameter, body-local attribute or compiled library constant", qn.Text()))
 }
 
 // readBinding is a read of name, bound to b.
@@ -1231,66 +1290,16 @@ func (fc *funcCompiler) compileOperator(n *ast.OperatorExpr) (Expr, error) {
 	case ast.OpRange:
 		return fc.compileRange(n)
 	case ast.OpAdd, ast.OpSub, ast.OpMul, ast.OpDiv, ast.OpMod, ast.OpPow:
-		l, r, wrap, err := fc.binaryOperands(n)
+		l, r, wrap, err := fc.hoistedOperands(n)
 		if err != nil {
 			return nil, err
 		}
-		if x, ok, err := fc.fnOperator(n.Operator, l, r); ok {
-			if err != nil {
-				return nil, err
-			}
-			return wrap(x), nil
-		}
-		if x, ok, err := fc.enumOperator(n.Operator, l, r); ok {
-			if err != nil {
-				return nil, err
-			}
-			return wrap(x), nil
-		}
-		l, r, t, err := fc.numericOperands(n.Operator, l, r)
-		if err != nil {
+		if l, err = fc.scalarOperand(l, r, n.Operator, true); err != nil {
 			return nil, err
 		}
-		if t == TypeString {
-			if n.Operator != ast.OpAdd {
-				return nil, fc.unsupported(fmt.Sprintf("'%s' over Strings", n.Operator))
-			}
-			return wrap(Binary{Op: n.Operator, L: l, R: r, T: TypeString}), nil
-		}
-		if t == TypeNum {
-			x, err := fc.numArith(n.Operator, l, r)
-			if err != nil {
-				return nil, err
-			}
-			return wrap(x), nil
-		}
-		if n.Operator == ast.OpDiv {
-			// A quotient of Integers is a Rational.
-			t = TypeReal
-		}
-		if n.Operator == ast.OpPow && t == TypeInt {
-			// Integer ** Integer is an Integer only for a non-negative exponent,
-			// a distinction a static type cannot make of a run-time exponent.
-			lit, isLit := bare(r).(IntLit)
-			switch {
-			case isLit && lit.sign() >= 0:
-			case isLit:
-				k, _ := leading(r)
-				base, lets := fc.hoist(l, nil)
-				var x Expr = restep(k, fc.reciprocalPow(base, lit))
-				for i := len(lets) - 1; i >= 0; i-- {
-					x = Let{Name: lets[i].Name, Value: lets[i].Value, In: x}
-				}
-				return wrap(x), nil
-			default:
-				return nil, fc.unsupported("`**` of an Integer by a non-literal Integer exponent (write the exponent as a literal, or make the base Real)")
-			}
-		}
-		var x Expr = Binary{Op: n.Operator, L: l, R: r, T: t}
-		if t == TypeReal {
-			if x, err = fc.rationalArithmetic(x.(Binary)); err != nil {
-				return nil, err
-			}
+		x, err := fc.signOrArithmetic(n.Operator, l, r)
+		if err != nil {
+			return nil, err
 		}
 		return wrap(x), nil
 	case ast.OpLt, ast.OpLe, ast.OpGt, ast.OpGe:
@@ -1364,28 +1373,7 @@ func (fc *funcCompiler) compileOperator(n *ast.OperatorExpr) (Expr, error) {
 		if x, err = fc.scalarOperandWith(x, fmt.Sprintf("type mismatch: unary '%s' requires numeric operand, got %%s", n.Operator), true, fmt.Sprintf("'%s'", n.Operator)); err != nil {
 			return nil, err
 		}
-		if x.Type() == TypeBool {
-			return nil, fc.unsupported(fmt.Sprintf("'%s' over a Boolean", n.Operator))
-		}
-		if x.Type().IsEnum() || x.Type().IsFn() {
-			fc.c.collections = true
-			kind := "enumeration literal"
-			if x.Type().IsFn() {
-				kind = "function"
-			}
-			return Refusal{Operands: []Expr{x}, Parts: []string{fmt.Sprintf("type mismatch: unary '%s' requires numeric operand, got %s", n.Operator, kind)}, T: x.Type()}, nil
-		}
-		if x.Type() == TypeNum && n.Operator == ast.OpNeg {
-			return fc.split([]Expr{x}, func(v []Expr) Expr {
-				return ToNum{X: Unary{Op: ast.OpNeg, X: asInt(v[0]), T: TypeInt}}
-			}, func(v []Expr) Expr {
-				return ToNum{X: Unary{Op: ast.OpNeg, X: asReal(v[0]), T: TypeReal}}
-			}, TypeNum), nil
-		}
-		if n.Operator == ast.OpNeg && x.Type() == TypeReal {
-			return fc.rationalNeg(x), nil
-		}
-		return Unary{Op: n.Operator, X: x, T: x.Type()}, nil
+		return fc.signOf(n.Operator, x)
 	case ast.OpNot:
 		if len(n.Operands) != 1 {
 			return nil, fc.unsupported("a unary operator with two operands")
@@ -1406,6 +1394,22 @@ func (fc *funcCompiler) compileOperator(n *ast.OperatorExpr) (Expr, error) {
 // interpreter's operator does. A collection left operand is checked only once
 // both are evaluated, into temporaries the returned wrap binds around the operation.
 func (fc *funcCompiler) binaryOperands(n *ast.OperatorExpr) (Expr, Expr, func(Expr) Expr, error) {
+	l, r, wrap, err := fc.hoistedOperands(n)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	if l, err = fc.scalarOperand(l, r, n.Operator, true); err != nil {
+		return nil, nil, nil, err
+	}
+	if r, err = fc.scalarOperand(r, l, n.Operator, false); err != nil {
+		return nil, nil, nil, err
+	}
+	return l, r, wrap, nil
+}
+
+// hoistedOperands compiles both operands of the binary operator n, a collection
+// operand into a temporary the returned wrap binds around the operation.
+func (fc *funcCompiler) hoistedOperands(n *ast.OperatorExpr) (Expr, Expr, func(Expr) Expr, error) {
 	l, r, err := fc.rawOperands(n)
 	if err != nil {
 		return nil, nil, nil, err
@@ -1427,13 +1431,135 @@ func (fc *funcCompiler) binaryOperands(n *ast.OperatorExpr) (Expr, Expr, func(Ex
 			return x
 		}
 	}
-	if l, err = fc.scalarOperand(l, r, n.Operator, true); err != nil {
-		return nil, nil, nil, err
-	}
-	if r, err = fc.scalarOperand(r, l, n.Operator, false); err != nil {
-		return nil, nil, nil, err
-	}
 	return l, r, wrap, nil
+}
+
+// signOrArithmetic is op over the scalar l and the operand r; an empty r of `+`
+// or `-` is the unary sign of l, as in the interpreter's arithmeticValues.
+func (fc *funcCompiler) signOrArithmetic(op ast.OperatorKind, l, r Expr) (Expr, error) {
+	sign := (op == ast.OpAdd || op == ast.OpSub) && l.Type() != TypeString
+	if sign && r.Type() == TypeNull {
+		r = fc.retype(r, l.Type().Seq())
+	}
+	if !sign || !r.Type().Many() {
+		one, err := fc.scalarOperand(r, l, op, false)
+		if err != nil {
+			return nil, err
+		}
+		return fc.arithmetic(op, l, one)
+	}
+	// r is consulted twice, for its emptiness and for its one value, so it is
+	// evaluated once: its leading steps spent first, an impure r held in a temporary.
+	k, r := leading(r)
+	var lets []Let
+	l, lets = fc.hoist(l, lets)
+	r, lets = fc.hoist(r, lets)
+	one, err := fc.scalarOperand(r, l, op, false)
+	if err != nil {
+		return nil, err
+	}
+	x, err := fc.arithmetic(op, l, one)
+	if err != nil {
+		return nil, err
+	}
+	signed, err := fc.signOf(signOperator(op), l)
+	if err != nil {
+		return nil, err
+	}
+	if signed, err = fc.coerce(signed, x.Type(), ""); err != nil {
+		return nil, err
+	}
+	fc.c.collections = true
+	x = Cond{C: SeqCall{Op: SeqIsEmpty, Args: []Expr{r}, T: TypeBool}, Then: signed, Else: x, T: x.Type()}
+	for i := len(lets) - 1; i >= 0; i-- {
+		x = Let{Name: lets[i].Name, Value: lets[i].Value, In: x}
+	}
+	return restep(k, x), nil
+}
+
+// signOperator is the unary sign a binary `+` or `-` becomes with its second
+// operand omitted.
+func signOperator(op ast.OperatorKind) ast.OperatorKind {
+	if op == ast.OpSub {
+		return ast.OpNeg
+	}
+	return ast.OpPos
+}
+
+// signOf is the unary `-` or `+` over the scalar x.
+func (fc *funcCompiler) signOf(op ast.OperatorKind, x Expr) (Expr, error) {
+	if x.Type() == TypeBool {
+		return nil, fc.unsupported(fmt.Sprintf("'%s' over a Boolean", op))
+	}
+	if x.Type().IsEnum() || x.Type().IsFn() {
+		fc.c.collections = true
+		kind := "enumeration literal"
+		if x.Type().IsFn() {
+			kind = "function"
+		}
+		return Refusal{Operands: []Expr{x}, Parts: []string{fmt.Sprintf("type mismatch: unary '%s' requires numeric operand, got %s", op, kind)}, T: x.Type()}, nil
+	}
+	if x.Type() == TypeNum && op == ast.OpNeg {
+		return fc.split([]Expr{x}, func(v []Expr) Expr {
+			return ToNum{X: Unary{Op: ast.OpNeg, X: asInt(v[0]), T: TypeInt}}
+		}, func(v []Expr) Expr {
+			return ToNum{X: Unary{Op: ast.OpNeg, X: asReal(v[0]), T: TypeReal}}
+		}, TypeNum), nil
+	}
+	if op == ast.OpNeg && x.Type() == TypeReal {
+		return fc.rationalNeg(x), nil
+	}
+	return Unary{Op: op, X: x, T: x.Type()}, nil
+}
+
+// arithmetic is the strict arithmetic operator op over the scalars l and r.
+func (fc *funcCompiler) arithmetic(op ast.OperatorKind, l, r Expr) (Expr, error) {
+	if x, ok, err := fc.fnOperator(op, l, r); ok {
+		return x, err
+	}
+	if x, ok, err := fc.enumOperator(op, l, r); ok {
+		return x, err
+	}
+	l, r, t, err := fc.numericOperands(op, l, r)
+	if err != nil {
+		return nil, err
+	}
+	if t == TypeString {
+		if op != ast.OpAdd {
+			return nil, fc.unsupported(fmt.Sprintf("'%s' over Strings", op))
+		}
+		return Binary{Op: op, L: l, R: r, T: TypeString}, nil
+	}
+	if t == TypeNum {
+		return fc.numArith(op, l, r)
+	}
+	if op == ast.OpDiv {
+		// A quotient of Integers is a Rational.
+		t = TypeReal
+	}
+	if op == ast.OpPow && t == TypeInt {
+		// Integer ** Integer is an Integer only for a non-negative exponent,
+		// a distinction a static type cannot make of a run-time exponent.
+		lit, isLit := bare(r).(IntLit)
+		switch {
+		case isLit && lit.sign() >= 0:
+		case isLit:
+			k, _ := leading(r)
+			base, lets := fc.hoist(l, nil)
+			var x Expr = restep(k, fc.reciprocalPow(base, lit))
+			for i := len(lets) - 1; i >= 0; i-- {
+				x = Let{Name: lets[i].Name, Value: lets[i].Value, In: x}
+			}
+			return x, nil
+		default:
+			return nil, fc.unsupported("`**` of an Integer by a non-literal Integer exponent (write the exponent as a literal, or make the base Real)")
+		}
+	}
+	var x Expr = Binary{Op: op, L: l, R: r, T: t}
+	if t == TypeReal {
+		return fc.rationalArithmetic(x.(Binary))
+	}
+	return x, nil
 }
 
 // hoist evaluates an impure v into a fresh temporary, appended to lets, and
@@ -1536,13 +1662,13 @@ func (fc *funcCompiler) compileCall(n *ast.InvocationExpr) (Expr, error) {
 			names[i] = fc.c.name(tied)
 		}
 		return nil, fc.unsupported(fmt.Sprintf("invocation of %s, which is ambiguous between %s",
-			qnText(n.Type), strings.Join(names, ", ")))
+			n.Type.Text(), strings.Join(names, ", ")))
 	}
 	sym := sel.Called()
 	if sym == nil {
 		// As the interpreter: a name that denotes nothing is not the library
 		// function of that name.
-		written := qnText(n.Type)
+		written := n.Type.Text()
 		if len(n.Type.Parts) == 1 && !n.Type.Global {
 			written = fc.c.resolver.UnresolvedName(fc.scope, written, n.Type)
 		}
@@ -1856,7 +1982,7 @@ func (fc *funcCompiler) bindArgs(n *ast.InvocationExpr, callee string, params []
 		for _, na := range n.NamedArgs {
 			i := paramIndex(names, na.Name)
 			if i < 0 {
-				return nil, nil, 0, fc.unsupported(fmt.Sprintf("%s has no parameter %s", callee, qnText(na.Name)))
+				return nil, nil, 0, fc.unsupported(fmt.Sprintf("%s has no parameter %s", callee, na.Name.Text()))
 			}
 			if bound[i] {
 				return nil, nil, 0, fc.unsupported(fmt.Sprintf("%s binds parameter %s twice", callee, names[i]))
@@ -1906,17 +2032,6 @@ func (c *Compiler) name(sym *symbols.Symbol) string {
 		}
 	}
 	return sym.Name
-}
-
-func qnText(qn *ast.QualifiedName) string {
-	if qn == nil {
-		return ""
-	}
-	parts := make([]string, len(qn.Parts))
-	for i, p := range qn.Parts {
-		parts[i] = p.Text
-	}
-	return strings.Join(parts, "::")
 }
 
 // unwrapped is members with each membership wrapper removed.

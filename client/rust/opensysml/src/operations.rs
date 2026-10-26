@@ -9,19 +9,20 @@ use crate::capabilities::{
     CAPABILITY_EXPORT_GRAPHS, CAPABILITY_FUNCTION_VALUES, CAPABILITY_IMPORT_DATA,
     CAPABILITY_INFINITY_VALUE, CAPABILITY_INLINE_LANGUAGE, CAPABILITY_MEASUREMENT_REFS,
     CAPABILITY_METAOBJECT_VALUES, CAPABILITY_MIGRATE, CAPABILITY_OSLC_QUERY,
-    CAPABILITY_PARSE_SOURCES, CAPABILITY_PERFORMER, CAPABILITY_QUERY, CAPABILITY_RATIONAL_VALUES,
-    CAPABILITY_RECORD_RUN, CAPABILITY_RENDER_DOCUMENT, CAPABILITY_RENDER_DOCUMENT_HTML,
-    CAPABILITY_RUNS, CAPABILITY_SCHEDULE, CAPABILITY_SCHEDULE_EXPLORE, CAPABILITY_SELF_CHECK,
-    CAPABILITY_SET_VALUES, CAPABILITY_STATE_TRACE, CAPABILITY_STRICT_CONFORMANCE,
-    CAPABILITY_STRUCTURED_VALUES, CAPABILITY_TENSOR_VALUES, CAPABILITY_VERIFICATION,
-    CAPABILITY_VERIFICATION_ARGUMENTS, CAPABILITY_VERIFICATION_QUESTIONS,
+    CAPABILITY_PARSE_SOURCES, CAPABILITY_PERFORMER, CAPABILITY_QUERY, CAPABILITY_QUERY_ORDER_BY,
+    CAPABILITY_RATIONAL_VALUES, CAPABILITY_RECORD_RUN, CAPABILITY_RENDER_DOCUMENT,
+    CAPABILITY_RENDER_DOCUMENT_ASCIIDOC, CAPABILITY_RENDER_DOCUMENT_HTML, CAPABILITY_RUNS,
+    CAPABILITY_SCHEDULE, CAPABILITY_SCHEDULE_EXPLORE, CAPABILITY_SELF_CHECK, CAPABILITY_SET_VALUES,
+    CAPABILITY_STATE_TRACE, CAPABILITY_STRICT_CONFORMANCE, CAPABILITY_STRUCTURED_VALUES,
+    CAPABILITY_TENSOR_VALUES, CAPABILITY_VERIFICATION, CAPABILITY_VERIFICATION_ARGUMENTS,
+    CAPABILITY_VERIFICATION_QUESTIONS,
 };
 use crate::check::{CheckOptions, CheckResult};
 use crate::conversion::{conversion_of, request_of, Conversion, ConvertOptions, ConvertSource};
 use crate::document::{
     binding_holds_big_int, binding_holds_rational, binding_rationals_as_reals, bindings_to_wire,
     document_event_from_wire, rendered_view_of, result_of, DocumentForm, DocumentQueryResult,
-    DocumentValue, RenderViewPorts, RenderedView,
+    DocumentValue, RenderViewCompartments, RenderViewPorts, RenderedView,
 };
 use crate::domain::{Model, Value};
 use crate::encode::value_to_wire;
@@ -410,7 +411,12 @@ impl Connection {
     /// Run a SysML v2 API & Services query over a loaded model.
     pub fn query(&self, model_hash: &str, query: &Query) -> Result<Vec<QueryElement>, Error> {
         let query = query.to_wire()?;
-        self.require_all(&[CAPABILITY_QUERY])?;
+        let needed: &[&str] = if query.order_by.is_empty() {
+            &[CAPABILITY_QUERY]
+        } else {
+            &[CAPABILITY_QUERY, CAPABILITY_QUERY_ORDER_BY]
+        };
+        self.require_all(needed)?;
         let response = self.gated_rpc(
             "Query",
             wire::QueryRequest {
@@ -418,7 +424,7 @@ impl Connection {
                 query: Some(query),
                 ..Default::default()
             },
-            &[CAPABILITY_QUERY],
+            needed,
         )?;
         Ok(elements_of(response))
     }
@@ -481,8 +487,10 @@ impl Connection {
         form: DocumentForm,
     ) -> Result<String, Error> {
         let mut capabilities = vec![CAPABILITY_RENDER_DOCUMENT];
-        if form == DocumentForm::Html {
-            capabilities.push(CAPABILITY_RENDER_DOCUMENT_HTML);
+        match form {
+            DocumentForm::Markdown => {}
+            DocumentForm::Html => capabilities.push(CAPABILITY_RENDER_DOCUMENT_HTML),
+            DocumentForm::AsciiDoc => capabilities.push(CAPABILITY_RENDER_DOCUMENT_ASCIIDOC),
         }
         self.require_all(&capabilities)?;
         let response: wire::RenderDocumentResponse = self.gated_rpc(
@@ -493,6 +501,7 @@ impl Connection {
                 form: match form {
                     DocumentForm::Markdown => String::new(),
                     DocumentForm::Html => "html".to_owned(),
+                    DocumentForm::AsciiDoc => "asciidoc".to_owned(),
                 },
             },
             &capabilities,
@@ -500,6 +509,7 @@ impl Connection {
         Ok(match form {
             DocumentForm::Markdown => response.markdown,
             DocumentForm::Html => response.html,
+            DocumentForm::AsciiDoc => response.asciidoc,
         })
     }
 
@@ -629,6 +639,28 @@ impl Connection {
         show: &[&str],
         depth: u32,
     ) -> Result<RenderedView, Error> {
+        self.render_view_folded(
+            model_hash,
+            view_name,
+            ports,
+            show,
+            depth,
+            RenderViewCompartments::Positioned,
+        )
+    }
+
+    /// Render a named view as `render_view_bounded` does, folding a tree's owned
+    /// members into compartment rows of their owner as `compartments` says; a row
+    /// is a node whose `compartment` names the compartment of its parent.
+    pub fn render_view_folded(
+        &self,
+        model_hash: &str,
+        view_name: &str,
+        ports: RenderViewPorts,
+        show: &[&str],
+        depth: u32,
+        compartments: RenderViewCompartments,
+    ) -> Result<RenderedView, Error> {
         self.require_all(&[crate::capabilities::CAPABILITY_RENDER_VIEW])?;
         let response = self.gated_rpc(
             "RenderView",
@@ -641,6 +673,7 @@ impl Connection {
                 },
                 show: show.iter().map(|s| (*s).to_owned()).collect(),
                 depth: i32::try_from(depth).unwrap_or(i32::MAX),
+                compartments: compartments.as_wire().to_owned(),
             },
             &[crate::capabilities::CAPABILITY_RENDER_VIEW],
         )?;

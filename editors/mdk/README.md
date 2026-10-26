@@ -1,7 +1,8 @@
-# OpenSysML MDK
+# OpenSysML MDK for Cameo
 
-The Cameo Systems Modeler plugin that runs, verifies and analyzes a model with OpenSysML, and the
-successor to OpenMBEE's Model Development Kit (MDK) for SysML v2 work. Where MDK is still
+The Cameo Systems Modeler plugin of the OpenSysML MDK: it runs, verifies and analyzes a model with
+OpenSysML inside Cameo, and is the successor to OpenMBEE's Model Development Kit (MDK) for SysML v2
+work. OpenSysML MDK is the whole kit; OpenSysML MDK for Cameo is this plugin. Where MDK is still
 installed, the plugin also plugs OpenSysML into MDK's DocGen as a set of «JavaExtension»
 queries (see *MDK DocGen bridge* below). The capability-by-capability comparison with MDK, and
 the order the gaps are being closed in, is
@@ -48,6 +49,23 @@ read the per-element `id → target` entries of the migration report `Connection
 returns, so there is no source-ID mapping; ambiguous candidates are retained rather than silently
 discarded. The report's summary line is surfaced as a diagnostic of the run. V2 textual export is used only
 when both the textual service and a v2 selection are available.
+
+## Export as SysML v2
+
+*OpenSysML ▸ Export as SysML v2…* on a selected element writes the whole project as SysML v2
+text to a `.sysml` file of the user's choosing. A v1 project goes through the same `.mdzip`
+export and migration the operations use; every diagram comes out as a `view` usage laid out by
+`DiagramLayout` metadata (`@Canvas`, `Layout about …`, `Route about …`) from the project's own
+diagram symbols, and the action offers to lay the views out from an MTIP (HUDS XML) export of the
+project instead. The migration report lands beside the file as `<name>.migration-report.txt`,
+with any image files the views embed under their relative paths; files the export would replace
+beside the model (another export's images or report) are listed for confirmation first, and the
+export is staged and moved into place, so a failure leaves the previous files as they were. A
+v2 project's text is written
+as `SysMLTextualNotationService.exportTextual` returns it — no report, and no geometry, which the
+vendor keeps outside the text (`docs/internals/design/mdk-mtip.md` §6). The completion dialog
+counts the service's diagnostics on the written text: a v1 model that migrates but does not parse
+clean is a migration finding, and the report says what was approximated.
 
 ## Results window and annotations
 

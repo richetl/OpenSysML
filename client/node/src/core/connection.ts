@@ -23,8 +23,10 @@ import {
   CAPABILITY_PERFORMER,
   CAPABILITY_STATE_TRACE,
   CAPABILITY_QUERY,
+  CAPABILITY_QUERY_ORDER_BY,
   CAPABILITY_RENDER_DOCUMENT,
   CAPABILITY_RENDER_DOCUMENT_HTML,
+  CAPABILITY_RENDER_DOCUMENT_ASCIIDOC,
   CAPABILITY_RENDER_VIEW,
   CAPABILITY_CHECK,
   CAPABILITY_EXPORT_GRAPHS,
@@ -576,22 +578,25 @@ export class Connection {
     modelHash: string,
     options: { payload?: QueryPayload } & QueryForm = {},
   ): Promise<QueryElement[]> {
-    requireCapability(
-      this.info,
-      CAPABILITY_QUERY,
-      upgradeRemedy(CAPABILITY_QUERY),
-    );
+    const query = queryField(options);
+    const needed =
+      query.query !== undefined && query.query.orderBy.length > 0
+        ? [CAPABILITY_QUERY, CAPABILITY_QUERY_ORDER_BY]
+        : [CAPABILITY_QUERY];
+    for (const capability of needed) {
+      requireCapability(this.info, capability, upgradeRemedy(capability));
+    }
     const response = await callRpc(
       this.rpc.query(
         create(QueryRequestSchema, {
           modelHash,
           oslcQuery: options.oslc ?? "",
-          ...queryField(options),
+          ...query,
         }),
         this.callOptions(),
       ),
       "model",
-      capabilityRefusal(this.info, [CAPABILITY_QUERY]),
+      capabilityRefusal(this.info, needed),
     );
     return elementsOf(response);
   }
@@ -682,12 +687,14 @@ export class Connection {
     options: { form?: string } = {},
   ): Promise<string> {
     const form = options.form ?? "markdown";
-    if (form !== "markdown" && form !== "html") {
-      throw new RangeError("form must be 'markdown' or 'html'");
+    if (form !== "markdown" && form !== "html" && form !== "asciidoc") {
+      throw new RangeError("form must be 'markdown', 'html' or 'asciidoc'");
     }
     const capabilities = [CAPABILITY_RENDER_DOCUMENT];
     if (form === "html") {
       capabilities.push(CAPABILITY_RENDER_DOCUMENT_HTML);
+    } else if (form === "asciidoc") {
+      capabilities.push(CAPABILITY_RENDER_DOCUMENT_ASCIIDOC);
     }
     for (const capability of capabilities) {
       requireCapability(this.info, capability, upgradeRemedy(capability));
@@ -704,7 +711,10 @@ export class Connection {
       "model",
       capabilityRefusal(this.info, capabilities),
     );
-    return form === "html" ? response.html : response.markdown;
+    if (form === "html") {
+      return response.html;
+    }
+    return form === "asciidoc" ? response.asciidoc : response.markdown;
   }
 
   /**
@@ -717,8 +727,17 @@ export class Connection {
   async renderView(
     modelHash: string,
     viewName: string,
-    options: { ports?: "minimal" | "full"; show?: readonly string[]; depth?: number } = {},
+    options: {
+      ports?: "minimal" | "full";
+      show?: readonly string[];
+      depth?: number;
+      compartments?: "positioned" | "most" | "ports";
+    } = {},
   ): Promise<RenderedView> {
+    const compartments: string = options.compartments ?? "positioned";
+    if (compartments !== "positioned" && compartments !== "most" && compartments !== "ports") {
+      throw new RangeError("compartments must be 'positioned', 'most' or 'ports'");
+    }
     const ports: string = options.ports ?? "minimal";
     if (ports !== "minimal" && ports !== "full") {
       throw new RangeError("ports must be 'minimal' or 'full'");
@@ -740,6 +759,7 @@ export class Connection {
           ports: ports === "minimal" ? "" : ports,
           show,
           depth,
+          compartments: compartments === "positioned" ? "" : compartments,
         }),
         this.callOptions(),
       ),

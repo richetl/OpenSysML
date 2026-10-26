@@ -1237,11 +1237,15 @@ public final class Model {
    * @return the elements selected, each with the properties asked for
    * @throws ServiceException if the service does not hold this model, or the query names an unknown
    *     scope or property, or leaves a comparison's operator unset
-   * @throws CapabilityException if the service does not advertise {@code query}
+   * @throws CapabilityException if the service does not advertise {@code query}, or
+   *     {@code query_order_by} when the query has an {@code orderBy}
    */
   public List<QueryElement> query(Query query) {
     Objects.requireNonNull(query, "query");
     connection.capabilities().require(Capabilities.QUERY);
+    if (!query.orderBy().isEmpty()) {
+      connection.capabilities().require(Capabilities.QUERY_ORDER_BY);
+    }
     return selected(QueryRequest.newBuilder().setModelHash(hash).setQuery(Protos.proto(query)));
   }
 
@@ -1789,6 +1793,8 @@ public final class Model {
     connection.capabilities().require(Capabilities.RENDER_DOCUMENT);
     if (form == DocumentForm.HTML) {
       connection.capabilities().require(Capabilities.RENDER_DOCUMENT_HTML);
+    } else if (form == DocumentForm.ASCIIDOC) {
+      connection.capabilities().require(Capabilities.RENDER_DOCUMENT_ASCIIDOC);
     }
     RenderDocumentResponse response =
         connection.call(
@@ -1799,10 +1805,18 @@ public final class Model {
                 .setForm(form == DocumentForm.MARKDOWN ? "" : form.wireName())
                 .build(),
             RenderDocumentResponse.getDefaultInstance());
-    return new RenderedDocument(
-        form,
-        form == DocumentForm.HTML ? response.getHtml() : response.getMarkdown(),
-        response.getFileName());
+    return new RenderedDocument(form, renderedContent(form, response), response.getFileName());
+  }
+
+  private static String renderedContent(DocumentForm form, RenderDocumentResponse response) {
+    switch (form) {
+      case HTML:
+        return response.getHtml();
+      case ASCIIDOC:
+        return response.getAsciidoc();
+      default:
+        return response.getMarkdown();
+    }
   }
 
   /**

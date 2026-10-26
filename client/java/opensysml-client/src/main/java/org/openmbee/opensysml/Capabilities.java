@@ -39,6 +39,9 @@ public final class Capabilities {
   /** The {@code Query} RPC evaluates a SysML v2 API and Services Query. */
   public static final String QUERY = "query";
 
+  /** {@code Query.orderBy} sorts the matched elements; a service without it would ignore it. */
+  public static final String QUERY_ORDER_BY = "query_order_by";
+
   /** The {@code Query} RPC evaluates OSLC Query text. */
   public static final String OSLC_QUERY = "oslc_query";
 
@@ -180,6 +183,9 @@ public final class Capabilities {
 
   /** The {@code RenderDocument} RPC also renders a named document to HTML. */
   public static final String RENDER_DOCUMENT_HTML = "render_document_html";
+
+  /** The {@code RenderDocument} RPC also renders a named document to AsciiDoc. */
+  public static final String RENDER_DOCUMENT_ASCIIDOC = "render_document_asciidoc";
 
   /** The service renders named and targeted pseudo-views as diagram data. */
   public static final String RENDER_VIEW = "render_view";

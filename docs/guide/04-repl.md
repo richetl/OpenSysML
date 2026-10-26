@@ -126,12 +126,15 @@ lines and expressions are skipped rather than run — the load report counts the
 or `--cells tag:<tag>` picks cells; a cell tagged `skip-load` is never loaded. See
 [Reusing another notebook](12-jupyter.md#reusing-another-notebook).
 
-A loaded file's imports are followed to its neighbors: when a file imports a root namespace that
-neither the loaded files nor the standard library declare, the `.sysml` and `.kerml` files beside
-and below it are searched for one declaring that name, and each is loaded too, its own imports
-followed the same way. `%load main.sysml` therefore brings in `parts/lib.sysml` when `main.sysml`
-imports `Lib::*` and only `parts/lib.sysml` declares `package Lib`, and leaves unrelated siblings
-alone; the same holds for a file named on the command line. Hidden directories are not searched.
+A loaded file's references are followed to its neighbors: when the analysis leaves an import, or
+a qualified name (`Views::ProjectView`), unresolved at a root namespace that neither the loaded
+files nor the standard library declare, the `.sysml` and `.kerml` files beside and below the file
+and in the projects around it are searched for one declaring that name, and each is loaded too,
+its own unresolved references followed the same way. `%load main.sysml` therefore brings in
+`parts/lib.sysml` when `main.sysml` imports `Lib::*` and only `parts/lib.sysml` declares
+`package Lib`, and leaves unrelated siblings alone — a sibling declaring a root `Inner` stays out
+when `Inner::Thing` is answered by an imported `Lib::Inner`; the same holds for a file named on the
+command line. Hidden directories are not searched.
 
 A file the parser cannot read is reported the same way as a typed declaration, with the
 diagnostic pointing at the offending line of the file. None of its contents enter the
@@ -175,6 +178,48 @@ the declaration in the file whose name sorts first — the order the editor give
 not the order the files were loaded in — so `P::A` resolves while `P::B` does not; an unqualified reference
 from one opening to the other does not resolve either. Entering a package at the prompt is
 unaffected: it still merges into the package already in the session.
+
+### Imports from files beside the prompt
+
+The prompt also follows the imports *you* type. The directory `sysml` was started in is the
+session's workspace root (`%workspace` shows it), and when a submission imports or qualifies a
+root namespace that neither the session nor the standard library declares, the `.sysml` and
+`.kerml` files under that directory are searched for one declaring the name, and the file is
+loaded as `%load <file>` would load it — in the same submission, so the import resolves at once:
+
+```
+$ ls
+lib.sysml
+$ sysml
+sysml> private import Lib::*;
+✓ import Lib::*
+✓ package Lib
+note: loaded lib.sysml, which declares Lib
+sysml> a
+✓ a
+  = 3
+```
+
+`%eval Lib::a` and `%calc Lib::Twice(3)` on a session that has not loaded `lib.sysml` load it
+the same way. The loaded file's own imports are followed to its neighbours as a `%load`'s are,
+and when the directory holds a `.project.json`, the projects it uses are searched too, through
+the same installed-project lookup the command line's project loading performs — never over the
+network. Hidden directories are not searched.
+
+A file loaded this way is a loaded file like any other: `%list` shows it, its diagnostics name it
+and its line, typing `package Lib { … }` at the prompt replaces it, and `%clear` drops it. One
+difference: `%save` leaves it out when the saved file will find it — beside or below the saved
+file, where a load of that file follows its imports — so a session saved into the workspace does
+not declare `Lib` twice; a save somewhere else, where the import could not be followed, writes the
+declarations the typed text imports along with it, so the saved file still loads on its own.
+
+Only a name the typed text leaves unresolved is looked for, and only a file that declares it at
+its root loads — nothing else under the directory does; `%load dir/` stays the way to load
+everything. When two files under the root declare the same root name, neither loads, and the
+submission reports both (`note: Lib is declared by more than one file under …: a.sysml,
+b/lib.sysml; load the one meant with %load`); load the one meant by name. A candidate file the parser
+cannot read loads with its diagnostics reported against the file, as `%load` reports them. A
+name no file declares is reported as `unresolved reference`, as before, and nothing loads.
 
 ### Known behaviour
 
@@ -223,9 +268,9 @@ declaration order. Each `satisfy` gets a verdict of `conforms`, `violated` or `u
 followed by a verdict for each concern the viewpoint frames; a concern whose condition fails
 names the exposed element it failed for and the reason. A `satisfy` inherited from a
 specialized view is marked `(from <view>)`. The view restates no framing: every concern the
-viewpoint frames is checked against what the view exposes. A concern that states no condition,
-or names one that does not resolve, is reported as `unevaluable` with the reason, not as a
-pass. These verdicts are this implementation's own decisions, because SysML v2 leaves
+viewpoint frames is checked against what the view exposes. A concern that states no condition
+`conforms` vacuously — a requirement check over no constraint is true — while one that names a
+concern that does not resolve is reported as `unevaluable` with the reason. These verdicts are this implementation's own decisions, because SysML v2 leaves
 verification verdict semantics non-normative. (The extension
 libraries these documents name are maintained upstream at
 [Open-MBEE/OpenSysML-Extensions-Library](https://github.com/Open-MBEE/OpenSysML-Extensions-Library)
@@ -316,15 +361,16 @@ no rendering is drawn as a tree:
 sysml> %render Demo::summary
 Demo::summary - tree rendering (the view states no rendering; a tree is the default)
 
-part def Demo::Vehicle
-  attribute mass : Real
-  part wheel : Wheel
-view Demo::summary::detail
-  part def Demo::Wheel
-    attribute diameter : Real
+part def Vehicle
+  attribute mass
+  part wheel
+    attribute diameter
+view detail
+  part def Wheel
+    attribute diameter
 
 relationships:
-  Demo::Vehicle *-- Demo::Wheel: wheel
+  Vehicle *-- Wheel: wheel
 ```
 
 The tree draws the lines a block definition diagram shows between its boxes, wherever both
@@ -338,7 +384,8 @@ owner's composition stands for it. A `Route` about the usage steers its composit
 specialization or typing has no member of its own and is routed by the drawing.
 
 A view that states `render asElementTable;` is rendered as aligned columns instead, listing the
-exposed elements, what they declare, and the views nested inside the rendered view.
+exposed elements, what they declare (an element the view exposes in its own right is a row of
+its own, not repeated under what declares it), and the views nested inside the rendered view.
 
 The bundled `OpenSysMLRenderings` library selects cases with `render asCaseDiagram;` and mixed content
 with `render asMixedDiagram;`; `CaseView` and `MixedView` provide the same choices by specialization.
@@ -349,7 +396,9 @@ For a model with no declared view, `%render #case` and `%render #mixed` draw the
 elements in one rendering, choosing the kind from what the names resolve to (a state def draws a
 state rendering, a part with connections an interconnection, a package a tree, a mixed set a mixed
 rendering) unless `--view <VIEW>` names one, and takes the pilot's `--style` words — `LR` and `TB`
-set the direction, and a style no form here draws is noted as not represented rather than dropped.
+set the direction, `COMPMOST` folds a tree node's owned usages into compartment rows of its box
+and `COMPTREE` its ports alone (the pilot's compartment styles, `compartments=most` and `ports` on
+`%render`), and a style no form here draws is noted as not represented rather than dropped.
 `%viz --view STATE P::Lamp mermaid` writes what `%render #state:P::Lamp mermaid` writes.
 
 `%render <name> mermaid` writes a graph-shaped rendering as a Mermaid diagram, `dot` as Graphviz
@@ -385,8 +434,9 @@ it ([the details](../project/view-rendering-forms.md#limiting-what-a-view-draws)
   `view overview { expose vehicle; attribute depth = 2; render asTreeDiagram; }`. An element at the
   bound keeps its ports and compartment rows and says `nested deeper than 2 levels; not shown`.
   `%render Fleet::overview depth=1` overrides it for one render.
-- A `DiagramLayout::Layout` with `collapsed = true` about an element folds its children away in
-  every form: `metadata Layout about vehicle::engine { collapsed = true; }`. A Layout that only
+- A `DiagramLayout::Layout` with `collapsed = true` about an element folds what it nests away in
+  every form, keeping the ports on its boundary and the connectors that end at them:
+  `metadata Layout about vehicle::engine { collapsed = true; }`. A Layout that only
   folds (or only hides compartments with its `show…` switches) needs no `x` and `y`; the form
   still lays the diagram out itself. Give it a position too and the diagram becomes a positioned
   one, in which nodes without a position are left undrawn.
@@ -521,7 +571,7 @@ completes them: `#` offers the ids there are, `car.` the objects `car` holds.
 | which conditions conflict when it cannot (experimental, needs [z3 or cvc5](01-install.md#installing-a-solver-optional)) | `%explain` | [reference](../reference/repl-commands.md) |
 | what a diagnostic code means and how to resolve it | `%explain-code` | [3](03-command-line.md#checking-as-a-gate) |
 | what values satisfy it, keeping what is already fixed (experimental, needs [z3 or cvc5](01-install.md#installing-a-solver-optional)) | `%solve` | [reference](../reference/repl-commands.md) |
-| which variants its conditions permit (experimental, needs [z3 or cvc5](01-install.md#installing-a-solver-optional)) | `%configure` | [reference](../reference/repl-commands.md) |
+| which variants its conditions permit — of one assertion, or of a variation family or configuration over every assertion about it (experimental, needs [z3 or cvc5](01-install.md#installing-a-solver-optional); walkthrough in [Modeling product lines and variability](modeling-product-lines.md#solving-the-family)) | `%configure` | [reference](../reference/repl-commands.md) |
 | which values are best for an analysis case's objectives (experimental, needs [z3](01-install.md#installing-a-solver-optional)) | `%optimize` | [reference](../reference/repl-commands.md) |
 | what a behavior does, step by step | `%action`, `%state`, `%step`, `%tokens`, `%advance` | [6](06-behavior.md) |
 | whether a result depends on the order the run happened to take, and how to replay another | `%schedule`, `%trace` | [6](06-behavior.md#when-a-model-has-more-than-one-valid-run) |

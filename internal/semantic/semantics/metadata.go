@@ -23,19 +23,26 @@ const baseTypeFeature = "baseType"
 //   - a definition annotated with a usage baseType subclassifies the types of
 //     that baseType.
 //
-// Any other combination contributes nothing. The second result is false when an
-// annotation named a type that could not be resolved yet, so the answer is
-// provisional and must not be memoized.
-func (m *Model) semanticMetadataBases(sym *symbols.Symbol) ([]*symbols.Symbol, bool) {
+// Any other combination contributes nothing, as does an annotation whose type is
+// undeclared: that is a diagnostic, and a guard-cut lookup is the resolver frames'.
+// SemanticMetadataBases returns the baseTypes the semantic metadata annotating
+// sym makes it specialize (SysML v2 §7.27.4): the usages a `#cause` usage subsets.
+func (m *Model) SemanticMetadataBases(sym *symbols.Symbol) []*symbols.Symbol {
+	if m == nil || sym == nil || sym.Decl == nil {
+		return nil
+	}
+	return m.semanticMetadataBases(sym)
+}
+
+func (m *Model) semanticMetadataBases(sym *symbols.Symbol) []*symbols.Symbol {
 	switch sym.Decl.(type) {
 	case *ast.Definition, *ast.Usage, *ast.SubjectMember, *ast.AssumeMember, *ast.RequireMember:
 	default:
-		return nil, true
+		return nil
 	}
 	isDef := !sym.IsFeature()
 
 	var out []*symbols.Symbol
-	complete := true
 	for _, a := range MetadataAnnotationsOf(sym.Decl) {
 		p := a.Node
 		if p.Type == nil {
@@ -43,7 +50,6 @@ func (m *Model) semanticMetadataBases(sym *symbols.Symbol) ([]*symbols.Symbol, b
 		}
 		def, ok := m.resolveAnnotationType(sym, a)
 		if !ok || def == nil {
-			complete = false
 			continue
 		}
 		if resolved, aliasOK := m.resolver.ResolveAliasTarget(def); aliasOK {
@@ -73,7 +79,7 @@ func (m *Model) semanticMetadataBases(sym *symbols.Symbol) ([]*symbols.Symbol, b
 			out = append(out, base)
 		}
 	}
-	return out, complete
+	return out
 }
 
 // MetadataAnnotation is a metadata feature annotating an element, written either
@@ -386,9 +392,10 @@ func redefinesBaseType(usage *ast.Usage) bool {
 }
 
 // metaCastOperand returns the qualified name of the type a baseType binding
-// denotes: the left operand of a `meta` cast, or the reference itself.
+// denotes: the left operand of a `meta` or `as` cast (`causes as SysML::Usage`,
+// as the Cause and Effect library spells it), or the reference itself.
 func metaCastOperand(value ast.Node) *ast.QualifiedName {
-	if op, ok := value.(*ast.OperatorExpr); ok && op.Operator == ast.OpMeta && len(op.Operands) > 0 {
+	if op, ok := value.(*ast.OperatorExpr); ok && (op.Operator == ast.OpMeta || op.Operator == ast.OpAs) && len(op.Operands) > 0 {
 		value = op.Operands[0]
 	}
 	if fr, ok := value.(*ast.FeatureReference); ok {

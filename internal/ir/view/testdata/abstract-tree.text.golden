@@ -1,0 +1,33 @@
+AbstractViews::familyTree - tree rendering (render asTreeDiagram)
+
+abstract part def Vehicle
+  attribute mass
+abstract part vehicleFamily
+  abstract port fuel
+  abstract part engine
+  part chassis
+  connect
+  attribute mass
+variation part def Models
+  variant sedan
+    attribute mass
+    abstract port fuel
+    abstract part engine
+    part chassis
+    connect
+  attribute mass
+
+relationships:
+  Vehicle o-- mass
+  vehicleFamily --:|> Vehicle
+  vehicleFamily o-- fuel
+  vehicleFamily *-- engine
+  vehicleFamily *-- chassis
+  vehicleFamily o-- mass
+  Models --|> Vehicle
+  Models o-- sedan
+  Models o-- mass
+  sedan o-- mass
+  sedan o-- fuel
+  sedan *-- engine
+  sedan *-- chassis

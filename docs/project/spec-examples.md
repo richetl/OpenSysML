@@ -13,7 +13,7 @@ release `2026-08`, commit `fb97b754f29588b8e9c7a35f370880cd15eb29e7` (`scripts/p
 | `kerml` | `doc/1-Kernel_Modeling_Language.pdf` and the `// KerML` examples of the SysML clauses | 7 | `examples/spec-examples/kerml` | 170 `.kerml` |
 
 **Gate:** `TestSpecExamplesDiagnostics` in `tests/corpus/spec_examples_test.go`, a per-file ratchet
-over `tests/corpus/testdata/spec_examples_expected.txt` (397 of the 511 files report at least one
+over `tests/corpus/testdata/spec_examples_expected.txt` (398 of the 511 files report at least one
 diagnostic of ours). Run `go test -count=1 ./tests/corpus -run TestSpecExamples`.
 **Regenerate:** `go test ./tests/corpus -run TestSpecExamplesDiagnostics -update-spec-examples`, after
 adjudicating every moved line here.
@@ -77,12 +77,12 @@ Pilot `2026-08` (`0.62.0`), both validators, fresh cache:
 
 | Files | Fully agreeing | Ours | Pilot | Agreed | Severity-only | Only ours | Only pilot |
 |---:|---:|---:|---:|---:|---:|---:|---:|
-| 511 | 149 | 1093 | 3395 | 1037 | 6 | 50 | 2352 |
+| 511 | 150 | 1094 | 3395 | 1038 | 6 | 50 | 2351 |
 
 Of the pilot-only diagnostics, 1359 are the pilot's EMF `unmapped` records ("The feature 'type' of
-... is required"), 587 its `kind-mismatch` typing constraints ("A usage must be typed by
+... is required"), 586 its `kind-mismatch` typing constraints ("A usage must be typed by
 definitions.") and 50 multiplicity constraints: all three follow an unresolved cross-example name on
-the same lines, where we report the unresolved reference once and stop. Those 1996 are the same
+the same lines, where we report the unresolved reference once and stop. Those 1995 are the same
 finding counted differently, not disagreements about the examples. The remaining pilot-only
 categories are 196 syntax, 156 unresolved-reference and 4 units; the 50 ours-only diagnostics are
 38 unresolved-reference, 7 syntax, 3 kind-mismatch and 2 unmapped. Every file behind those two
@@ -115,6 +115,12 @@ needs context the text does not print) or **cascade** (a secondary diagnostic of
 | KerML 7.3.4.8 | `kerml/7.3.4.8/1.kerml` | `featuring engine_by_Vehicle of engine featured by Vehicle;`, `featuring power featured by engine { doc /* ... */ }` | `TypeFeaturing` (8.2.4.3.7) is `'featuring' ( Identification 'of' )? [QualifiedName] 'by' [QualifiedName] RelationshipBody`: the member form spells `by` alone, as the 7.3.4.8 prose does not; the relationship body is admitted | rejects (`extraneous input 'featured' expecting 'by'`) | rejects (`expected 'by' ... not 'featured by'`), then reads the relationship and its body | erratum, both right |
 | KerML 7.2.4.3, SysML 7.4.3 | `kerml/7.2.4.3/1.kerml`, `sysml/7.4.3/1.sysml` | `behavior setX(c : C, newX : Real) { language "alf" /* ... */ }`, `action def setX(c : C, newX : Real) { ... }` | no production puts a parenthesised parameter list on a declaration; parameters are `ParameterMember`s of the body (KerML 8.2.4.4.2, SysML 8.2.2.5.2). The rep-less `TextualRepresentation = ( 'rep' Identification )? 'language' STRING_VALUE REGULAR_COMMENT` (KerML 8.2.3.3.3) is admitted in both notations | rejects (`no viable alternative at input '('`) | rejects (`a declaration takes no parenthesised parameter list`), then reads the body with its textual representation | erratum, both right |
 | SysML 8.4.13.5 | `sysml/8.4.13.5/1.sysml` | `action snd send p via src to tgt;` | `SendNode` (8.2.2.17.5) reads `OccurrenceUsagePrefix ActionUsageDeclaration? 'send'`, with no `action` keyword, while `SendNodeDeclaration` in the same clause reads `ActionNodeUsageDeclaration? 'send'`, which has one | rejects (`no viable alternative at input 'send'`) | accepts | grammar text inconsistent; ours follows `SendNodeDeclaration`, the form `AcceptNode` and `TerminateNode` use |
+
+### Printed examples the constraints of the same document reject (erratum)
+
+| Clause | File | Example text | Constraint | Pilot | Ours | Class |
+|---|---|---|---|---|---|---|
+| SysML 8.4.17.1 | `sysml/8.4.17.1/3.sysml` | `requirement def R3 specializes Requirements::RequirementCheck { actor a subsets ...actors; stakeholder s subsets ...stakeholders; }` | `validateRequirementDefinitionSubjectParameterPosition` (8.3.21.8): "The subjectParameter of a RequirementDefinition must be its first input. `input->notEmpty() and input->first() = subjectParameter`". `R3` declares no subject, so its `subjectParameter` is the inherited `RequirementCheck::subj`, while `Type::featureMembership` (KerML 8.3.3.1.10) lists the owned memberships before the inherited ones, so `input->first()` is the owned actor `a` | rejects (`Subject must be first parameter.`) | rejects (`subject-parameter-position: Subject must be first parameter.`, 1 error ratcheted) | erratum, both right; the example needs `subject :>> subj;` (or any owned subject) before its actor |
 
 ### The pilot departs from the text (pilot)
 
@@ -162,9 +168,9 @@ example the resolutions did not reach.
 |---|---:|---:|---:|
 | Fixtures | 341 | 170 | 511 |
 | Excluded blocks | 20 | 4 | 24 |
-| Files reporting a diagnostic of ours | 261 | 136 | 397 |
-| Files fully agreeing with the pilot | | | 149 |
-| Files in the erratum table | 27 | 2 | 29 |
+| Files reporting a diagnostic of ours | 262 | 136 | 398 |
+| Files fully agreeing with the pilot | | | 150 |
+| Files in the erratum table | 28 | 2 | 30 |
 | Files in the pilot table | 6 | 1 | 7 |
 | Files in the ours table | 2 | 3 | 5 |
 
@@ -190,6 +196,9 @@ G6, G7 and G8 (an `alias` in a type body, a relationship body on a `featuring`, 
 representation without `rep`) were not gaps: the grammar productions are implemented, and what the printed
 examples add (`alias ... of`, `featured by` on the member form, a parenthesised parameter list) no production
 admits and the pilot rejects, so they sit in the erratum table above; the later labels keep their numbers.
+G14 (the document interface record): an undeclared metadata type or `about` target is the document's
+diagnostic, not an absent interface, so every file of the root has a record and the root is in
+`corpusRoots` in `tests/model`.
 
 | # | Clause | File | Expected behaviour | Probe | In-flight overlap |
 |---|---|---|---|---|---|
@@ -198,7 +207,6 @@ admits and the pilot rejects, so they sit in the erratum table above; the later 
 | G11 | SysML 8.2.2.13.1 `ConnectorEnd` | `sysml/8.4.13.4/1`–`9.sysml` | A multiplicity *after* an end reference (`first a1[1..1] then j[1..1]`) has no production and is reported, as the pilot does. | `sysml -validate`: `a connector end names a feature, not an expression; name the feature itself and put any multiplicity before it` on each such end; the pilot reports `no viable alternative at input 'then'`. Reported as a syntax error: the bracket makes the end an index expression, which no production parses as an end. | none found |
 | G12 | SysML 8.2.2.19 `ResultExpressionMember` | `sysml/7.21.2/2.sysml` | A `;` after a body's result expression (`mass > 0[kg];`) is reported, as the pilot does. | `sysml -validate`: `nonstandard-notation` on the `;` of line 9 (an error under `-strict`); the pilot reports `extraneous input ';' expecting '}'`. The terminator stays in the syntax tree. | none found |
 | G13 | SysML 8.2.2.23 / 8.2.2.24 keywords | `sysml/8.4.19.1/1`, `8.4.19.2/1`, `8.4.20.1/1.sysml` | `analysis case def` / `verification case def` are not SysML keywords (`analysis def`, `verification def` are) and are reported, as the pilot does. | `sysml -validate`: `nonstandard-notation` spanning the two words on the definition line (an error under `-strict`), besides the usage `specializes` error; the pilot reports `no viable alternative at input 'case'`. The declaration is read as the analysis or verification case its first word declares. | none found |
-| G14 | KerML 7.4.13 metadata examples; SysML 7.27.2 | `kerml/7.4.13/3`, `11`, `12`, `14`, `15.kerml`, `sysml/7.27.2/3.sysml` | The document interface record (`tests/model/interface_record_test.go`) is derivable for every file of the root: today `provisional supertypes of ... Save` refuses four files whose metadata definitions specialise an undeclared name, and two files are "written among other documents". Until then the root is left out of `corpusRoots` in `tests/model`, so the incremental and interface-record differentials do not run over it. | `go test ./tests/model -run TestInterfaceRecordDifferentialCorpora` with the root added to `corpusRoots`: 6 failures today. | none found |
 
 The sweep for in-flight work covered the open pull requests and the remote branches without one that
 touch `internal/syntax/parser`, `internal/check` and the corpus gates; none of them addresses the

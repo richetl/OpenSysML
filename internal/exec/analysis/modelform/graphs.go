@@ -393,8 +393,12 @@ func vertexKind(node ast.Node) string {
 	return strings.TrimPrefix(fmt.Sprintf("%T", node), "*ast.")
 }
 
-// vertexName is the name a vertex answers to, "" for an anonymous one.
+// vertexName is the name a vertex answers to, "" for an anonymous one or for
+// no vertex at all (a typed nil read from a map of the lowered graph).
 func vertexName(node ast.Node) string {
+	if nilNode(node) {
+		return ""
+	}
 	switch n := node.(type) {
 	case *ast.PseudostateNode:
 		return n.Name
@@ -402,12 +406,4 @@ func vertexName(node ast.Node) string {
 		return n.Name
 	}
 	return runtime.ActionNodeName(node)
-}
-
-// qualifiedName renders a qualified name as written, "" for nil.
-func qualifiedName(qn *ast.QualifiedName) string {
-	if qn == nil {
-		return ""
-	}
-	return semantics.QualifiedNameText(qn)
 }

@@ -3,7 +3,7 @@
 > **Prime directive:** If I wanted hacks, I'd write it myself. **Don't ever choose hacky over correct.**
 > Fix root causes upstream, not symptoms. Never weaken, skip, or delete tests to make them pass.
 
-The OpenSysML REDK (Runtime Environment and Development Kit) is a production-grade SysML v2 implementation in **Go 1.23+** (module `github.com/Open-MBEE/OpenSysML`).
+The OpenSysML MDK (Runtime Environment and Development Kit) is a production-grade SysML v2 implementation in **Go 1.23+** (module `github.com/Open-MBEE/OpenSysML`).
 It provides a hand-written lexer/parser, semantic engine, execution runtime, LSP server (`sysml-lsp`), and REPL (`sysml`).
 
 ---
@@ -29,7 +29,7 @@ make build            # build bin/sysml and bin/sysml-lsp (with version ldflags)
 make build-sysml      # REPL binary only
 make build-lsp        # LSP binary only
 make test             # full suite: go test -race -coverprofile ... ./...
-make test-shard SHARD=runtime   # one CI shard of the race suite (runtime|runtime-corpus|model|export|rest|migrate)
+make test-shard SHARD=runtime   # one CI shard of the race suite (runtime|runtime-corpus|model|export|graph|codegen|tools|rest|migrate|cli)
 make test-short       # faster, no race detector
 make clean            # remove build artifacts
 ```
@@ -93,6 +93,11 @@ that nothing else needs. `./scripts/download-doc-pdf-toolchain.sh` provisions pi
 `build/doc-pdf/`; point `OPENSYSML_WEASYPRINT`, `OPENSYSML_PANDOC`, `OPENSYSML_MMDC` and
 `OPENSYSML_MMDC_PUPPETEER` at them to run the PDF integration tests. Those tests skip rather than
 fail when a converter is absent, so a passing run proves nothing until the converters were found.
+The same script installs Asciidoctor.js under `build/doc-pdf/asciidoctor/` for `rep language "asciidoc"`
+prose bodies, which `scripts/asciidoc/asciidoctor-json.js` parses into JSON for the document planner;
+point `OPENSYSML_ASCIIDOCTOR` at the installed copy. The planner's tests run against recorded converter
+answers under `internal/ir/docplan/markup/testdata/`, and the `Installed` test there checks the recordings
+against the pinned converter — re-record them (`asciidoctor-json.js < x.adoc > x.json`) when either moves.
 
 The RDF mapping has a per-file ratchet of its own over every model under `examples/`, the
 downloaded corpora included: `TestCorpusRoundTrip` in `tests/corpus` converts each file

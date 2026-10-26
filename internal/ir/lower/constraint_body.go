@@ -32,13 +32,15 @@ func ConstraintStep(member ast.Node, scope *symbols.Scope, resolvers ...*resolve
 		*ast.JoinNode, *ast.MergeNode, *ast.DecisionNode, *ast.FinalNode:
 		return Unsupported{Description: statedFlowKeyword(member), Node: member, Scope: scope}, true
 	case *ast.WhileLoopActionNode:
+		bodyScope := childScope(scope, m)
 		return Loop{
 			Kind:       m.Kind,
 			Condition:  m.Condition,
 			Until:      m.Until,
 			Variable:   m.Variable.Name,
 			Collection: m.Collection,
-			Body:       constraintLowerBlock(m, m.Body, childScope(scope, m), resolver),
+			Body:       constraintLowerBlock(m, m.Body, bodyScope, resolver),
+			BodyAction: loopBodyAction(m, bodyScope),
 			Node:       m,
 			Scope:      scope,
 		}, true
@@ -79,7 +81,8 @@ func ConstraintStep(member ast.Node, scope *symbols.Scope, resolvers ...*resolve
 		// another kind states something the check's environment holds rather
 		// than a step performing.
 		return nil, false
-	case *ast.Definition, *ast.Documentation, *ast.Comment, *ast.Import, *ast.Alias:
+	case *ast.Definition, *ast.Documentation, *ast.Comment, *ast.TextualRepresentation, *ast.PrefixMetadata, *ast.Import, *ast.Alias:
+		// An annotation or declaration describes the constraint, not a step of it.
 		return nil, false
 	default:
 		if ast.IsExpression(member) {

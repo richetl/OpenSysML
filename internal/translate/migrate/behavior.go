@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/Open-MBEE/OpenSysML/internal/syntax/source"
 	"github.com/Open-MBEE/OpenSysML/internal/translate/xmi/sysmlv1"
 )
 
@@ -23,7 +24,7 @@ const (
 )
 
 // classifyBehavior decides the v2 declaration a UML behavior becomes: action def,
-// state def, calc def for an expression body, or a scenario action def for an interaction.
+// state def, calc def for an expression body, or an occurrence def for an interaction's sequence.
 
 // The note fragments the writer repeats.
 const (
@@ -50,14 +51,14 @@ func (m *migration) classifyBehavior(e *sysmlv1.Element) (category, string) {
 		}
 		return catActionDef, ""
 	case "Interaction":
-		// While its scenario is being resolved, its own members are taken as written.
+		// While its sequence is being resolved, its own members are taken as written.
 		if m.deciding[e] {
-			return catActionDef, ""
+			return catOccurrenceDef, ""
 		}
 		if note := m.interactionNote(e); note != "" {
 			return catUnmapped, note
 		}
-		return catActionDef, ""
+		return catOccurrenceDef, ""
 	}
 	return catUnmapped, "no v2 form for a UML " + e.Type
 }
@@ -93,6 +94,8 @@ func (m *migration) behaviorWritesMember(b, c *sysmlv1.Element) bool {
 		return m.declaresVariable(b)
 	case "ownedOperation", "connectionPoint":
 		return b.Type == "StateMachine"
+	case "lifeline", "message":
+		return b.Type == "Interaction"
 	}
 	return false
 }
@@ -120,7 +123,7 @@ func (m *migration) unwrittenMembers(b *sysmlv1.Element, accounted ...string) {
 	body := "parameters and code"
 	switch b.Type {
 	case "Interaction":
-		body = "parameters and scenario steps"
+		body = "lifelines and messages"
 	case "Activity":
 		body = "parameters and flow"
 	case "StateMachine":
@@ -139,8 +142,11 @@ func (m *migration) behaviorBody(e *sysmlv1.Element, cat category) {
 	saved := m.scope
 	m.scope = e
 	m.comments(e)
-	// Views open the body: a calc def's must end in its result expression.
-	m.views(e)
+	// Views open the body: a calc def's must end in its result expression. An
+	// interaction's follow its lifelines, which its sequence view lays out.
+	if e.Type != "Interaction" {
+		m.views(e)
+	}
 	switch {
 	case m.contextLeads(e, cat):
 		if e.Type == "Operation" {
@@ -151,8 +157,8 @@ func (m *migration) behaviorBody(e *sysmlv1.Element, cat category) {
 	case cat == catStateDef:
 		m.stateMachineBody(e)
 	case e.Type == "Interaction":
-		m.parameters(e, e)
-		m.bodyWithContext(e, func() { m.interactionBody(e) })
+		m.interactionBody(e)
+		m.views(e)
 	case e.Type == "Activity":
 		m.parameters(e, e)
 		m.bodyWithContext(e, func() { m.activityBody(e, e) })
@@ -1045,7 +1051,7 @@ func (m *migration) opaqueBehaviorBody(e, scope *sysmlv1.Element) {
 func (m *migration) textualReps(e *sysmlv1.Element) {
 	for _, pair := range opaqueBodyPairs(e) {
 		if strings.TrimSpace(pair.body) != "" && pair.language != "" {
-			m.w.lines(prefixFirst("rep language "+stringLiteral(pair.language)+" ", opaqueRepresentationCommentLines(pair.body)))
+			m.w.lines(prefixFirst("rep language "+source.StringText(pair.language)+" ", opaqueRepresentationCommentLines(pair.body)))
 		}
 	}
 }

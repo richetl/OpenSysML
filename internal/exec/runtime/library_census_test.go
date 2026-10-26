@@ -64,12 +64,10 @@ var censusSentinels = []struct {
 	{"errAmbiguousReference", errAmbiguousReference},
 	{"ErrBodyArity", ErrBodyArity},
 	{"errCalcArity", errCalcArity},
-	{"errCalcNoReturn", errCalcNoReturn},
 	{"ErrIndexOutOfRange", ErrIndexOutOfRange},
 	{"errInvalidActionFlow", errInvalidActionFlow},
 	{"errInvalidInput", errInvalidInput},
 	{"ErrMultiplicityViolation", ErrMultiplicityViolation},
-	{"errNoResultExpression", errNoResultExpression},
 	{"errNoSuchBehavior", errNoSuchBehavior},
 	{"ErrNoSuchFeature", ErrNoSuchFeature},
 	{"ErrNoValue", ErrNoValue},
@@ -261,7 +259,8 @@ func readProbeFeature(t *testing.T, ctx *Context, idx *symbols.Index, probe libr
 		t.Errorf("%s: %s binds no value to evaluate", probe.decl, probe.read)
 		return Value{}, nil
 	}
-	return ctx.EvalWithScope(usage.Value, sym.OwnerScope)
+	// Read through the declaration: the value is held in the feature's own shape.
+	return evalIn(t, ctx, sym.OwnerScope, sym.Name)
 }
 
 func readProbeSlot(t *testing.T, ctx *Context, idx *symbols.Index, probe libraryProbe) (Value, error) {

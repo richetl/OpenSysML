@@ -1,8 +1,8 @@
-# OpenSysML MDK: a Cameo Systems Modeler plugin with OpenSysML as the execution engine
+# OpenSysML MDK for Cameo: a Cameo Systems Modeler plugin with OpenSysML as the execution engine
 
 **Date:** 2026-09-20
 **Status:** Discovery and design, then built — `editors/mdk/` is the plugin (first proposed as
-`editors/cameo/`, renamed when it took the OpenSysML MDK name; §1.2)
+`editors/cameo/`, renamed when it took the OpenSysML MDK name, now OpenSysML MDK for Cameo; §1.2)
 **Scope:** the `editors/mdk/` plugin; the Java client (`client/java/opensysml-client`);
 `Migrate` (`internal/translate/xmi`, `internal/translate/migrate`); the results a
 Cameo user sees on their own elements
@@ -750,6 +750,32 @@ change (§11, phase 3). A name with no entry — a
 library element, or a name the conversion synthesized — is shown in the panel without an
 element link, never dropped.
 
+### 10.6 The "Export as SysML v2" sequence
+
+The same two front ends feed a second action, which writes instead of runs:
+
+```
+user: right-click an element ▸ OpenSysML ▸ Export as SysML v2…
+  1  JFileChooser (save) for the .sysml destination; a v1 project is then asked whether an MTIP
+     export should lay its views out (else the archive's own symbol streams do)
+  2  on the EDT:  Selection.export() → V1Exporter (tmp .mdzip) | V2Exporter (exportTextual)
+  3  under ProgressStatusRunner:  Engine.export(source, destination, isCancel)
+       sources:   Migrate(xmi→sysml, report, [layout]) → one inline document | the v2 text as is
+       parse:     ParseSources(documents) — diagnostics only, nothing runs
+       write:     ModelExport.write — the text at the destination, further documents and the
+                  migration's image files beside it by relative path (a path that leaves the
+                  directory, lexically or through a link, is refused), the report as
+                  <stem>.migration-report.txt; files it would replace are confirmed on the EDT
+                  first, then everything is staged beside the destination and moved into place
+  4  the temporary .mdzip is removed; a dialog lists what was written and counts the diagnostics,
+                  whose spans name the saved file (the text is parsed under the destination's name)
+```
+
+For a v1 project the geometry comes out of the migration as `DiagramLayout` metadata in each
+view's body, so the file round-trips into any conforming tool with its diagrams arranged. For a
+v2 project the text is the vendor's and carries none; how a v2 diagram's geometry would be read
+is the open decision of [mdk-mtip.md](mdk-mtip.md) §6.
+
 ## 11. Phased plan
 
 | Phase | Delivers | Prerequisites in OpenSysML |
@@ -861,11 +887,13 @@ Each item says what is known, what is not, and what would settle it.
 - Whether `SysMLTextualNotationService.exportTextual` emits element identity beyond names (§8).
 - Windows pipe semantics of the child under Cameo's launcher and abnormal shutdown (§12.1).
 - Whether the vendor's licence permits an unattended CI seat (§10.3).
+- Whether the OpenAPI exposes a v2 project's diagram symbols and their bounds, so that an
+  *Export as SysML v2* of a v2 project could carry `DiagramLayout` (§10.6, [mdk-mtip.md](mdk-mtip.md) §6).
 
 ## 14. The MDK DocGen bridge
 
 OpenMBEE's MDK ([Open-MBEE/mdk](https://github.com/Open-MBEE/mdk)) is the plugin a large share
-of Cameo users already run for MMS synchronisation and DocGen documents. OpenSysML MDK is
+of Cameo users already run for MMS synchronisation and DocGen documents. OpenSysML MDK for Cameo is
 positioned as its successor ([`docs/project/mdk-parity.md`](../../project/mdk-parity.md)
 tracks the gap), and the first concrete step is to let an MDK document run OpenSysML.
 

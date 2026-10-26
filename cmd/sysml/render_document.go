@@ -46,6 +46,13 @@ func runRenderDocument(files []string) error {
 	if form == docFormPDF {
 		return renderPDF(sess)
 	}
+	if form == docFormAsciiDoc {
+		rendered, err := sess.RenderDocumentAsciiDoc(renderDoc, docrender.AsciiDocOptions(markdownOptions(artifactDir())))
+		if err != nil {
+			return err
+		}
+		return writeArtifact(rendered, formAsciiDoc)
+	}
 	markdown, err := sess.RenderDocumentMarkdown(renderDoc, markdownOptions(artifactDir()))
 	if err != nil {
 		return err
@@ -110,6 +117,11 @@ func renderDocumentSet(files []string) ([]repl.RenderedDocument, string, error) 
 		if err != nil {
 			return nil, "", err
 		}
+	} else if form == docFormAsciiDoc {
+		documents, err = sess.RenderDocumentSetAsciiDoc(docrender.AsciiDocOptions(markdownOptions(renderDocsDir)))
+		if err != nil {
+			return nil, "", err
+		}
 	} else {
 		documents, err = sess.RenderDocumentSetMarkdown(markdownOptions(renderDocsDir))
 		if err != nil {
@@ -138,6 +150,7 @@ func documentOptions(outputDir string) docrender.HTMLOptions {
 		MathScript:          mathScriptURL(),
 		DiagramForm:         view.Form(diagramForm),
 		Unplaced:            view.Unplaced(renderUnplaced),
+		Compartments:        view.Compartments(renderCompartments),
 		Style:               view.DrawingStyle(renderStyle),
 		Show:                shownOrNone(),
 		LinkTemplate:        renderLink,
@@ -151,7 +164,7 @@ func documentOptions(outputDir string) docrender.HTMLOptions {
 // outputDir, "" for standard output.
 func markdownOptions(outputDir string) docrender.MarkdownOptions {
 	return docrender.MarkdownOptions{
-		DiagramForm: view.Form(diagramForm), Unplaced: view.Unplaced(renderUnplaced), Style: view.DrawingStyle(renderStyle), Show: shownOrNone(), LinkTemplate: renderLink,
+		DiagramForm: view.Form(diagramForm), Unplaced: view.Unplaced(renderUnplaced), Compartments: view.Compartments(renderCompartments), Style: view.DrawingStyle(renderStyle), Show: shownOrNone(), LinkTemplate: renderLink,
 		Drawer: replext.Drawer(), WithoutGraphviz: replext.Drawer() == nil,
 		OutputDir: outputDir, NumberFigures: docNumberFigures,
 	}
@@ -174,7 +187,8 @@ func shownOrNone() view.Shown {
 }
 
 // checkDiagramForm rejects a -diagram-form value naming no diagram form, a
-// -render-unplaced value naming no placement, a -render-style value naming
+// -render-unplaced value naming no placement, a -render-compartments value
+// naming no folding, a -render-style value naming
 // no drawing style and a -render-show value naming no notation element.
 func checkDiagramForm() error {
 	if renderLink != "" {
@@ -183,6 +197,9 @@ func checkDiagramForm() error {
 		}
 	}
 	if _, err := unplacedOption(); err != nil {
+		return err
+	}
+	if _, err := compartmentsOption(); err != nil {
 		return err
 	}
 	if _, err := styleOption(); err != nil {
@@ -521,6 +538,8 @@ func setForm(document repl.RenderedDocument, form string) view.Form {
 		return formCSS
 	case form == docFormHTML:
 		return formHTML
+	case form == docFormAsciiDoc:
+		return formAsciiDoc
 	}
 	return view.FormMarkdown
 }
@@ -631,14 +650,16 @@ func backUp(target string) (name string, movedAside bool, err error) {
 // The forms -doc-form takes.
 const (
 	docFormMarkdown = "markdown"
+	docFormAsciiDoc = "asciidoc"
 	docFormHTML     = "html"
 	docFormPDF      = "pdf"
 )
 
 // The forms a written artifact is reported in that no rendering form names.
 const (
-	formHTML view.Form = "html"
-	formCSS  view.Form = "css"
+	formHTML     view.Form = "html"
+	formCSS      view.Form = "css"
+	formAsciiDoc view.Form = "asciidoc"
 )
 
 // htmlFlagsGiven reports whether the run asked for anything only HTML output
@@ -691,7 +712,7 @@ func documentSetForm() (string, error) {
 		return "", err
 	}
 	switch form := docFormOrDefault(); form {
-	case docFormMarkdown:
+	case docFormMarkdown, docFormAsciiDoc:
 		if htmlFlagsGiven() {
 			return "", errors.New("the -html- options shape HTML output; ask for it with -doc-form html")
 		}
@@ -740,7 +761,7 @@ func docFormOrDefault() string {
 }
 
 func unknownDocumentForm(form string) error {
-	return fmt.Errorf("unknown document form %q; -doc-form takes %s, %s or %s", form, docFormMarkdown, docFormHTML, docFormPDF)
+	return fmt.Errorf("unknown document form %q; -doc-form takes %s, %s, %s or %s", form, docFormMarkdown, docFormAsciiDoc, docFormHTML, docFormPDF)
 }
 
 // documentForm resolves -doc-form and checks the flag combination: the PDF
@@ -750,7 +771,7 @@ func documentForm() (string, error) {
 		return "", err
 	}
 	switch form := docFormOrDefault(); form {
-	case docFormMarkdown:
+	case docFormMarkdown, docFormAsciiDoc:
 		return checkMarkdownForm(form)
 	case docFormHTML:
 		return checkHTMLForm(form)
@@ -761,7 +782,8 @@ func documentForm() (string, error) {
 	}
 }
 
-// checkMarkdownForm refuses the HTML and PDF options, which do not apply.
+// checkMarkdownForm refuses the HTML and PDF options, which apply to neither
+// Markdown nor AsciiDoc output.
 func checkMarkdownForm(form string) (string, error) {
 	if htmlFlagsGiven() {
 		return "", errors.New("the -html- options shape HTML output; ask for it with -doc-form html")

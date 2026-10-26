@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"maps"
+	"slices"
 	"strings"
 
 	"github.com/Open-MBEE/OpenSysML/internal/ir/lower"
@@ -327,11 +328,18 @@ func (e *StateExecutor) changeConditionHolds(changeEvent *ast.ChangeEvent, trans
 }
 
 func (e *StateExecutor) observeFeatureWrite(fv *FeatureValue) {
-	if !e.hasChangeTriggers || fv == nil || e.ctx.probes > 0 || e.changeEvaluating {
+	if fv == nil || e.ctx.probes > 0 {
+		return
+	}
+	if e.mirrorOccurrenceWrite(fv) {
+		e.observeStateDataWrite()
+		return
+	}
+	if !e.hasChangeTriggers || e.changeEvaluating {
 		return
 	}
 	e.observeChangedValue(func(reads []*FeatureValue) bool {
-		return reads == nil || containsFeatureValue(reads, fv)
+		return reads == nil || slices.Contains(reads, fv)
 	})
 }
 
@@ -392,15 +400,6 @@ func (e *StateExecutor) observeChangedValue(relevant func([]*FeatureValue) bool)
 	for _, source := range e.graph.States {
 		observe(source, true)
 	}
-}
-
-func containsFeatureValue(values []*FeatureValue, target *FeatureValue) bool {
-	for _, value := range values {
-		if value == target {
-			return true
-		}
-	}
-	return false
 }
 
 // risenChangeTransitions returns the positions of the state's change-triggered

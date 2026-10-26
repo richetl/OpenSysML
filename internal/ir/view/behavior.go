@@ -24,19 +24,73 @@ const maxBehaviorDepth = 8
 // positioning their declarations in view, nil for a rendering outside any view.
 func (r *Renderer) renderStates(view *symbols.Symbol, exposed []*symbols.Symbol, out *Rendering) {
 	ids := &nodeIDs{}
+	drawn := map[symbols.ElementKey]*Node{}
+	var others []*symbols.Symbol
 	for _, elem := range exposed {
-		if node := r.renderState(view, elem, ids, out, nil); node != nil {
+		if elem.Kind != symbols.SymbolStateDef && elem.Kind != symbols.SymbolStateUsage {
+			others = append(others, elem)
+			continue
+		}
+		if node := r.renderState(view, elem, ids, out, recordDrawn(drawn)); node != nil {
 			out.Roots = append(out.Roots, node)
 		}
 	}
+	used := r.exposedRelationships(view, exposed, ids, drawn, out)
+	for _, elem := range others {
+		if !used[elem] {
+			out.Notices = append(out.Notices, notShown(r, elem, "state machine", "state"))
+		}
+	}
+}
+
+// recordDrawn records, in drawn, the first node drawn for each element.
+func recordDrawn(drawn map[symbols.ElementKey]*Node) func(*symbols.Symbol, *Node) {
+	return func(sym *symbols.Symbol, node *Node) {
+		if sym == nil || node == nil {
+			return
+		}
+		if _, ok := drawn[symbols.KeyOf(sym)]; !ok {
+			drawn[symbols.KeyOf(sym)] = node
+		}
+	}
+}
+
+// notShown is the notice for an exposed element a rendering of a kind does not draw.
+func notShown(r *Renderer, elem *symbols.Symbol, what, rendering string) string {
+	return fmt.Sprintf("%s %s is no %s; %s %s rendering does not show it", declKind(elem), r.notationName(elem), what, article(rendering), rendering)
+}
+
+// rootsByOwner groups the roots of kind rootKind by the nearest owner of one of
+// ownerKinds declaring them, keeping only owners with two or more such roots
+// and not drawn themselves, whose body the roots are then drawn apart from.
+func rootsByOwner(roots map[*symbols.Symbol]*Node, rootKind symbols.SymbolKind, ownerKinds ...symbols.SymbolKind) map[*symbols.Symbol]map[*symbols.Symbol]*Node {
+	out := map[*symbols.Symbol]map[*symbols.Symbol]*Node{}
+	for sym, node := range roots {
+		if sym.Kind != rootKind {
+			continue
+		}
+		owner := behaviorOwnerOf(sym, ownerKinds...)
+		if owner == nil || roots[owner] != nil {
+			continue
+		}
+		if out[owner] == nil {
+			out[owner] = map[*symbols.Symbol]*Node{}
+		}
+		out[owner][sym] = node
+	}
+	for owner, group := range out {
+		if len(group) < 2 {
+			delete(out, owner)
+		}
+	}
+	return out
 }
 
 // renderState builds one state machine or state node with shared IDs.
 func (r *Renderer) renderState(view *symbols.Symbol, elem *symbols.Symbol, ids *nodeIDs, out *Rendering,
 	record func(*symbols.Symbol, *Node)) *Node {
 	if elem.Kind != symbols.SymbolStateDef && elem.Kind != symbols.SymbolStateUsage {
-		out.Notices = append(out.Notices, fmt.Sprintf("%s %s is no state machine; a state rendering does not show it",
-			declKind(elem), r.notationName(elem)))
+		out.Notices = append(out.Notices, notShown(r, elem, "state machine", "state"))
 		return nil
 	}
 	graph, err := lower.ToStateGraphWithEndpoints(elem.Decl, declScope(elem), lower.NewLibraryStateTypes(r.resolver))
@@ -151,6 +205,7 @@ func (r *Renderer) stateMachineNode(view, machine *symbols.Symbol, graph *lower.
 	if len(root.Children) == 0 {
 		root.Detail = detailWith(root.Detail, "declares no states")
 	}
+	out.folds = append(out.folds, root)
 	return root
 }
 
@@ -545,9 +600,63 @@ func escaped(text string, i int) bool {
 // outside any view.
 func (r *Renderer) renderActions(view *symbols.Symbol, exposed []*symbols.Symbol, out *Rendering) {
 	ids := &nodeIDs{}
+	drawn := map[symbols.ElementKey]*Node{}
+	var others []*symbols.Symbol
+	roots := map[*symbols.Symbol]*Node{}
 	for _, elem := range exposed {
-		if node, ok := r.renderAction(view, elem, ids, out, nil); ok {
+		if elem.Kind != symbols.SymbolActionDef && elem.Kind != symbols.SymbolActionUsage {
+			others = append(others, elem)
+			continue
+		}
+		if node, ok := r.renderAction(view, elem, ids, out, recordDrawn(drawn)); ok {
 			out.Roots = append(out.Roots, node)
+			roots[elem] = node
+		}
+	}
+	r.rootSuccessionEdges(view, roots, out)
+	used := r.exposedRelationships(view, exposed, ids, drawn, out)
+	for _, elem := range others {
+		if !used[elem] {
+			out.Notices = append(out.Notices, notShown(r, elem, "action", "action"))
+		}
+	}
+}
+
+// rootSuccessionEdges draws the successions of one action between actions of
+// it exposed as roots of their own, read from the action's lowered graph and
+// labelled as actionEdges labels them within the action.
+func (r *Renderer) rootSuccessionEdges(view *symbols.Symbol, roots map[*symbols.Symbol]*Node, out *Rendering) {
+	for owner, actions := range rootsByOwner(roots, symbols.SymbolActionUsage, symbols.SymbolActionDef, symbols.SymbolActionUsage) {
+		graph, err := lower.ToActionGraphWith(owner.Decl, declScope(owner), r.resolver)
+		if err != nil {
+			continue
+		}
+		// A node inherited from another document is looked up in that document:
+		// its span could equally be a declaration of the owner's own.
+		actionOf := func(node ast.Node) *Node {
+			doc := docOf(graph, node, owner.DocName)
+			root := r.documentRoot(doc)
+			if root == nil {
+				return nil
+			}
+			return actions[root.DeclaredAt(nodeOrigin(doc, node).Span)]
+		}
+		for _, src := range graph.Nodes {
+			for _, edge := range graph.Edges[src] {
+				from, to := actionOf(src), actionOf(edge.Target)
+				if from == nil || to == nil || from == to {
+					continue
+				}
+				decl := edge.Decl
+				if edge.Gate != nil {
+					decl = edge.Gate
+				}
+				edgeDoc := docOf(graph, decl, owner.DocName)
+				out.Edges = append(out.Edges, Edge{From: from.ID, To: to.ID, Kind: EdgeSuccession,
+					Label:  r.successionLabel(edge, edgeDoc, owner.DocName, r.declaredNameSynthesized(owner, decl)),
+					Origin: nodeOrigin(edgeDoc, decl), Route: r.declaredRouteOf(view, owner, decl, out),
+					Style: r.declaredEdgeDress(view, owner, decl, from.ID, to.ID, out)})
+			}
 		}
 	}
 }
@@ -556,8 +665,7 @@ func (r *Renderer) renderActions(view *symbols.Symbol, exposed []*symbols.Symbol
 func (r *Renderer) renderAction(view *symbols.Symbol, elem *symbols.Symbol, ids *nodeIDs, out *Rendering,
 	record func(*symbols.Symbol, *Node)) (*Node, bool) {
 	if elem.Kind != symbols.SymbolActionDef && elem.Kind != symbols.SymbolActionUsage {
-		out.Notices = append(out.Notices, fmt.Sprintf("%s %s is no action; an action rendering does not show it",
-			declKind(elem), r.notationName(elem)))
+		out.Notices = append(out.Notices, notShown(r, elem, "action", "action"))
 		return nil, false
 	}
 	subject := actionSubject{decl: elem.Decl, kind: declKind(elem), name: r.notationName(elem), typ: r.headType(elem),
@@ -668,6 +776,7 @@ func (r *Renderer) actionNode(subject actionSubject, ids *nodeIDs, out *Renderin
 	if subject.frame == nil && len(graph.Nodes) == 0 {
 		root.Detail = detailWith(root.Detail, "declares no nodes")
 	}
+	out.folds = append(out.folds, root)
 	return root, true
 }
 
@@ -702,6 +811,11 @@ func (r *Renderer) actionEdges(subject actionSubject, graph *lower.ActionGraph, 
 	name, doc := subject.name, subject.doc
 	for _, src := range graph.Nodes {
 		for _, edge := range graph.Edges[src] {
+			if edge.Carries && edge.Gate == nil {
+				// The succession a succession flow states is its own glyph; one a
+				// guarded succession gates keeps that succession's guard.
+				continue
+			}
 			to, ok := nodes[edge.Target]
 			if !ok {
 				out.Notices = append(out.Notices, fmt.Sprintf("succession from %s in %s leaves the action's own nodes; no edge is drawn",
@@ -726,9 +840,13 @@ func (r *Renderer) actionEdges(subject actionSubject, graph *lower.ActionGraph, 
 				continue
 			}
 			synthesized := r.declaredNameSynthesized(subject.elem, flow.Decl)
-			out.Edges = append(out.Edges, Edge{From: nodes[src].ID, To: to.ID, Label: flowLabel(flow, synthesized), Name: edgeName(flow.Name, synthesized),
+			kind, label := EdgeFlow, flowLabel(flow, synthesized)
+			if flow.Kind == lower.FlowSuccession {
+				kind, label = EdgeSuccessionFlow, successionFlowLabel(label)
+			}
+			out.Edges = append(out.Edges, Edge{From: nodes[src].ID, To: to.ID, Label: label, Name: edgeName(flow.Name, synthesized),
 				FromPort: portNamed(nodes[src], flow.SourcePin, PortOut), ToPort: portNamed(to, flow.TargetPin, PortIn),
-				Kind: EdgeFlow, Origin: nodeOrigin(docOf(graph, flow.Decl, doc), flow.Decl), Route: r.declaredRouteOf(subject.view, subject.elem, flow.Decl, out),
+				Kind: kind, Origin: nodeOrigin(docOf(graph, flow.Decl, doc), flow.Decl), Route: r.declaredRouteOf(subject.view, subject.elem, flow.Decl, out),
 				Style: r.declaredEdgeDress(subject.view, subject.elem, flow.Decl, nodes[src].ID, to.ID, out)})
 		}
 	}
@@ -847,6 +965,15 @@ func flowLabel(flow lower.ObjectFlow, synthesized bool) string {
 		label = strings.TrimPrefix(label+" to "+flow.TargetPin, " to ")
 	}
 	return edgeLabel(flow.Name, label, synthesized)
+}
+
+// successionFlowKeyword is the text the graphical notation sets on a succession
+// flow, which tells it from a flow where a form draws both alike.
+const successionFlowKeyword = "«succession flow»"
+
+// successionFlowLabel leads a succession flow's label with its keyword.
+func successionFlowLabel(label string) string {
+	return strings.TrimSpace(successionFlowKeyword + " " + label)
 }
 
 // edgeName is the name an edge was declared with, "" for one declared anonymous

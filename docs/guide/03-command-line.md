@@ -363,11 +363,34 @@ project and in the projects that uses. An installed project is matched to a usag
 own `.project.json`, never by its directory name: the resource IRI's last two path segments
 are its publisher and name (compared as lower-case slugs, so `Requirements Management`
 answers to `…/ode4hera/requirements-management`), and of several installed versions the one
-a `versionConstraint` names exactly is taken, else the latest. The standard library's
+a `versionConstraint` names exactly is taken — or, when the usage carries none, the one a
+version written after `@` in its IRI names (`pkg:registry/acme/gears@1.0.0`) — else the
+latest. A usage whose IRI spells something else — a repository's path, as a version-control
+IRI does (`pkg:git/github.com/MBSE4U/sysmod-sysmlv2` for the project `mbse4u/sysmod`) — is
+linked by elimination once every usage has had its say: of the installed projects no usage
+claims (another version of a claimed project counts as claimed), those satisfying its
+constraint, when they are all one project, at the highest such version. When several
+projects are left it, the usage selects nothing and a warning — one `-warnings-as-errors`
+judges as any other — names each candidate and the publisher/name the resource should end
+with; a later usage of the same repository takes the project so learnt, at its own version.
+The standard library's usages are never linked to anything installed. OpenSysML reads what any package manager that follows KerML 10.3 project interchange
+installs (sysand today) under `lib/` or `.sysand/lib` beside `.project.json`; it does not fetch. Those library directories
+hold the installed projects, not the project's own files: a walk of the project directory
+(`sysml <dir>`, `-bundle`, the editor's workspace scan) passes over them and loads what lies
+there only through the usages that select it. The standard library's
 `https://www.omg.org/spec/KerML/…/*.kpar` usages are answered by the bundled library.
 Hidden directories other than the library directories stay out of the search, and the
 diagnostics of the files loaded this way are reported like those of any other file the
 search finds.
+
+A fragment on a repository IRI names a project directory within the tagged tree
+(`pkg:git/git.example.org/acme/widgets#packages/gears`): that usage is answered by the
+sub-package's own installation — `gears` under `acme` — not by the repository's project. Such a
+sub-package also lies inside its parent's installed tree, and a directory below an installed
+project that holds a `.project.json` of its own is a project of its own: the parent's files stop
+at it — when the project is named, when a file in it is named, in the editor's workspace and in
+`-bundle`, which leaves the nested tree out of the parent's archive — so the two installations load
+`Gears.sysml` once.
 
 Another provider that installs projects elsewhere needs only its directory named. Each of
 the following adds a directory to look for installed projects under, besides the well-known
@@ -436,7 +459,7 @@ action, so `-action` runs its body too (`-analysis` does not take one):
 $ sysml -calc "MyModel::Margin(20.0, 100.0)" checks.sysml
 ✓ package MyModel
 ✓ MyModel::Margin(20.0, 100.0)
-  = 80.0
+  = [80.0]
   standing: value (observed: 1 run under reverse)
 
 $ sysml -action MyModel::calibrate checks.sysml
@@ -462,6 +485,12 @@ $ sysml -state MyModel::Monitor -advance 15 checks.sysml
   Remaining events: 0
   standing: value (observed: 1 run under reverse)
 ```
+
+A calculation's result and an action's parameters print in brackets because a feature holds a
+number of values bounded by its multiplicity (KerML 8.4.4.12.1), which these surfaces report as a
+sequence: `[80.0]` is the one-element sequence a result of multiplicity `1` holds, and a result of
+multiplicity `0..*` prints every element the same way. `-e` on a plain attribute still prints the
+scalar it holds. Up to 0.10.x these surfaces unwrapped a one-element result to its scalar.
 
 An analysis case is a calculation performed as an action, so `-analysis` runs it the way
 `-calc` invokes a calc and `-requirement` checks a requirement: it names the case, optionally
@@ -494,7 +523,7 @@ package An {
 $ sysml -analysis An::shipCost analysis.sysml
 ✓ package An
 ✓ An::shipCost
-  total = 12.0
+  total = [12.0]
   objective affordable: satisfied
   standing: value (observed: 1 run under reverse)
 
@@ -505,11 +534,11 @@ $ sysml -instantiate An::barge -analysis "An::CostAnalysis An::barge" \
   ID: 1
   Use %features An::barge to inspect
 ✗ An::CostAnalysis on object #1 of "An::barge"
-  total = 37.0
+  total = [37.0]
   objective affordable: not satisfied: total <= limit
   standing: value (observed: 1 run under reverse)
 ✓ An::CostAnalysis(limit = 50.0) on object #1 of "An::barge"
-  total = 37.0
+  total = [37.0]
   objective affordable: satisfied
   standing: value (observed: 1 run under reverse)
 exit=1
@@ -798,7 +827,7 @@ jobs:
       security-events: write   # upload-sarif
     steps:
       - uses: actions/checkout@v4
-      - uses: Open-MBEE/OpenSysML@v0.10.1   # the release tag is the sysml installed
+      - uses: Open-MBEE/OpenSysML@v0.11.0   # the release tag is the sysml installed
         with:
           path: models
           format: sarif

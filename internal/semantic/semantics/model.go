@@ -69,6 +69,12 @@ type Model struct {
 	// implicitSubsettings memoizes the owner feature each nested usage implicitly
 	// subsets (see nested.go).
 	implicitSubsettings map[*symbols.Symbol][]*symbols.Symbol
+	// usageBase, kermlBase and thingsBase memoize the base feature a declaration's
+	// kind implies; chainReachesBase whether a declared chain already reaches it.
+	usageBase        map[*symbols.Symbol]*symbols.Symbol
+	kermlBase        map[*symbols.Symbol]*symbols.Symbol
+	thingsBase       map[*symbols.Symbol]*symbols.Symbol
+	chainReachesBase map[*symbols.Symbol]bool
 	// computingUsageBase breaks implicitUsageBaseFeature ->
 	// declaredGeneralizationReaches -> relationshipTarget/resolver lookup ->
 	// collectContributors -> implicitUsageBaseFeature recursion.
@@ -125,8 +131,11 @@ type Model struct {
 	// redefMaskInherited is the same mask counting inherited redefinitions only.
 	redefMaskInherited map[*symbols.Symbol]map[*symbols.Symbol]bool
 	// redefMaskOwn is the same mask counting the type's own redefinitions only.
-	redefMaskOwn               map[*symbols.Symbol]map[*symbols.Symbol]bool
-	redefClosure               map[*symbols.Symbol]map[*symbols.Symbol]bool
+	redefMaskOwn map[*symbols.Symbol]map[*symbols.Symbol]bool
+	redefClosure map[*symbols.Symbol]map[*symbols.Symbol]bool
+	// restatesFrameRoot and restatesReferenceRoot memoize restatesRoot per symbol (shape.go).
+	restatesFrameRoot          map[*symbols.Symbol]bool
+	restatesReferenceRoot      map[*symbols.Symbol]bool
 	computingRedefClosure      map[*symbols.Symbol]bool
 	computingRedefinedFeatures int
 	// unique memoizes each feature's effective uniqueness (see uniqueness.go).
@@ -151,6 +160,13 @@ type Model struct {
 	// implicitRels memoizes each element's reflected relationship objects
 	// (see reflective_relationships.go).
 	implicitRels map[*symbols.Symbol][]*symbols.Symbol
+	// memberships, ownedAnnotations, annotatingRels and ownedImports memoize
+	// the Membership, Annotation and Import objects each element implies
+	// (see reflective_memberships.go, reflective_annotations.go).
+	memberships      map[*symbols.Symbol][]*symbols.Symbol
+	ownedAnnotations map[*symbols.Symbol][]*symbols.Symbol
+	annotatingRels   map[*symbols.Symbol][]*symbols.Symbol
+	ownedImports     map[*symbols.Symbol][]*symbols.Symbol
 }
 
 // NewModel creates a semantic model backed by the given name resolver. The
@@ -186,6 +202,10 @@ func NewModel(resolver *resolve.Resolver) *Model {
 		implicitBase:        make(map[*symbols.Symbol][]*symbols.Symbol),
 		implicitGenerals:    make(map[*symbols.Symbol][]*symbols.Symbol),
 		implicitSubsettings: make(map[*symbols.Symbol][]*symbols.Symbol),
+		usageBase:           make(map[*symbols.Symbol]*symbols.Symbol),
+		kermlBase:           make(map[*symbols.Symbol]*symbols.Symbol),
+		thingsBase:          make(map[*symbols.Symbol]*symbols.Symbol),
+		chainReachesBase:    make(map[*symbols.Symbol]bool),
 		computingUsageBase:  make(map[*symbols.Symbol]bool),
 
 		superEdgeCache: make(map[*symbols.Symbol][]superEdge),
@@ -213,6 +233,8 @@ func NewModel(resolver *resolve.Resolver) *Model {
 		redefMaskInherited:    make(map[*symbols.Symbol]map[*symbols.Symbol]bool),
 		redefMaskOwn:          make(map[*symbols.Symbol]map[*symbols.Symbol]bool),
 		redefClosure:          make(map[*symbols.Symbol]map[*symbols.Symbol]bool),
+		restatesFrameRoot:     make(map[*symbols.Symbol]bool),
+		restatesReferenceRoot: make(map[*symbols.Symbol]bool),
 		computingRedefClosure: make(map[*symbols.Symbol]bool),
 		unique:                make(map[*symbols.Symbol]bool),
 		readOnly:              make(map[*symbols.Symbol]ReadOnly),
@@ -224,6 +246,10 @@ func NewModel(resolver *resolve.Resolver) *Model {
 		bodyIndexed:           make(map[*symbols.Scope]bool),
 		assumedSupers:         make(map[*symbols.Symbol]assumedSupertypes),
 		implicitRels:          make(map[*symbols.Symbol][]*symbols.Symbol),
+		memberships:           make(map[*symbols.Symbol][]*symbols.Symbol),
+		ownedAnnotations:      make(map[*symbols.Symbol][]*symbols.Symbol),
+		annotatingRels:        make(map[*symbols.Symbol][]*symbols.Symbol),
+		ownedImports:          make(map[*symbols.Symbol][]*symbols.Symbol),
 	}
 	if resolver != nil {
 		resolver.SetModel(m)
@@ -430,8 +456,7 @@ func (m *Model) DirectSupertypes(sym *symbols.Symbol) []*symbols.Symbol {
 	// Semantic metadata annotating this element — a `#keyword` prefix — adds the
 	// implicit specialization of its baseType (SysML v2 §7.27.3, §7.27.4).
 	fromMetadata := false
-	metadataBases, metadataComplete := m.semanticMetadataBases(sym)
-	for _, base := range metadataBases {
+	for _, base := range m.semanticMetadataBases(sym) {
 		if base == nil || base == sym || seen[base] {
 			continue
 		}
@@ -527,7 +552,7 @@ func (m *Model) DirectSupertypes(sym *symbols.Symbol) []*symbols.Symbol {
 
 	// An answer derived while a guard cut a query short saw fewer members than
 	// the finished model has, so it is recomputed on the next query, not memoized.
-	if !m.resolver.Leave() || !metadataComplete {
+	if !m.resolver.Leave() {
 		delete(m.directSupers, sym)
 		journal(m, m.provisionalSupers, sym, sym.Decl)
 		m.provisionalSupers[sym] = true
@@ -843,7 +868,7 @@ func (m *Model) conforms(a, b *symbols.Symbol, unioning map[*symbols.Symbol]bool
 	if a == nil || b == nil {
 		return false
 	}
-	if symbols.SameElement(a, b) || IsAnything(b) {
+	if symbols.SameElement(a, b) || m.isTopType(b) {
 		return true
 	}
 	for _, s := range m.AllSupertypes(a) {
@@ -852,6 +877,12 @@ func (m *Model) conforms(a, b *symbols.Symbol, unioning map[*symbols.Symbol]bool
 		}
 	}
 	return m.unionConforms(a, b, unioning)
+}
+
+// isTopType reports whether b is the library's Base::Anything, which every type
+// conforms to (KerML 1.0 §9.2.2.2); a workspace namesake of it is an ordinary type.
+func (m *Model) isTopType(b *symbols.Symbol) bool {
+	return IsAnything(b) && (m.resolver == nil || m.resolver.Index() == nil || m.isLibraryElement(b))
 }
 
 // unionConforms reports whether a is declared as the union of types that all
@@ -944,6 +975,57 @@ func (m *Model) FeatureTypeSet(sym *symbols.Symbol) []*symbols.Symbol {
 		return []*symbols.Symbol{base}
 	}
 	return nil
+}
+
+// FeatureTypeSetWithImplied is FeatureTypeSet plus the types the implied specializations of
+// sym's kind contribute (KerML §8.3.3.3.4 deriveFeatureType unions every subsetted feature's types).
+func (m *Model) FeatureTypeSetWithImplied(sym *symbols.Symbol) []*symbols.Symbol {
+	if isVariantReferenceSymbol(sym) {
+		return m.FeatureTypeSet(sym)
+	}
+	types := append([]*symbols.Symbol(nil), m.FeatureTypeSet(sym)...)
+	add := func(typ *symbols.Symbol) {
+		if typ != nil && !containsElement(types, typ) {
+			types = append(types, typ)
+		}
+	}
+	bases := m.ImplicitGenerals(sym)
+	// A membership's own base (a case's subject) can stand in for the kind's among the implied
+	// generals, so the base feature of the symbol's kind joins too (a subject is a part usage).
+	if _, isUsage := sym.Decl.(*ast.Usage); (isUsage || sym.Kind == symbols.SymbolPartUsage) && !m.isKerMLDoc(sym) && m.resolver != nil && m.resolver.Index() != nil {
+		fqns := []string{}
+		if fqn, ok := m.FeatureBaseFQN(sym); ok {
+			fqns = append(fqns, fqn)
+		}
+		for kind, fqn := range implicitUsageBases {
+			if fqn != lifeFQN && symbols.UsageSymbolKind(kind) == sym.Kind {
+				fqns = append(fqns, fqn)
+			}
+		}
+		for _, fqn := range fqns {
+			for _, base := range m.resolver.Index().LookupQualified(fqn) {
+				if base != nil && base != sym && !containsElement(bases, base) {
+					bases = append(bases, base)
+				}
+			}
+		}
+	}
+	for _, general := range bases {
+		if general == nil {
+			continue
+		}
+		if !general.IsFeature() {
+			add(general)
+			continue
+		}
+		for _, typ := range m.baseFeatureTypes(general, nil) {
+			add(typ)
+		}
+	}
+	if len(types) == 0 {
+		return nil
+	}
+	return m.mostSpecificTypes(types)
 }
 
 // mostSpecificTypes drops every type another one in the list specializes.

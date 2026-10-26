@@ -190,8 +190,8 @@ stable	pilot-corpora/sysml-examples/State Space Representation Examples/EVSample
 stable	pilot-corpora/sysml-examples/State Space Representation Examples/EVSample1.sysml
 stable	pilot-corpora/sysml-examples/Timeslice and Snapshot Examples/TimeVaryingAttribute.sysml
 stable	pilot-corpora/sysml-examples/Variability Examples/VehicleVariabilityModel.sysml
-graph-diff	pilot-corpora/sysml-examples/Vehicle Example/Annex_A_VehicleViews.sysml
-graph-diff	pilot-corpora/sysml-examples/Vehicle Example/SysML v2 Spec Annex A SimpleVehicleModel.sysml
+stable	pilot-corpora/sysml-examples/Vehicle Example/Annex_A_VehicleViews.sysml
+stable	pilot-corpora/sysml-examples/Vehicle Example/SysML v2 Spec Annex A SimpleVehicleModel.sysml
 stable	pilot-corpora/sysml-examples/Vehicle Example/VehicleDefinitions.sysml
 stable	pilot-corpora/sysml-examples/Vehicle Example/VehicleIndividuals.sysml
 stable	pilot-corpora/sysml-examples/Vehicle Example/VehicleUsages.sysml
@@ -659,7 +659,7 @@ stable	spec-examples/sysml/8.4.11.1/1.sysml
 stable	spec-examples/sysml/8.4.11.2/1.sysml
 stable	spec-examples/sysml/8.4.12.1/1.sysml
 stable	spec-examples/sysml/8.4.12.1/2.sysml
-unwritable	spec-examples/sysml/8.4.12.1/3.sysml
+stable	spec-examples/sysml/8.4.12.1/3.sysml
 stable	spec-examples/sysml/8.4.12.2/1.sysml
 stable	spec-examples/sysml/8.4.12.2/2.sysml
 stable	spec-examples/sysml/8.4.12.2/3.sysml

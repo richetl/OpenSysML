@@ -139,7 +139,7 @@ func (r *recorder) all() []string {
 func renderServer(t *testing.T, name, src string) (*Server, uri.URI) {
 	t.Helper()
 	s := initializedServer(t, map[string]any{CrossDocumentCapability: true})
-	docURI := uri.File(name)
+	docURI := testDocURI(t, name)
 	if err := s.DidOpen(context.Background(), &protocol.DidOpenTextDocumentParams{
 		TextDocument: protocol.TextDocumentItem{
 			URI: docURI, LanguageID: "sysml", Version: 1, Text: src,
@@ -419,7 +419,8 @@ func TestRenderTreeCarriesRelationshipEdges(t *testing.T) {
 		}
 	}
 	want := []edge{
-		{"Kit::Widget", "Kit::Cog", "composition", "cogs[2]", "Kit::Widget::cogs"},
+		{"Kit::Widget", "cogs", "composition", "[2]", "Kit::Widget::cogs"},
+		{"cogs", "Kit::Cog", "typing", "", ""},
 		{"Kit::Gear", "Kit::Cog", "specialization", "", ""},
 	}
 	if !reflect.DeepEqual(got, want) {
@@ -460,6 +461,34 @@ func TestRenderNodesCarryTheTypeApartFromTheDetail(t *testing.T) {
 		if !strings.Contains(string(wire), field) {
 			t.Errorf("the wire form lacks %s:\n%s", field, wire)
 		}
+	}
+}
+
+// TestRenderNodesCarryTheAbstractKeyword pins the diagram payload's kind as the
+// notation writes it: `abstract part def`, `abstract part`, `variation part def`.
+func TestRenderNodesCarryTheAbstractKeyword(t *testing.T) {
+	src := "package Kit {\n\tabstract part def Widget {\n\t\tabstract part cog : Cog;\n\t\tpart gear;\n\t}\n\tpart def Cog;\n\tvariation part def Cogs :> Cog;\n}\n"
+	s, docURI := renderServer(t, "kit.sysml", src)
+	out := renderShowing(t, s, docURI, "#tree", "", []string{"typings"})
+	want := map[string]string{
+		"Kit::Widget": "abstract part def",
+		"cog":         "abstract part",
+		"gear":        "part",
+		"Kit::Cog":    "part def",
+		"Kit::Cogs":   "variation part def",
+	}
+	for _, node := range out.Nodes {
+		kind, ok := want[node.Name]
+		if !ok {
+			continue
+		}
+		delete(want, node.Name)
+		if node.Kind != kind || node.Notation != kind {
+			t.Errorf("node %s = kind %q notation %q, want %q", node.Name, node.Kind, node.Notation, kind)
+		}
+	}
+	for name := range want {
+		t.Errorf("the #tree rendering has no node named %s: %+v", name, out.Nodes)
 	}
 }
 
@@ -1145,7 +1174,7 @@ func TestDidChangeNotifiesRenderChangedAfterDiagnostics(t *testing.T) {
 	s.client = rec
 	s.notifier = rec
 	ctx := context.Background()
-	docURI := uri.File("kit.sysml")
+	docURI := tempDocURI(t, "kit.sysml")
 	if err := s.DidOpen(ctx, &protocol.DidOpenTextDocumentParams{
 		TextDocument: protocol.TextDocumentItem{
 			URI: docURI, LanguageID: "sysml", Version: 1, Text: "package Kit {\n\tpart def Widget;\n}\n",
@@ -1448,6 +1477,9 @@ func TestRenderTakesAPortDisplay(t *testing.T) {
 	}
 	if advertised, _ := experimental[RenderLinesCapability].([]string); !slices.Equal(advertised, []string{"splines", "ortho", "polyline"}) {
 		t.Fatalf("%s = %#v, want splines, ortho then polyline", RenderLinesCapability, experimental[RenderLinesCapability])
+	}
+	if advertised, _ := experimental[RenderCompartmentsCapability].([]string); !slices.Equal(advertised, []string{"positioned", "most", "ports"}) {
+		t.Fatalf("%s = %#v, want positioned, most then ports", RenderCompartmentsCapability, experimental[RenderCompartmentsCapability])
 	}
 	if advertised, _ := experimental[RenderOverlaysCapability].([]string); !slices.Equal(advertised, []string{"verdicts"}) {
 		t.Fatalf("%s = %#v, want verdicts", RenderOverlaysCapability, experimental[RenderOverlaysCapability])

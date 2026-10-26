@@ -771,6 +771,7 @@ func (e *Encoder) encodeFields(node ast.Node) {
 		e.w.Bool(n.IsConstant)
 		e.w.Bool(n.IsEvent)
 		e.w.Bool(n.IsIndividual)
+		e.span(n.IndividualKeyword)
 		e.w.Bool(n.IsParallel)
 		e.w.Int(int64(n.Visibility))
 		e.ident(n.Ident)
@@ -951,6 +952,7 @@ func (e *Encoder) encodeFields(node ast.Node) {
 		e.nodes(n.Body)
 		e.w.Bool(n.HasBody)
 		e.qnames(n.About)
+		e.span(n.TypedBy)
 	case *ast.PseudostateNode:
 		e.base(&n.NodeBase)
 		e.w.Int(int64(n.Kind))
@@ -966,6 +968,7 @@ func (e *Encoder) encodeFields(node ast.Node) {
 		e.node(n.Target)
 		e.w.Bool(n.Conjugated)
 		e.node(n.Multiplicity)
+		e.span(n.TypedBy)
 	case *ast.RelationshipMember:
 		e.base(&n.NodeBase)
 		e.ident(n.Ident)
@@ -1105,6 +1108,7 @@ func (e *Encoder) encodeFields(node ast.Node) {
 		e.w.Bool(n.IsConstant)
 		e.w.Bool(n.IsEvent)
 		e.w.Bool(n.IsIndividual)
+		e.span(n.IndividualKeyword)
 		e.w.Int(int64(n.Portion))
 		e.w.Bool(n.IsAccept)
 		e.w.Bool(n.IsBodyParameter)
@@ -1281,6 +1285,7 @@ func (d *Decoder) decodeFields(node ast.Node) {
 		n.IsConstant = d.r.Bool()
 		n.IsEvent = d.r.Bool()
 		n.IsIndividual = d.r.Bool()
+		n.IndividualKeyword = d.span()
 		n.IsParallel = d.r.Bool()
 		n.Visibility = ast.Visibility(d.r.Int())
 		n.Ident = d.ident()
@@ -1461,6 +1466,7 @@ func (d *Decoder) decodeFields(node ast.Node) {
 		n.Body = d.nodes()
 		n.HasBody = d.r.Bool()
 		n.About = d.qnames()
+		n.TypedBy = d.span()
 	case *ast.PseudostateNode:
 		d.base(&n.NodeBase)
 		n.Kind = ast.PseudostateKind(d.r.Int())
@@ -1476,6 +1482,7 @@ func (d *Decoder) decodeFields(node ast.Node) {
 		n.Target = d.node()
 		n.Conjugated = d.r.Bool()
 		n.Multiplicity = typed[*ast.Multiplicity](d)
+		n.TypedBy = d.span()
 	case *ast.RelationshipMember:
 		d.base(&n.NodeBase)
 		n.Ident = d.ident()
@@ -1615,6 +1622,7 @@ func (d *Decoder) decodeFields(node ast.Node) {
 		n.IsConstant = d.r.Bool()
 		n.IsEvent = d.r.Bool()
 		n.IsIndividual = d.r.Bool()
+		n.IndividualKeyword = d.span()
 		n.Portion = ast.PortionKind(d.r.Int())
 		n.IsAccept = d.r.Bool()
 		n.IsBodyParameter = d.r.Bool()

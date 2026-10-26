@@ -110,6 +110,7 @@ func TestGoldenRenderings(t *testing.T) {
 	}{
 		{"tree", "tree.sysml", "VehicleViews::vehicleView", KindTree},
 		{"tree-edges", "tree-edges.sysml", "FleetViews::structure", KindTree},
+		{"feature-membership", "feature-membership.sysml", "MembershipViews::structure", KindTree},
 		{"tree-trunk", "tree-trunk.sysml", "MicroscopeViews::structure", KindTree},
 		{"interconnection", "interconnection.sysml", "PlantViews::loopView", KindInterconnection},
 		{"interconnection-ports", "interconnection-ports.sysml", "ToasterViews::toasterView", KindInterconnection},
@@ -124,6 +125,14 @@ func TestGoldenRenderings(t *testing.T) {
 		{"typed-action", "typed-behavior.sysml", "TypedViews::cycleView", KindAction},
 		{"typed-state", "typed-behavior.sysml", "TypedViews::boilerView", KindState},
 		{"filters", "filters.sysml", "FilteredViews::safetyView", KindTree},
+		{"variation-tree", "variation.sysml", "VariationViews::familyTree", KindTree},
+		{"variation-interconnection", "variation.sysml", "VariationViews::familyLinks", KindInterconnection},
+		{"variation-table", "variation.sysml", "VariationViews::familyTable", KindTable},
+		{"variation-mixed", "variation.sysml", "VariationViews::familyMixed", KindMixed},
+		{"abstract-tree", "abstract.sysml", "AbstractViews::familyTree", KindTree},
+		{"abstract-interconnection", "abstract.sysml", "AbstractViews::familyLinks", KindInterconnection},
+		{"abstract-table", "abstract.sysml", "AbstractViews::familyTable", KindTable},
+		{"abstract-mixed", "abstract.sysml", "AbstractViews::familyMixed", KindMixed},
 		{"walk-filter-tree", "walk-filter.sysml", "FilteredWalk::structure", KindTree},
 		{"walk-filter-interconnection", "walk-filter.sysml", "FilteredWalk::links", KindInterconnection},
 		{"depth-tree-1", "depth-tree.sysml", "DepthViews::depth1", KindTree},
@@ -134,6 +143,8 @@ func TestGoldenRenderings(t *testing.T) {
 		{"layout-collapsed-tree", "layout-collapsed.sysml", "FoldedViews::folded", KindTree},
 		{"layout-collapsed-interconnection", "layout-collapsed.sysml", "FoldedViews::links", KindInterconnection},
 		{"layout-no-parts", "layout-collapsed.sysml", "FoldedViews::noParts", KindTree},
+		{"layout-collapsed-state", "layout-collapsed-behavior.sysml", "FoldedBehaviors::states", KindState},
+		{"layout-collapsed-action", "layout-collapsed-behavior.sysml", "FoldedBehaviors::flows", KindAction},
 		{"table", "table.sysml", "TableViews::partsTable", KindTable},
 		{"grid-table", "table.sysml", "TableViews::fleetTable", KindTable},
 		{"sequence", "sequence.sysml", "SequenceViews::pubSubView", KindSequence},
@@ -153,6 +164,13 @@ func TestGoldenRenderings(t *testing.T) {
 		{"general-empty", "general-robust.sysml", "RobustViews::noRequirements", KindRequirement},
 		{"general-case", "general-case.sysml", "UseCaseViews::useCaseView", KindCase},
 		{"general-case-definitions", "general-case.sysml", "UseCaseViews::caseDefinitionView", KindCase},
+		{"glyphs-requirement", "notation-glyphs.sysml", "NotationGlyphs::Diagrams::requirementGlyphs", KindRequirement},
+		{"glyphs-definition", "notation-glyphs.sysml", "NotationGlyphs::Diagrams::definitionGlyphs", KindDefinition},
+		{"glyphs-package", "notation-glyphs.sysml", "NotationGlyphs::Diagrams::packageGlyphs", KindPackage},
+		{"glyphs-tree", "notation-glyphs.sysml", "NotationGlyphs::Diagrams::treeGlyphs", KindTree},
+		{"glyphs-interconnection", "notation-glyphs.sysml", "NotationGlyphs::Diagrams::lineGlyphs", KindInterconnection},
+		{"glyphs-action", "notation-glyphs.sysml", "NotationGlyphs::Diagrams::fillGlyphs", KindAction},
+		{"glyphs-mixed", "notation-glyphs.sysml", "NotationGlyphs::Diagrams::mixedGlyphs", KindMixed},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -160,7 +178,7 @@ func TestGoldenRenderings(t *testing.T) {
 			if rendering.Kind != tc.kind {
 				t.Errorf("kind = %q, want %q", rendering.Kind, tc.kind)
 			}
-			if tc.kind == KindCase || tc.kind == KindMixed {
+			if tc.kind == KindCase || tc.kind == KindMixed || tc.kind == KindState || tc.kind == KindAction {
 				assertRenderingEdgeEndpoints(t, rendering)
 			}
 			checkGolden(t, filepath.Join("testdata", tc.name+".text.golden"), rendering.Text())
@@ -433,6 +451,25 @@ func TestBehaviorRenderingsCarryTheDeclaredType(t *testing.T) {
 	}
 }
 
+// A typing the model cannot resolve (a conjugated port typing names no element) is spelled as
+// written, headed by the name it ends in with the `~` kept, and resolves to no typing.
+func TestUnresolvedTypingIsSpelledAsWritten(t *testing.T) {
+	rendering := render(t, "typings-unresolved.sysml", "SpelledViews::rigView")
+	if node := nodeNamed(t, rendering, "mirrored"); node.Type != "~Rail::'Frame *rail*'" {
+		t.Errorf("node mirrored: type %q, want %q", node.Type, "~Rail::'Frame *rail*'")
+	}
+	if text := rendering.textWith(fullNotation); !strings.Contains(text, "port mirrored : ~Rail::'Frame *rail*'") {
+		t.Errorf("text lacks %q:\n%s", "port mirrored : ~Rail::'Frame *rail*'", text)
+	}
+	mermaid := rendering.MermaidWith(Options{Show: AllShown(), Ports: PortsFull})
+	if !strings.Contains(mermaid, "«port»<br>mirrored : ~'Frame *rail*'") {
+		t.Errorf("Mermaid lacks %q:\n%s", "«port»<br>mirrored : ~'Frame *rail*'", mermaid)
+	}
+	if node := findNode(t, rendering.Roots, "mirrored"); node.Typings != nil {
+		t.Errorf("node mirrored: typings %q, want none", node.Typings)
+	}
+}
+
 // A declared type is spelled as the notation does: a conjugated port typing
 // keeps its `~`, a name that is not a basic one its quotes, a global name its
 // `$::` root, and a usage typed by several types lists them all. A diagram
@@ -440,11 +477,10 @@ func TestBehaviorRenderingsCarryTheDeclaredType(t *testing.T) {
 func TestDeclaredTypesAreSpelledAsWritten(t *testing.T) {
 	rendering := render(t, "typings.sysml", "SpelledViews::rigView")
 	cases := map[string]string{
-		"plug":     "~Link",
-		"rail":     "'Frame *rail*'",
-		"base":     "Mount, Cart",
-		"root":     "$::Spelled::Mount",
-		"mirrored": "~rail.'Frame *rail*'",
+		"plug": "~Link",
+		"rail": "'Frame *rail*'",
+		"base": "Mount, Cart",
+		"root": "$::Spelled::Mount",
 	}
 	for name, want := range cases {
 		if node := nodeNamed(t, rendering, name); node.Type != want {
@@ -454,7 +490,7 @@ func TestDeclaredTypesAreSpelledAsWritten(t *testing.T) {
 	text := rendering.textWith(fullNotation)
 	for _, want := range []string{
 		"port plug : ~Link", "part rail : 'Frame *rail*'", "part base : Mount, Cart",
-		"part root : $::Spelled::Mount", "port mirrored : ~rail.'Frame *rail*'",
+		"part root : $::Spelled::Mount",
 	} {
 		if !strings.Contains(text, want) {
 			t.Errorf("text lacks %q:\n%s", want, text)
@@ -463,20 +499,19 @@ func TestDeclaredTypesAreSpelledAsWritten(t *testing.T) {
 	mermaid := rendering.MermaidWith(Options{Show: AllShown(), Ports: PortsFull})
 	for _, want := range []string{
 		"`*«part def»*\n**Rig**`", "«port»<br>plug : ~Link", "`*«part»*\n**base : Mount, Cart**`",
-		"`*«part»*\n**root : Mount**`", "«port»<br>mirrored : ~'Frame *rail*'",
+		"`*«part»*\n**root : Mount**`",
 	} {
 		if !strings.Contains(mermaid, want) {
 			t.Errorf("Mermaid lacks %q:\n%s", want, mermaid)
 		}
 	}
 	// Beside the spelling, a node carries the qualified names its typings
-	// resolve to; a feature chain names no element and resolves to none.
+	// resolve to.
 	typings := map[string][]string{
-		"plug":     {"Spelled::Link"},
-		"rail":     {"Spelled::'Frame *rail*'"},
-		"base":     {"Spelled::Mount", "Spelled::Cart"},
-		"root":     {"Spelled::Mount"},
-		"mirrored": nil,
+		"plug": {"Spelled::Link"},
+		"rail": {"Spelled::'Frame *rail*'"},
+		"base": {"Spelled::Mount", "Spelled::Cart"},
+		"root": {"Spelled::Mount"},
 	}
 	for name, want := range typings {
 		if node := findNode(t, rendering.Roots, name); !slices.Equal(node.Typings, want) {
@@ -875,6 +910,7 @@ func TestMermaidSizeCountsEdges(t *testing.T) {
 			for _, root := range rendering.Roots {
 				drawn += containmentEdges(root)
 			}
+			drawn -= len(rendering.nestingEdges())
 		}
 		if drawn == 0 {
 			t.Errorf("%s draws no edge", tc.view)
@@ -910,8 +946,10 @@ func TestActionRenderingDrawsTheSuccessionGatingAFlow(t *testing.T) {
 			if text := sf.Text(edge.Origin.Span); !strings.HasPrefix(text, "first producer if go then f") {
 				t.Errorf("the gated succession is located at %q, want its own declaration", text)
 			}
-		case EdgeFlow:
+		case EdgeSuccessionFlow:
 			flows++
+		case EdgeFlow:
+			t.Errorf("the succession flow %s is drawn as a flow", edge.Label)
 		}
 	}
 	if gated != 1 || flows != 1 {

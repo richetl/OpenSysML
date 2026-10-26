@@ -132,6 +132,7 @@ type ActionGraph struct {
 	// resolver is the name-resolution tier's, by which lowering tells the metadata
 	// it gives a meaning to (Probability) from any other; nil reads none.
 	resolver *resolve.Resolver
+	sem      *semantics.Model
 
 	// lowering holds the declarations whose action content is being lowered on
 	// this path.
@@ -457,6 +458,9 @@ type Loop struct {
 	Variable   string   // `for` only: the name each element is bound to
 	Collection ast.Node // `for` only: the collection iterated over
 	Body       Block
+	// BodyAction is the action usage the loop declares as its body (`loop action
+	// body { … }`), nil for a body of statements alone.
+	BodyAction *symbols.Symbol
 	Node       ast.Node // the loop itself, for diagnostics
 	// Scope is the scope the loop was declared in, which its collection resolves
 	// in; its condition resolves in Body.Scope, which the body declares into.
@@ -464,6 +468,24 @@ type Loop struct {
 }
 
 func (Loop) statement() { /* marker: closed Statement set */ }
+
+// loopBodyAction is the action usage a loop declares as its body (`loop action body
+// { … }`), resolved in the body's scope; nil for a body of statements alone.
+func loopBodyAction(m *ast.WhileLoopActionNode, bodyScope *symbols.Scope) *symbols.Symbol {
+	if bodyScope == nil {
+		return nil
+	}
+	for _, member := range m.Body {
+		usage, ok := unwrapMembership(member).(*ast.Usage)
+		if !ok || !usage.IsBodyParameter || usage.Ident.Name == "" {
+			continue
+		}
+		if sym, found := bodyScope.LookupLocal(usage.Ident.Name); found && sym != nil && sym.Decl == usage {
+			return sym
+		}
+	}
+	return nil
+}
 
 // If is a lowered conditional. The condition is evaluated in the enclosing
 // body, outside both branches. Else is nil when the conditional declared none.
@@ -864,6 +886,18 @@ type ObjectFlow struct {
 // ToActionGraphWith.
 func ToActionGraph(actionDecl ast.Node, scope *symbols.Scope) (*ActionGraph, error) {
 	return ToActionGraphWith(actionDecl, scope, nil)
+}
+
+// Resolver is the resolver the graph was lowered with, nil for none.
+func (g *ActionGraph) Resolver() *resolve.Resolver { return g.resolver }
+
+// Semantics is the semantic model over the graph's resolver, built once and
+// shared by every footprint of the graph; nil without a resolver.
+func (g *ActionGraph) Semantics() *semantics.Model {
+	if g.sem == nil && g.resolver != nil {
+		g.sem = semantics.NewModel(g.resolver)
+	}
+	return g.sem
 }
 
 // ToActionGraphWith is ToActionGraph reading the metadata the resolver identifies:
@@ -1606,7 +1640,12 @@ func lowerPinBindings(graph *ActionGraph, nodes nodeLookup, u *ast.Usage, scope 
 // is nil for an end addressing no node; a path reaching into a node that holds no
 // such nested action is an error.
 func pinPath(graph *ActionGraph, nodes nodeLookup, end ast.Node) (node ast.Node, path []ast.Node, pin string, err error) {
-	segments := endSegments(end)
+	return pinPathOf(graph, nodes, end, endSegments(end))
+}
+
+// pinPathOf is pinPath over segments, the names of end left once a prefix the
+// graph is reached through is dropped.
+func pinPathOf(graph *ActionGraph, nodes nodeLookup, end ast.Node, segments []string) (node ast.Node, path []ast.Node, pin string, err error) {
 	if len(segments) == 0 {
 		return nil, nil, "", nil
 	}
@@ -2116,13 +2155,15 @@ func lowerStatement(member ast.Node, scope *symbols.Scope, resolver *resolve.Res
 		return lowerAssignment(m, scope)
 	case *ast.WhileLoopActionNode:
 		variable, _ := m.Variable.DeclaredName()
+		bodyScope := childScope(scope, m)
 		return Loop{
 			Kind:       m.Kind,
 			Condition:  m.Condition,
 			Until:      m.Until,
 			Variable:   variable,
 			Collection: m.Collection,
-			Body:       lowerBlock(m, m.Body, childScope(scope, m), resolver, ancestors),
+			Body:       lowerBlock(m, m.Body, bodyScope, resolver, ancestors),
+			BodyAction: loopBodyAction(m, bodyScope),
 			Node:       m,
 			Scope:      scope,
 		}
@@ -2340,7 +2381,7 @@ func lowerBlock(owner ast.Node, members []ast.Node, scope *symbols.Scope, resolv
 // stating a step of it.
 func isAnnotation(n ast.Node) bool {
 	switch n.(type) {
-	case *ast.Comment, *ast.Documentation, *ast.TextualRepresentation:
+	case *ast.Comment, *ast.Documentation, *ast.TextualRepresentation, *ast.PrefixMetadata:
 		return true
 	}
 	if usage, ok := n.(*ast.Usage); ok && usage.Kind == ast.UsageMetadata {

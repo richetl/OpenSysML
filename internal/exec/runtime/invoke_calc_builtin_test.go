@@ -103,7 +103,7 @@ func TestInvokeCalcNamedDispatchesBuiltins(t *testing.T) {
 func TestInvokeCalcDefersBodyArguments(t *testing.T) {
 	ctx, idx := libraryModelContext(t, directBuiltinModel)
 	body := func(calc string) Value {
-		val, err := ctx.InvokeCalc(lookupOne(t, idx, "test::"+calc), nil, nil)
+		val, err := invokeValue(ctx, lookupOne(t, idx, "test::"+calc), nil, nil)
 		if err != nil || val.Kind != valExpr {
 			t.Fatalf("%s = %s, %v; want a body", calc, FormatValue(val), err)
 		}
@@ -177,7 +177,7 @@ func TestInvokeCalcNeverAnswersAModelDeclarationWithABuiltin(t *testing.T) {
 	if _, ok := ctx.builtinFor(sym); ok {
 		t.Fatal("the model's NumericalFunctions::sum0 dispatched to the built-in")
 	}
-	if _, err := ctx.InvokeCalc(sym, []Value{constInt(0)}, nil); !errors.Is(err, errNoResultExpression) {
-		t.Errorf("InvokeCalc(model sum0) = %v, want %v", err, errNoResultExpression)
+	if _, err := ctx.InvokeCalc(sym, []Value{constInt(0)}, nil); !errors.Is(err, ErrNoValue) {
+		t.Errorf("InvokeCalc(model sum0) = %v, want %v", err, ErrNoValue)
 	}
 }

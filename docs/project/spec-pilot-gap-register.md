@@ -406,7 +406,7 @@ action def A {
 `validateControlNodeOwningType`; the eight succession constraints are `TODO`s (reading of the
 pinned source, recorded in [omg-issues.md](omg-issues.md#eight-control-node-succession-constraints-are-unimplemented-todos-pilot-2026-07)).
 
-**OpenSysML:** reports each (`internal/check/passes/control_node.go`); the nine ours-only
+**OpenSysML:** reports each (`internal/check/passes/behavior/control_node.go`); the nine ours-only
 negative-corpus cases (inventory C) are these.
 
 **Specification:** SysML §8.3.17.2–§8.3.17.6 `ControlNode`, `DecisionNode`, `ForkNode`,
@@ -869,18 +869,37 @@ part def P { part a; part b; ref r ::> a ::> b; }
 item def I; part p : I;
 ```
 
-**Pilot / OpenSysML:** accepted (both).
+**Pilot / OpenSysML:** accepted (both). OpenSysML reported `part-usage-part-definition` here
+between the check's introduction (`validatePartUsagePartDefinition`, issue #647) and its
+re-alignment with the derivation below; the pilot's own derived properties on this model are
+`type = {I, Parts::Part}`, `itemDefinition = {I, Parts::Part}`, `partDefinition = {Parts::Part}`
+(its `%export` with `isImpliedIncluded = false`), so the constraint holds on its metamodel too.
 
 **Specification:** SysML §8.3.11.3 `PartUsage`, `validatePartUsagePartDefinition`: "At least one
-of the itemDefinitions of a PartUsage must be a PartDefinition." But `checkPartUsageSpecialization`
-requires every `PartUsage` to specialize `Parts::parts`, whose type is `Parts::Part`, and KerML
-§8.3.3.3.4 `deriveFeatureType` makes a feature's `type` "the union of the types of its typings and
-the types of the Features it subsets", so `partDefinition` is never empty. §7.10's note says as
-much: "every part usage is always directly or indirectly defined by at least one part definition,
-implicitly if not explicitly."
+of the itemDefinitions of a PartUsage must be a PartDefinition" (`partDefinition->notEmpty()`),
+with `derivePartUsagePartDefinition` `partDefinition = itemDefinition->selectByKind(PartDefinition)`,
+§8.3.10.3 `deriveItemUsageItemDefinition` `itemDefinition = occurrenceDefinition->selectByKind(Structure)`,
+and `occurrenceDefinition` redefining `definition` redefining `Feature::type` (§8.3.1: a derived
+property that redefines a derived property inherits its derivation). KerML §8.3.3.3.4
+`deriveFeatureType` makes a feature's `type` the union over `closure(typingFeatures())` of the
+typings' types, and `typingFeatures()` is every subsetted feature, implied ones included; SysML
+§8.3.11.3 `checkPartUsageSpecialization` requires every `PartUsage` to specialize `Parts::parts`
+(typed `Parts::Part`, §9.2.4), which §8.4.7.2 and the §8.4.3 table satisfy by an implied
+`Subsetting`, and KerML §8.4.2 suppresses that implied specialization only when an owned one has
+the same or a narrower general — a `FeatureTyping` by an item definition does not. §8.3.1 states
+that validation constraints "are written presuming that all semantic constraints are satisfied",
+so `type` contains `Parts::Part`, `partDefinition` is never empty, and the constraint cannot fail
+for a part usage typed only by an item definition. §7.10's note says as much: "every part usage
+is always directly or indirectly defined by at least one part definition, implicitly if not
+explicitly, in addition to any other item definitions."
 
-**Assessment:** pilot-following justified by clause; the `validation-constraints.md` row that
-marks the constraint "unobservable" is right for the reason above, and can cite it.
+**Assessment:** both tools are right by clause, and the specification over the pilot's silence:
+the constraint is stated but is satisfied through the implied `Parts::parts` subsetting, so a
+report on an item-typed part was stricter than the specification, not stricter than the pilot.
+The `validation-constraints.md` row records the constraint as deliberately unreported, and the
+derivation itself is what the tree holds: `semantics.Model.FeatureTypeSetWithImplied` joins the
+implied generals' types to the declared ones, so reflective `type` and `partDefinition` state
+`Parts::Part` for every part usage.
 
 **Question for the authors:** none.
 
@@ -1309,13 +1328,14 @@ Observations, `2026-08`, and this tree:
 | `in p` in a variation calc | `2:25: error: An owned usage of a variation must be a variant.` | the same |
 | `subject s : X` in a variation requirement | clean | `1:52: error: An owned usage of a variation must be a variant.` |
 | `return r` in a variation calc | clean | `1:33: error: An owned usage of a variation must be a variant.` |
-| `objective o` in a variation case | clean | clean |
+| `objective o` in a variation case | clean | `1:25: error: An owned usage of a variation must be a variant.` |
 | `stakeholder` in a requirement definition | clean | clean |
 | `stakeholder` in a part definition | `3:18: error: mismatched input 'stakeholder' expecting '}'` and `4:1: error: extraneous input '}' expecting EOF` | `3:18: error: 'stakeholder' declares a stakeholder of a requirement and is only allowed in a requirement body; move it into the requirement it belongs to` |
 
-**OpenSysML:** `internal/check/passes/w8d_variability.go`, `checkMembers`, exempts an objective,
-a metadata usage and, in an enumeration, an enumerated value, and reports a subject member and
-every other non-variant usage. A stakeholder outside a requirement body is a parser diagnostic
+**OpenSysML:** `internal/check/passes/w8d_variability.go`, `checkMembers`, exempts a metadata
+usage (an annotating member, not a feature membership) and, in an enumeration, an enumerated
+value, and reports a subject member, an objective and every other non-variant usage, in a
+variation usage as in a variation definition. A stakeholder outside a requirement body is a parser diagnostic
 (`internal/syntax/parser/defusage.go`).
 
 **Specification:** SysML §8.3.6.4 `Usage`, `validateUsageVariationOwnedFeatureMembership`: "If a
@@ -1329,10 +1349,11 @@ Requirements::RequirementCheck::stakeholders."
 **Assessment:** the parameters a variation gets without writing them, and the stakeholder
 restriction, make no observable difference: the inserted parameters draw nothing in either tool,
 and both grammars admit `stakeholder` only in a requirement body, where the pilot's condition
-always holds. The parameter exemption does differ for a parameter written in the model: the pilot
-exempts every `ParameterMembership`, so an explicit subject or return parameter is accepted,
-while OpenSysML exempts only objectives and rejects it. By the OCL both are rejected, and so is
-the objective both tools accept. Neither tool is fully faithful.
+always holds. The exemption does differ for a member written in the model: the pilot exempts every
+`ParameterMembership` and `ObjectiveMembership`, so an explicit subject or return parameter and an
+objective are accepted, while OpenSysML follows the OCL and rejects each of them — spec-leading,
+stricter than the pilot. (OpenSysML exempted the objective as the pilot does until the row was
+adjudicated against the OCL; `tools/referee/reject` records the objective case as ours-only.)
 
 **Question for the authors:** the pilot's own: should a variation be allowed parameters and an
 objective? If it should, `validateUsageVariationOwnedFeatureMembership` and

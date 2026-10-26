@@ -11,6 +11,7 @@ import (
 	"github.com/Open-MBEE/OpenSysML/internal/exec/analysis"
 	"github.com/Open-MBEE/OpenSysML/internal/exec/runtime"
 	"github.com/Open-MBEE/OpenSysML/internal/semantic/semantics"
+	"github.com/Open-MBEE/OpenSysML/internal/semantic/symbols"
 	"github.com/Open-MBEE/OpenSysML/internal/syntax/diag"
 	"github.com/Open-MBEE/OpenSysML/internal/syntax/source"
 	"github.com/Open-MBEE/OpenSysML/internal/workspace/project"
@@ -82,7 +83,7 @@ func errorLines(lines []string, _ []NamedValue, err error) ([]string, bool, erro
 }
 
 // LoadFile submits path and the files beside and below it that declare a root
-// namespace it imports as one submission, returning the lines `%load` prints.
+// namespace it references as one submission, returning the lines `%load` prints.
 // A lone "-" reads standard input; the error is a file it could not read or
 // one named as the transcript is.
 func (s *Session) LoadFile(path string) ([]string, error) {
@@ -91,7 +92,7 @@ func (s *Session) LoadFile(path string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	read, err := s.readWithDependencies(files, loadOptions{})
+	read, err := s.readSources(files, loadOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -113,21 +114,21 @@ func (s *Session) LoadFileSummary(path string) ([]string, error) {
 // LoadFilesSummary is LoadFileSummary over every path as one submission, each
 // file a document of its own, indexed together and each summarized on its own;
 // a read failure is a *ReadError and a file named as the transcript is a
-// *ReservedNameError. Files beside and below the paths that declare an imported
-// root namespace load too.
+// *ReservedNameError. Files beside and below the paths that declare a root
+// namespace they reference load too.
 func (s *Session) LoadFilesSummary(paths []string) ([]string, error) {
 	defer s.enter()()
 	paths, err := s.expandArchives(expandHomes(paths))
 	if err != nil {
 		return nil, err
 	}
-	read, err := s.readWithDependencies(paths, loadOptions{})
+	read, err := s.readSources(paths, loadOptions{})
 	if err != nil {
 		return nil, err
 	}
 	files := read.files
 	lines := read.notes
-	archives := warningLines(s.discovery().ArchiveWarnings(paths), s.verbosity)
+	archives := s.discoveryWarnings(paths)
 	if len(files) == 0 {
 		return append(lines, archives...), nil
 	}
@@ -144,6 +145,13 @@ func (s *Session) LoadFilesSummary(paths []string) ([]string, error) {
 		}
 		lines = append(lines, renderSummary(own.ownMembers())...)
 	}
+	// The files loaded for the roots the named ones left unresolved are
+	// summarized as the named ones are.
+	for _, path := range res.pulled {
+		own := res.within(s.fileSpan(fileKeyOf(path)))
+		lines = append(lines, renderSyntax(own, s.verbosity)...)
+		lines = append(lines, renderSummary(own.ownMembers())...)
+	}
 	return append(lines, archives...), nil
 }
 
@@ -158,7 +166,7 @@ func (s *Session) DiagnosticLines() []string {
 func (s *Session) diagnosticLines() []string {
 	diags := s.diagnostics()
 	if len(diags) == 0 {
-		return nil
+		return s.libraryFindingLines()
 	}
 	var out []string
 	start := 0
@@ -177,6 +185,27 @@ func (s *Session) diagnosticLines() []string {
 		}
 		out = append(out, renderDiagnostics(own, sn.src, inFile(sn.origin), s.verbosity >= VerbosityDebug)...)
 		start = end + 1 // the newline joined() writes between snippets
+	}
+	return append(out, s.libraryFindingLines()...)
+}
+
+// libraryFindingLines renders the workspace findings on library documents — a
+// library tree the library path holds two copies of — which no submission's
+// text locates, under the library file each is reported in.
+func (s *Session) libraryFindingLines() []string {
+	if s.verbosity <= VerbosityQuiet {
+		return nil
+	}
+	var out []string
+	for _, f := range s.ws.WorkspaceFindings() {
+		if !f.Library {
+			continue
+		}
+		src := ""
+		if doc := s.ws.LibraryDocument(f.Document); doc != nil {
+			src = string(doc.Content)
+		}
+		out = append(out, renderDiagnostics([]diag.Diagnostic{f.Diagnostic}, src, inFile(f.Document), s.verbosity >= VerbosityDebug)...)
 	}
 	return out
 }
@@ -280,17 +309,76 @@ type Edit struct {
 // the line and column that file has it on.
 func (s *Session) LocatedDiagnostics() []Diagnostic {
 	defer s.enter()()
-	return s.locate(s.diagnostics())
+	return append(locate(s.bufferParts(), s.diagnostics()), s.libraryFindings()...)
 }
 
-// Locate places diagnostics reported over the session's buffer — a Result's —
-// in the submissions they are about, as LocatedDiagnostics does.
-func (s *Session) Locate(diags []diag.Diagnostic) []Diagnostic {
+// libraryFindings places the workspace findings on library documents — which
+// no submission's text holds — in the library file each is reported in.
+func (s *Session) libraryFindings() []Diagnostic {
+	var out []Diagnostic
+	for _, f := range s.ws.WorkspaceFindings() {
+		if !f.Library {
+			continue
+		}
+		var content []byte
+		if doc := s.ws.LibraryDocument(f.Document); doc != nil {
+			content = doc.Content
+		}
+		p := source.New(docName, content).Lines().PosAt(f.Diagnostic.Span.Offset)
+		out = append(out, Diagnostic{
+			Severity:    f.Diagnostic.Severity.String(),
+			Message:     f.Diagnostic.Message,
+			File:        f.Document,
+			Line:        p.Line,
+			Column:      p.Col,
+			UTF16Column: utf16Column(content, f.Diagnostic.Span.Offset, p.Col),
+			Pass:        f.Diagnostic.Source,
+			Code:        f.Diagnostic.Code,
+		})
+	}
+	return out
+}
+
+// Locate places diags, a Result's diagnostics, in the submissions they are about
+// as LocatedDiagnostics does — in the buffer they were reported over, if res left it.
+func (s *Session) Locate(res Result, diags []diag.Diagnostic) []Diagnostic {
 	defer s.enter()()
-	return s.locate(diags)
+	parts := res.buffer
+	if parts == nil {
+		parts = s.bufferParts()
+	}
+	return locate(parts, diags)
 }
 
-func (s *Session) locate(diags []diag.Diagnostic) []Diagnostic {
+// bufferPart is one submission as the joined buffer holds it: its text, the
+// file it was loaded from (empty when typed) and the offset it starts at.
+type bufferPart struct {
+	origin, src string
+	start       int
+}
+
+// bufferParts lays the session's submissions out as its buffer joins them.
+func (s *Session) bufferParts() []bufferPart {
+	parts := make([]bufferPart, 0, len(s.snippets))
+	start := 0
+	for _, sn := range s.snippets {
+		parts = append(parts, bufferPart{origin: sn.origin, src: sn.src, start: start})
+		start += len(sn.src) + 1 // the newline joined() writes between snippets
+	}
+	return parts
+}
+
+// partAt returns the submission a buffer offset falls in, as snippetAt does.
+func partAt(parts []bufferPart, offset int) bufferPart {
+	for i, part := range parts {
+		if offset <= part.start+len(part.src) || i == len(parts)-1 {
+			return part
+		}
+	}
+	return bufferPart{}
+}
+
+func locate(parts []bufferPart, diags []diag.Diagnostic) []Diagnostic {
 	if len(diags) == 0 {
 		return nil
 	}
@@ -299,12 +387,13 @@ func (s *Session) locate(diags []diag.Diagnostic) []Diagnostic {
 		src   []byte
 		lines *source.LineIndex
 	}
-	indexes := make(map[int]indexed, len(s.snippets))
+	indexes := make(map[int]indexed, len(parts))
 	for _, d := range diags {
-		sn, start := s.snippetAt(d.Span.Offset)
+		part := partAt(parts, d.Span.Offset)
+		start := part.start
 		idx, ok := indexes[start]
 		if !ok {
-			idx.src = []byte(sn.src)
+			idx.src = []byte(part.src)
 			idx.lines = source.New(docName, idx.src).Lines()
 			indexes[start] = idx
 		}
@@ -313,7 +402,7 @@ func (s *Session) locate(diags []diag.Diagnostic) []Diagnostic {
 		out = append(out, Diagnostic{
 			Severity:    d.Severity.String(),
 			Message:     d.Message,
-			File:        sn.origin,
+			File:        part.origin,
 			Line:        p.Line,
 			Column:      p.Col,
 			UTF16Column: utf16Column(idx.src, d.Span.Offset-start, p.Col),
@@ -515,6 +604,40 @@ func (s *Session) RunActionWithInputs(name string, inputs []string, performer ..
 		return s.withTrace(standing(Verdict{Subject: name, Status: VerdictUnresolved, Lines: lines, Values: values}, plan))
 	}
 	return s.withTrace(standing(Verdict{Subject: name, Status: VerdictHolds, Lines: lines, Values: values}, plan))
+}
+
+// RunOccurrence performs an occurrence def as the interaction its body states,
+// which is `%occurrence`: each message is transferred from the lifeline holding
+// the event it leaves to the one holding the event it reaches, in the order the
+// events admit. The values are the transfers performed, in order.
+func (s *Session) RunOccurrence(name string) Verdict {
+	defer s.enter()()
+	return s.runOccurrence(name)
+}
+
+// runOccurrence is RunOccurrence inside a command already holding the session,
+// as `%occurrence` is.
+func (s *Session) runOccurrence(name string) Verdict {
+	ctx, err := s.getOrCreateRuntime()
+	if err != nil {
+		return s.withTrace(unresolvedVerdict(name, fmt.Errorf("%w: %w", errRuntimeInit, err).Error()))
+	}
+	sym, _, err := s.lookupSymbolOfKinds(name, symbols.SymbolOccurrenceDef, symbols.SymbolOccurrenceUsage)
+	if err != nil {
+		return s.withTrace(unresolvedVerdict(name, err.Error()))
+	}
+	run, err := ctx.ExecuteOccurrence(sym)
+	if err != nil {
+		return s.withTrace(unresolvedVerdict(name, err.Error()))
+	}
+	values := make([]NamedValue, 0, len(run.Transfers))
+	lines := make([]string, 0, len(run.Transfers))
+	for i, tr := range run.Transfers {
+		text := fmt.Sprintf("%s -> %s", tr.FromEvent, tr.ToEvent)
+		values = append(values, NamedValue{Name: fmt.Sprintf("%d %s", i+1, tr.Name), Value: text})
+		lines = append(lines, fmt.Sprintf("message %s: %s", tr.Name, text))
+	}
+	return Verdict{Subject: name, Status: VerdictHolds, Lines: lines, Values: values}
 }
 
 // RunStateMachine starts a state machine outside the prompt, taking only its

@@ -169,6 +169,7 @@ func testCalcCallsAnUnimportedLibraryFunction(t *testing.T) {
 		t.Fatal("count calc not found")
 	}
 	result, err = ctx.InvokeCalc(sym, nil, rootScope)
+	result = soleElement(result)
 	if err != nil || result.Kind != ValConst || result.Const.Int != 4 {
 		t.Fatalf("wheels->size() under import SequenceFunctions::* = %+v, %v; want 4", result, err)
 	}
@@ -302,8 +303,8 @@ func testCalcWithoutResult(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected a missing-result error, the calc returned a value")
 	}
-	if !errors.Is(err, errNoResultExpression) {
-		t.Errorf("expected errNoResultExpression, got: %v", err)
+	if !errors.Is(err, ErrNoValue) {
+		t.Errorf("expected ErrNoValue, got: %v", err)
 	}
 }
 
@@ -610,8 +611,8 @@ func testCalcNonTerminatingLoop(t *testing.T) {
 	}
 }
 
-// testCalcBodyNeverReturns: a body that computes but reaches no `return` states
-// no result, which is an error rather than a null value.
+// testCalcBodyNeverReturns: a body that computes but reaches no `return` leaves
+// the result unbound, which is no value rather than a null one.
 func testCalcBodyNeverReturns(t *testing.T) {
 	src := `
 		package test {
@@ -628,8 +629,8 @@ func testCalcBodyNeverReturns(t *testing.T) {
 		}
 	`
 	err := invokeCalcInSource(t, src, "maybe", 5, 10000)
-	if !errors.Is(err, errCalcNoReturn) {
-		t.Errorf("expected errCalcNoReturn, got: %v", err)
+	if !errors.Is(err, ErrNoValue) {
+		t.Errorf("expected ErrNoValue, got: %v", err)
 	}
 }
 

@@ -409,6 +409,9 @@ type stmtEngine struct {
 	// host supplies them — a constraint's parameters — nil where the body's
 	// frame answers every name already.
 	features map[string]scopedExpr
+	// loops are the loops the engine is running, outermost first, each with the
+	// performance object held for it (loop_performances.go).
+	loops []*loopFrame
 }
 
 // newStmtEngineOver returns an engine running statements against data, which also
@@ -845,7 +848,7 @@ func (e *stmtEngine) pickStatement(stmts []lower.Statement, next []int, order *l
 // on the choice the draw made, where the order of the statements may matter.
 func (e *stmtEngine) statementUnder(stmts []lower.Statement, i int, f *stmtListFrame, resumed bool) (stmtFlow, error) {
 	if f.under != 0 {
-		defer e.ctx.underControl([]int64{f.under})()
+		defer e.ctx.releaseControl(e.ctx.underControl([]int64{f.under}))
 	}
 	return e.statement(stmts, i, f, resumed)
 }
@@ -962,6 +965,7 @@ func (e *stmtEngine) execute(stmt lower.Statement) (stmtFlow, error) {
 				}
 			}
 			cell = e.ctx.registerBodyBinding(cells, name, s.Value, s.Scope, check, onDerived)
+			cell.binding.place = bindingPlace(s.Symbol, name)
 			cell.binding.visible = visible
 			cell.binding.limitFrames = true
 			if _, err := e.ctx.deriveBodyCell(cells, name, cell); err != nil {
@@ -1129,7 +1133,7 @@ func (e *stmtEngine) ifStatement(stmt lower.If) (stmtFlow, error) {
 	if f.elseBranch {
 		branch = *stmt.Else
 	}
-	defer e.ctx.underControl(f.control)()
+	defer e.ctx.releaseControl(e.ctx.underControl(f.control))
 	flow, err := e.block(branch)
 	return flow, e.ctx.pausing(f, err)
 }
@@ -1365,12 +1369,22 @@ type loopFrame struct {
 	// control is what the loop's condition or collection read stood on, which its
 	// iterations run under.
 	control []int64
+	// perf is the loop's performance object and body the one of the iteration under
+	// way, nil for a loop run without them (loop_performances.go).
+	perf, body *Instance
 }
 
-// abandon releases dependencies and activation state for a discarded loop.
+// abandon releases dependencies and activation state for a discarded loop, and
+// ends its performance.
 func (f *loopFrame) abandon(ctx *Context) {
 	ctx.forgetBodyCells(f.cells)
 	ctx.endActivation(f.activation)
+	if f.body != nil {
+		ctx.endPerformanceLife(f.body)
+	}
+	if f.perf != nil {
+		ctx.endPerformanceLife(f.perf)
+	}
 }
 
 func (f *loopFrame) clone() bodyFrame {
@@ -1409,6 +1423,9 @@ func (e *stmtEngine) enterLoop(f *loopFrame) (leave func(bool)) {
 		f.held = e.env.held[len(e.env.held)-1]
 		e.env.leave(e.ctx, forget)
 		e.activation = f.outer
+		if forget && f.perf != nil {
+			e.ctx.endPerformanceLife(f.perf)
+		}
 	}
 }
 
@@ -1426,10 +1443,25 @@ func (e *stmtEngine) beginIteration(f *loopFrame, resumed bool) {
 	e.activation = f.activation
 }
 
+// beginIterationBody begins the body occurrence of the iteration under way, where
+// the loop is a performance.
+func (e *stmtEngine) beginIterationBody(stmt lower.Loop, f *loopFrame) (err error) {
+	f.body = nil
+	if f.perf == nil {
+		return nil
+	}
+	f.body, err = e.beginLoopBody(f.perf, stmt, f.activation)
+	return err
+}
+
 // endIteration closes the iteration under way, unless it paused.
 func (e *stmtEngine) endIteration(f *loopFrame, err error) {
 	if paused(err) {
 		return
+	}
+	if f.body != nil {
+		e.ctx.endPerformanceLife(f.body)
+		f.body = nil
 	}
 	e.ctx.endActivation(f.activation)
 	e.activation = f.outer
@@ -1452,7 +1484,12 @@ func (e *stmtEngine) loop(stmt lower.Loop) (stmtFlow, error) {
 	}
 	if !resumed {
 		f = &loopFrame{}
+		if f.perf, err = e.beginLoopPerformance(stmt); err != nil {
+			return flowNext, err
+		}
 	}
+	e.loops = append(e.loops, f)
+	defer func() { e.loops = e.loops[:len(e.loops)-1] }()
 	resumed = resumed && !e.ctx.yieldedHere()
 	leave := e.enterLoop(f)
 	preserve := false
@@ -1495,13 +1532,16 @@ func (e *stmtEngine) iteration(stmt lower.Loop, f *loopFrame, resumed bool) (flo
 			}
 			f.control = e.ctx.standingOf(e.ctx.model.expressionFootprint(stmt.Body.Scope, stmt.Condition), true)
 		}
+		if err := e.beginIterationBody(stmt, f); err != nil {
+			return flowNext, true, err
+		}
 		clear(f.locals)
 		e.syncLoopCells(f)
 		e.ctx.resetBodyCells(f.cells)
 	}
-	restore := e.ctx.underControl(f.control)
+	control := e.ctx.underControl(f.control)
 	flow, err = e.runBlock(stmt.Body)
-	restore()
+	e.ctx.releaseControl(control)
 	e.syncLoopCells(f)
 	if err != nil || flow == flowReturn {
 		return flow, true, err
@@ -1546,10 +1586,15 @@ func (e *stmtEngine) forLoop(stmt lower.Loop) (stmtFlow, error) {
 			return flowNext, fmt.Errorf("%s: %w", e.host.describe(), err)
 		}
 		f = &loopFrame{elements: elements, control: e.ctx.standingOf(e.ctx.model.expressionFootprint(stmt.Scope, stmt.Collection), true)}
+		if f.perf, err = e.beginLoopPerformance(stmt); err != nil {
+			return flowNext, err
+		}
 		if len(elements) == 0 {
 			e.bodyPerformed()
 		}
 	}
+	e.loops = append(e.loops, f)
+	defer func() { e.loops = e.loops[:len(e.loops)-1] }()
 	resumed = resumed && !e.ctx.yieldedHere()
 	leave := e.enterLoop(f)
 	preserve := false
@@ -1582,14 +1627,17 @@ func (e *stmtEngine) forIteration(stmt lower.Loop, f *loopFrame, resumed bool) (
 	e.beginIteration(f, resumed)
 	defer func() { e.endIteration(f, err) }()
 	if !resumed {
+		if err := e.beginIterationBody(stmt, f); err != nil {
+			return flowNext, err
+		}
 		clear(f.locals)
 		e.syncLoopCells(f)
 		e.ctx.resetBodyCells(f.cells)
 		f.locals[stmt.Variable] = f.elements[f.iteration-1]
 	}
-	restore := e.ctx.underControl(f.control)
+	control := e.ctx.underControl(f.control)
 	flow, err = e.runBlock(stmt.Body)
-	restore()
+	e.ctx.releaseControl(control)
 	e.syncLoopCells(f)
 	return flow, err
 }

@@ -58,12 +58,15 @@ var packageLayer = map[string]string{
 	"internal/semantic/resolve":   "semantic",
 	"internal/semantic/semantics": "semantic",
 	"internal/semantic/identity":  "semantic",
+	"internal/semantic/metamodel": "semantic",
 
-	"internal/ir/lower":     "ir",
-	"internal/ir/queryplan": "ir",
-	"internal/ir/docplan":   "ir",
-	"internal/ir/view":      "ir",
-	"internal/ir/imagefile": "ir",
+	"internal/ir/lower":                     "ir",
+	"internal/ir/queryplan":                 "ir",
+	"internal/ir/docplan":                   "ir",
+	"internal/ir/docplan/markup":            "ir",
+	"internal/ir/docplan/markup/markuptest": "ir",
+	"internal/ir/view":                      "ir",
+	"internal/ir/imagefile":                 "ir",
 
 	"internal/check/codes":           "check",
 	"internal/check/passes":          "check",
@@ -73,6 +76,7 @@ var packageLayer = map[string]string{
 	"internal/check/passes/identity": "check",
 	"internal/check/passes/behavior": "check",
 	"internal/check/edit":            "check",
+	"internal/check/workspace":       "check",
 
 	"internal/exec/runtime":             "exec",
 	"internal/exec/sweep":               "exec",

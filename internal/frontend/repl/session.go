@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/Open-MBEE/OpenSysML/internal/frontend/repl/replext"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -75,6 +76,13 @@ type snippet struct {
 	// found, mapped as the workspace maps a document's.
 	open  bool
 	diags []diag.Diagnostic
+	// rejected marks a typed submission that declares nothing and does not parse:
+	// it is reported once, against the buffer it was typed into, then dropped.
+	rejected bool
+	// onDemand marks a file the session loaded for a name a submission left
+	// unresolved, which nobody asked for: %save leaves it out, since the file
+	// is already beside what is saved.
+	onDemand bool
 }
 
 // SourceConverter transforms a named source file before the REPL parses it.
@@ -108,6 +116,11 @@ type Session struct {
 	// libraryRoots are the directories installed projects are looked for
 	// under, besides the well-known ones beneath a loaded file's project.
 	libraryRoots []string
+	// workspaceRoot is the directory the root namespaces a typed submission
+	// leaves unresolved are looked for under, empty to look nowhere; workspace
+	// indexes its model files, built on first use.
+	workspaceRoot string
+	workspace     *project.WorkspaceIndex
 
 	// Runtime execution context
 	rtCtx *runtime.Context
@@ -611,13 +624,14 @@ func (s *Session) acceptParsed(origin, key, of, src string, pre parsed, kind sou
 	// diagnostics keep the line numbers of the submission. A merge folded the
 	// comments into the text it rewrote, where own marks what was added.
 	s.snippets = append(s.snippets, snippet{
-		src:    comments + text,
-		names:  names,
-		origin: origin,
-		kind:   kind,
-		gen:    s.version,
-		prefix: len(comments),
-		own:    mergedOwn,
+		src:      comments + text,
+		names:    names,
+		origin:   origin,
+		kind:     kind,
+		gen:      s.version,
+		prefix:   len(comments),
+		own:      mergedOwn,
+		rejected: len(names) == 0 && len(p.Diagnostics) > 0,
 	})
 	return declared, drops
 }
@@ -812,6 +826,57 @@ func (s *Session) text() string {
 	return strings.Join(parts, "\n")
 }
 
+// savedText is the buffer as %save writes it to dest: text() without the files
+// loaded on demand, which stay files of the workspace rather than of the save —
+// except one the typed text names that a load of the saved file could not find
+// beside or below it, whose declarations the save carries so it loads on its own.
+func (s *Session) savedText(dest string) string {
+	var (
+		parts    []string
+		onDemand []snippet
+	)
+	for _, sn := range s.snippets {
+		if sn.onDemand {
+			onDemand = append(onDemand, sn)
+			continue
+		}
+		parts = append(parts, sn.src)
+	}
+	if len(onDemand) == 0 {
+		return strings.Join(parts, "\n")
+	}
+	typed := strings.Join(parts, "\n")
+	reach := map[string]bool{}
+	for _, dep := range s.discovery().DependenciesOf([]project.Source{{Path: dest, Content: []byte(typed)}}, s.ws.IsLibraryRoot) {
+		reach[fileKeyOf(dep)] = true
+	}
+	// What the typed text names, then what the carried files name in turn,
+	// so a carried file's own imports are carried with it.
+	named := nameSet(referencedRoots(typed))
+	included := map[string]bool{}
+	for changed := true; changed; {
+		changed = false
+		for _, sn := range onDemand {
+			if included[sn.key] || reach[sn.key] || !intersects(sn.names, named) {
+				continue
+			}
+			included[sn.key] = true
+			changed = true
+			parts = append(parts, sn.src)
+			for _, name := range referencedRoots(sn.src) {
+				named[name] = true
+			}
+		}
+	}
+	return strings.Join(parts, "\n")
+}
+
+// referencedRoots lists the root namespaces src imports or qualifies and does
+// not declare itself.
+func referencedRoots(src string) []string {
+	return project.ReferencedRoots(parser.New(source.New(docName, []byte(src))).ParseFile())
+}
+
 // maskedSpans locates the masked submissions in the buffer, so a finding of
 // theirs is not read as having stopped the deeper checks from running.
 func (s *Session) maskedSpans() []source.Span {
@@ -873,6 +938,11 @@ func (s *Session) gather(suppressing bool) []diag.Diagnostic {
 		case sn.origin != "":
 			own = analyzed[next]
 			next++
+			// What the workspace finds wrong with this file against the others
+			// loaded, reported in it: a library package another file declares too.
+			for _, f := range s.ws.FindingsOn(sn.origin) {
+				own = append(own, f.Diagnostic)
+			}
 		}
 		for _, d := range own {
 			d.Span.Offset += acc
@@ -941,7 +1011,8 @@ func intersects(names []string, set map[string]bool) bool {
 // is still accumulated, so its diagnostics are reported against the live session
 // context; one that leaves a brace, comment or quoted name open is masked out of
 // the buffer instead, since it would otherwise absorb the next submission. A
-// later redeclaration of the same name replaces the prior snippet (see accept).
+// later redeclaration of the same name replaces the prior snippet (see accept);
+// one that declares no name to redeclare is dropped once its errors are reported.
 func (s *Session) Submit(src string) Result {
 	defer s.enter()()
 	return s.submitAll([]string{src})
@@ -1062,13 +1133,50 @@ func (s *Session) submitEach(files []SourceFile) (res Result, byFile [][]string,
 	}
 	whole = s.rebuildOver(drops)
 	notices := append(dropNotices(drops), whole...)
-	// The diagnostics already carry their own "did you mean" hints.
-	diags := s.diagnostics()
-	members := s.sessionMembers()
-	res = Result{
-		Members:     members,
-		Declared:    declared,
-		Diagnostics: diags,
+	res = s.submissionResult(declared, offset, own, notices)
+	// A root namespace the submission leaves unresolved may be declared by a
+	// file beside a loaded one or under the workspace; it joins the submission.
+	search := s.searchFor(load, files)
+	if ws, more := s.pullReferences(s.resolveReferences(res, parses, search), parses, search); ws.loaded || len(ws.notices) > 0 {
+		if ws.loaded {
+			whole = append(whole, more...)
+			// A loaded file may have replaced an earlier snippet, moving the
+			// submission's text within the buffer.
+			own = s.ownSpans()
+			offset = s.genOffset(s.joined())
+			if at, ok := firstText(own); ok {
+				offset = at
+			}
+			declared = append(declared, ws.declared...)
+		}
+		notices = append(notices, ws.notices...)
+		res = s.submissionResult(declared, offset, own, notices)
+		res.pulled = ws.files
+	}
+	res.Blocked = s.blockedBy(res, load)
+	// A rejected submission was reported against the buffer it was typed into;
+	// nothing declared it, so nothing replaces it, and it leaves the buffer now.
+	if before := s.dropRejected(); before != nil {
+		res.buffer = before
+		// The index still holds that buffer: it is rebuilt before the objects
+		// the session holds are rebound, so they resolve against the cleaned one.
+		s.idxVersion = 0
+		more := s.rebuildOver(nil)
+		whole = append(whole, more...)
+		res.Notices = append(res.Notices, more...)
+	}
+	return res, byFile, whole
+}
+
+// submissionResult is the result of the submission under way over the session
+// as it stands: declared is what it declared, offset where its text starts in
+// the buffer, own the text a merge added, and notices what it did besides.
+func (s *Session) submissionResult(declared []string, offset int, own []source.Span, notices []string) Result {
+	return Result{
+		Members:  s.sessionMembers(),
+		Declared: declared,
+		// The diagnostics already carry their own "did you mean" hints.
+		Diagnostics: s.diagnostics(),
 		// The unmasked buffer: masking is byte for byte, so offsets still land
 		// where they did, and a diagnostic echoes the line it is about.
 		Source:  s.text(),
@@ -1079,8 +1187,18 @@ func (s *Session) submitEach(files []SourceFile) (res Result, byFile [][]string,
 		foreign: s.foreignSpans(),
 		Notices: notices,
 	}
-	res.Blocked = s.blockedBy(res, load)
-	return res, byFile, whole
+}
+
+// dropRejected removes the snippets this submission rejected, returning the
+// buffer their diagnostics were reported over; nil when there was none to drop.
+func (s *Session) dropRejected() []bufferPart {
+	rejected := func(sn snippet) bool { return sn.rejected }
+	if !slices.ContainsFunc(s.snippets, rejected) {
+		return nil
+	}
+	before := s.bufferParts()
+	s.snippets = slices.DeleteFunc(s.snippets, rejected)
+	return before
 }
 
 // dropReadWhole drops every snippet of a file the submission read whole, a
@@ -1499,8 +1617,10 @@ func (s *Session) symbolIndex() *symbols.Index {
 		}
 	}
 	s.idxDocs = s.idxDocs[:0]
+	// The index holds each document's own tree rather than one built again from its
+	// AST, so a declaration the runtime reaches through either is one symbol.
 	for _, doc := range docs {
-		s.idx.AddDocument(doc.Name, doc.AST)
+		s.idx.AddDocumentScopeWithKind(doc.Name, doc.AST, doc.Scope, doc.Kind())
 		s.idxDocs = append(s.idxDocs, doc.Name)
 	}
 	s.idx.ExpandWildcardImports()
@@ -1648,6 +1768,9 @@ func rebasedFixes(fixes []diag.Fix, delta int) []diag.Fix {
 // the check.
 func (s *Session) SetFileGuard(guard func(path string, exempt []string) error) {
 	s.fileGuard = guard
+	// The workspace index asks the guard before reading a file, so it is built
+	// again under the new one.
+	s.workspace = nil
 }
 
 // SetFileWriter installs the writer every file the session saves is written

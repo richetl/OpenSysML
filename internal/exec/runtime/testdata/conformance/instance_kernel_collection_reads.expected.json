@@ -12,17 +12,17 @@
     "p1.pb.suboccurrences": {"type": "Sequence", "elements": []},
     "mixed.suboccurrenceCount": {"type": "Integer", "value": 2},
     "mixed.subitemCount": {"type": "Integer", "value": 2},
-    "act.subperformanceCount": {"type": "Integer", "value": 0},
-    "act.subperformances": {"type": "Sequence", "elements": []},
+    "act.subperformanceCount": {"type": "Integer", "value": 2},
+    "act.subperformances": {"type": "Sequence", "elements": [{"type": "Instance"}, {"type": "Instance"}]},
     "bare.suboccurrenceCount": {"type": "Integer", "value": 0},
     "bare.subobjectCount": {"type": "Integer", "value": 0},
     "bare.subobjects": {"type": "Sequence", "elements": []},
     "idle.subperformanceCount": {"type": "Integer", "value": 0},
     "idle.subperformances": {"type": "Sequence", "elements": []},
-    "p1.timeSlices": {"type": "Sequence", "elements": [{"type": "Instance"}]},
-    "p1.portions": {"type": "Sequence", "elements": [{"type": "Instance"}]},
+    "p1.timeSlices": {"type": "Undetermined", "value": "[3..*]"},
+    "p1.portions": {"type": "Undetermined", "value": "[3..*]"},
     "p1.superoccurrence": {"type": "Instance"},
-    "p1.successors": {"type": "Sequence", "elements": []},
-    "p1.timeEnclosedOccurrences": {"type": "Sequence", "elements": [{"type": "Instance"}]}
+    "p1.successors": {"type": "Undetermined", "value": "[0..*]"},
+    "p1.timeEnclosedOccurrences": {"type": "Undetermined", "value": "[3..*]"}
   }
 }

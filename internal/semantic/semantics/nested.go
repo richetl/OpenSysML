@@ -31,34 +31,7 @@ func (m *Model) ImplicitSubsettings(sym *symbols.Symbol) []*symbols.Symbol {
 // library feature, the first whose rule the usage kind and its owner's kind
 // match, resolved to a symbol when the library declares it.
 func (m *Model) computeImplicitSubsettings(sym *symbols.Symbol) []*symbols.Symbol {
-	if sym.OwnerScope == nil {
-		return nil
-	}
-	owner := sym.OwnerScope.Owner()
-	if owner == nil {
-		return nil
-	}
-	switch owner.Decl.(type) {
-	case *ast.Definition, *ast.Usage, *ast.SubstateMember, *ast.TransitionMember,
-		*ast.AssumeMember, *ast.RequireMember:
-	default:
-		return nil
-	}
-	usage, ok := sym.Decl.(*ast.Usage)
-	portion := ast.PortionNone
-	composite := true
-	if ok {
-		if usage.IsVariant || usage.IsBodyParameter || IsParameter(sym) {
-			return nil
-		}
-		portion = usage.Portion
-		composite = usageIsComposite(usage)
-	} else if _, isSubstate := sym.Decl.(*ast.SubstateMember); !isSubstate {
-		// Only usages carry these rules, plus the `state s;` of a state body,
-		// which is a composite StateUsage the parser records as a SubstateMember.
-		return nil
-	}
-	fqn := m.implicitSubsettingFQN(sym, usage, owner, composite, portion)
+	fqn := m.nestedSubsettingFQN(sym)
 	if fqn == "" {
 		return nil
 	}
@@ -66,6 +39,43 @@ func (m *Model) computeImplicitSubsettings(sym *symbols.Symbol) []*symbols.Symbo
 		return []*symbols.Symbol{target}
 	}
 	return nil
+}
+
+// nestedSubsettingFQN is the qualified name of the library feature the rules say sym implicitly
+// subsets, "" when they name none; read from the declarations alone, library loaded or not.
+func (m *Model) nestedSubsettingFQN(sym *symbols.Symbol) string {
+	if sym == nil || sym.OwnerScope == nil {
+		return ""
+	}
+	owner := sym.OwnerScope.Owner()
+	if owner == nil {
+		return ""
+	}
+	switch owner.Decl.(type) {
+	case *ast.Definition, *ast.Usage, *ast.SubstateMember, *ast.TransitionMember,
+		*ast.AssumeMember, *ast.RequireMember:
+	default:
+		return ""
+	}
+	usage, ok := sym.Decl.(*ast.Usage)
+	portion := ast.PortionNone
+	composite := true
+	if ok {
+		if usage.IsVariant {
+			return ""
+		}
+		portion = usage.Portion
+		// A SysML usage is composite by its kind; a KerML feature only when declared so.
+		composite = usageIsComposite(usage)
+		if !m.isSysMLUsage(sym) {
+			composite = usage.IsComposite
+		}
+	} else if _, isSubstate := sym.Decl.(*ast.SubstateMember); !isSubstate {
+		// Only usages carry these rules, plus the `state s;` of a state body,
+		// which is a composite StateUsage the parser records as a SubstateMember.
+		return ""
+	}
+	return m.implicitSubsettingFQN(sym, usage, owner, composite, portion)
 }
 
 // implicitSubsettingFQN selects the qualified name of the owner feature usage
@@ -78,6 +88,11 @@ func (m *Model) implicitSubsettingFQN(sym *symbols.Symbol, usage *ast.Usage, own
 	}
 	u := NestedUsage{Kind: kind, Composite: composite, Portion: portion}
 	if usage != nil {
+		if fqn := stateActionFQN(usage); fqn != "" && fqn != stateActionFQNs["do"] {
+			u.EntryExitAction = true
+		}
+	}
+	if usage != nil {
 		u.Performed = usage.IsPerformedAction()
 		u.Exhibited = usage.IsExhibitedState()
 		u.Included = usage.IsIncludedUseCase()
@@ -89,7 +104,7 @@ func (m *Model) implicitSubsettingFQN(sym *symbols.Symbol, usage *ast.Usage, own
 	}
 	fqn, step := nestedRuleFQN(u, o)
 	if step {
-		return m.stepNestedFQN(owner)
+		return m.stepNestedFQN(owner, composite)
 	}
 	return fqn
 }
@@ -104,6 +119,9 @@ type NestedUsage struct {
 	// state` and `include use case` forms; RequirementConstraint is a
 	// `require` or `assume` constraint, which subsets nothing implicitly.
 	Performed, Exhibited, Included, RequirementConstraint bool
+	// EntryExitAction is a state's `entry` or `exit` action: a subperformance of
+	// the state but no subaction, since `StateAction::subactions :> middle`.
+	EntryExitAction bool
 }
 
 // NestedOwner is the declaration kind of the type a usage nests in: a usage's
@@ -144,7 +162,15 @@ func ImplicitSubsettingCandidates(u NestedUsage, owner NestedOwner) []string {
 	case fqn != "":
 		return []string{fqn}
 	case step && ownerInOccurrenceFamily(owner):
-		return slices.Clone(stepFallbackFQNs)
+		if u.Composite {
+			return slices.Clone(stepFallbackFQNs)
+		}
+		// An Object (item, part, port) encloses no non-composite step; a
+		// performance or occurrence encloses it.
+		if ownerInItemFamily(owner) || ownerInPortFamily(owner) {
+			return nil
+		}
+		return []string{stepFallbackFQNs[2]}
 	}
 	return nil
 }
@@ -164,6 +190,9 @@ func nestedRuleFQN(u NestedUsage, owner NestedOwner) (fqn string, step bool) {
 	case ast.UsageItem, ast.UsagePort, ast.UsageOccurrence, ast.UsageIndividual:
 		return occurrenceNestedFQN(owner, u.Composite, u.Portion, false)
 	case ast.UsageAction, ast.UsageTransition, ast.UsageFlow:
+		if u.EntryExitAction {
+			return "", true
+		}
 		return actionNestedFQN(owner, u.Composite, u.Portion)
 	case ast.UsageState:
 		return stateNestedFQN(owner, u.Composite, u.Portion)
@@ -179,9 +208,7 @@ func nestedRuleFQN(u NestedUsage, owner NestedOwner) (fqn string, step bool) {
 	case ast.UsageRequirement, ast.UsageSatisfy, ast.UsageConcern, ast.UsageViewpoint:
 		return requirementNestedFQN(owner, u.Composite, u.Portion)
 	case ast.UsageStep:
-		if u.Composite {
-			return "", true
-		}
+		return "", true
 	}
 	return "", false
 }
@@ -252,14 +279,18 @@ func partNestedFQN(owner NestedOwner, composite bool, portion ast.PortionKind) (
 }
 
 // actionNestedFQN is the rule chain of a usage whose kind nests under an
-// action: the action's `subactions`, the part's `ownedActions`, then the
-// occurrence rules with the KerML step fallback behind them.
+// action: the action's `subactions`, the part's `ownedActions`, the item's
+// `ownedPerformances` (KerML 1.1 §8.4.4.7.2, a composite step of a structure;
+// SysML v2 §8.4.13.2), then the occurrence rules with the KerML step fallback behind them.
 func actionNestedFQN(owner NestedOwner, composite bool, portion ast.PortionKind) (string, bool) {
 	if composite && ownerInActionFamily(owner) {
 		return "Actions::Action::subactions", false
 	}
 	if composite && ownerInPartFamily(owner) {
 		return "Parts::Part::ownedActions", false
+	}
+	if composite && ownerInItemFamily(owner) {
+		return "Objects::Object::ownedPerformances", false
 	}
 	return occurrenceNestedFQN(owner, composite, portion, true)
 }
@@ -305,9 +336,19 @@ func constraintNestedFQN(owner NestedOwner, composite bool, portion ast.PortionK
 // continues as the constraint rules when no requirement owns it.
 func requirementNestedFQN(owner NestedOwner, composite bool, portion ast.PortionKind) (string, bool) {
 	if composite && ownerInRequirementFamily(owner) {
-		return "Requirements::RequirementCheck::subrequirements", false
+		return subrequirementsFQN, false
 	}
 	return constraintNestedFQN(owner, composite, portion)
+}
+
+// subrequirementsFQN is the feature a subrequirement implicitly subsets, which
+// `:> requirementChecks, constraints` makes a required constraint of its container.
+const subrequirementsFQN = "Requirements::RequirementCheck::subrequirements"
+
+// IsSubrequirement reports whether sym is a subrequirement (SysML v2 §7.21.2): a composite requirement
+// usage nested in a requirement definition or usage, a required constraint of its container.
+func (m *Model) IsSubrequirement(sym *symbols.Symbol) bool {
+	return m.nestedSubsettingFQN(sym) == subrequirementsFQN
 }
 
 // occurrenceNestedFQN is the occurrence fallback every chain ends in: an
@@ -329,12 +370,20 @@ func occurrenceNestedFQN(owner NestedOwner, composite bool, portion ast.PortionK
 
 // stepNestedFQN is the KerML step fallback (KerML 1.1 §8.3.4.8), whose owner is
 // a KerML type judged by library conformance rather than by declaration kind.
-func (m *Model) stepNestedFQN(owner *symbols.Symbol) string {
+func (m *Model) stepNestedFQN(owner *symbols.Symbol, composite bool) string {
 	switch {
 	case m.conformsByName(owner, "Performances::Performance"):
-		return stepFallbackFQNs[0]
+		// Only a composite step is a subperformance; a parameter such as
+		// LoopAction::body is enclosed by the performance, not part of it.
+		if composite {
+			return stepFallbackFQNs[0]
+		}
+		return stepFallbackFQNs[2]
 	case m.conformsByName(owner, "Objects::Object"):
-		return stepFallbackFQNs[1]
+		if composite {
+			return stepFallbackFQNs[1]
+		}
+		return ""
 	case m.conformsByName(owner, "Occurrences::Occurrence"):
 		return stepFallbackFQNs[2]
 	}

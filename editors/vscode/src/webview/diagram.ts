@@ -36,6 +36,7 @@ import {
   CanvasLayout,
   insertedWaypoint,
   layoutCanvas,
+  listedEdges,
   movable,
   movedNode,
   movedWaypoint,
@@ -74,7 +75,7 @@ const relationList = document.getElementById("relation-list") as HTMLElement;
 
 const state = JSON.parse(body.dataset.state ?? "{}") as { uri?: string; avoid?: string };
 const documentURI = state.uri ?? "";
-const saved = (vscode.getState() ?? {}) as { view?: string; last?: RenderResult; style?: string; routing?: string; viewport?: unknown; hidden?: string[] };
+const saved = (vscode.getState() ?? {}) as { view?: string; last?: RenderResult; style?: string; routing?: string; viewport?: unknown; hidden?: string[]; include?: string[] };
 let selected = saved.view ?? "";
 // A rendering saved by an older extension is normalized like a fresh one, and
 // drawn in the look it was, or the default when it saved none.
@@ -110,6 +111,10 @@ const DOUBLE_CLICK_MS = 400;
 let clickedWaypoint: { edge: number; point: number; at: number } | undefined;
 // The extension's number for the drawing shown; an action names the drawing its ids came from.
 let drawn = 0;
+// Whether the server answers what relates to a node, so a node's menu offers to show related elements.
+let related = false;
+// What the panel draws besides the view, as the extension last said; kept so a reload restores it.
+let include: string[] = saved.include ?? [];
 
 fillStyles();
 applyStyle(style);
@@ -238,6 +243,8 @@ window.addEventListener("message", (event: MessageEvent<ToWebview>) => {
       applyStyle(message.style);
       applyRouting(message.routing);
       defaultHidden = message.hideRelations ?? [];
+      related = message.related === true;
+      include = message.include ?? [];
       if (draw(message.result)) {
         drawn = message.drawn;
         if (message.hint !== undefined) {
@@ -272,7 +279,7 @@ window.addEventListener("message", (event: MessageEvent<ToWebview>) => {
   }
 });
 
-vscode.postMessage({ type: "ready" });
+vscode.postMessage({ type: "ready", include: include.length > 0 ? include : undefined });
 
 // fillPicker lists the document's views and the pseudo-views, marking the ones
 // whose rendering kind the server does not produce with why.
@@ -373,19 +380,21 @@ function draw(result: RenderResult): boolean {
       layout = layoutCanvas(result, panelOverrides());
       if (empty || nothingLaidOut(layout)) {
         layout = undefined;
-        diagram.replaceChildren(emptyElement(result));
-      } else {
-        show(layout);
       }
     } else {
       // A table is not drawn as geometry: it is drawn as a table from its rows.
       layout = undefined;
-      diagram.replaceChildren(tableOf(result));
+    }
+    // The rendering is current before it is shown: the selection's neighbourhood is read from it.
+    last = result;
+    if (layout !== undefined) {
+      show(layout);
+    } else {
+      diagram.replaceChildren(result.form === "mermaid" ? emptyElement(result) : tableOf(result));
     }
     diagram.classList.remove("stale");
     emptyReason = empty || (result.form === "mermaid" && layout === undefined) ? emptyMessage(result) : undefined;
     showStatus(emptyReason ?? "");
-    last = result;
     if (layout !== undefined) {
       // The grid answers at once; ELK's layered layout replaces it when it resolves.
       showStatus("Laying out…");
@@ -406,10 +415,10 @@ function draw(result: RenderResult): boolean {
       });
     }
     remember();
-    showNotices(result);
+    showNotices(result, layout);
     // An open menu names nodes of the drawing just replaced.
     hideMenu();
-    showRelations(result);
+    showRelations(layout);
     kindLabel.textContent = describe(result);
     return true;
   } catch (err) {
@@ -423,6 +432,7 @@ function draw(result: RenderResult): boolean {
 // show puts a layout on screen in place of what was there, the cursor's node marked.
 function show(shown: CanvasLayout): void {
   diagram.replaceChildren(drawCanvas(shown));
+  showNotices(last, shown);
   applyViewport();
   highlight(selectedNode);
   applySelection();
@@ -440,11 +450,11 @@ function select(id: string | undefined): void {
 // applySelection marks the selection's neighbourhood on the canvas on screen.
 function applySelection(): void {
   const svg = diagram.querySelector("svg");
-  if (!svg || !last) {
+  if (!svg || !last || !layout) {
     return;
   }
   markSelection(svg, focused === undefined ? undefined : neighbourhood(last, focused, hiddenSet()));
-  countRelations(last);
+  countRelations(layout);
 }
 
 // hiddenSet is the relationship kinds hidden now: the panel's own filter, else the workspace default.
@@ -507,12 +517,12 @@ function showLayoutMode(): void {
 
 // showRelations lists the relationship kinds the rendering draws, each with a box to
 // show or hide it; a rendering with no edges, or a table, offers no list.
-function showRelations(result: RenderResult): void {
+function showRelations(shown: CanvasLayout | undefined): void {
   const kinds = new Map<string, number>();
-  for (const edge of result.edges ?? []) {
+  for (const edge of shown ? listedEdges(shown) : []) {
     kinds.set(edge.kind, (kinds.get(edge.kind) ?? 0) + 1);
   }
-  relations.hidden = result.form !== "mermaid" || kinds.size === 0;
+  relations.hidden = shown === undefined || kinds.size === 0;
   const hidden = hiddenSet();
   relationList.replaceChildren(...[...kinds.keys()].sort(byCodeUnit).map((kind) => {
     const box = document.createElement("input");
@@ -525,14 +535,17 @@ function showRelations(result: RenderResult): void {
     label.append(box, ` ${kind} `, count);
     return label;
   }));
-  countRelations(result);
+  if (shown) {
+    countRelations(shown);
+  }
 }
 
 // countRelations writes each kind's count after its name: how many edges, and how many at the selected node.
-function countRelations(result: RenderResult): void {
-  const related = focused === undefined ? undefined : relatedByKind(result, focused);
+function countRelations(shown: CanvasLayout): void {
+  const listed = listedEdges(shown);
+  const related = focused === undefined ? undefined : relatedByKind(listed, focused);
   const total = new Map<string, number>();
-  for (const edge of result.edges ?? []) {
+  for (const edge of listed) {
     total.set(edge.kind, (total.get(edge.kind) ?? 0) + 1);
   }
   for (const box of relationList.querySelectorAll<HTMLInputElement>("input[data-kind]")) {
@@ -1009,8 +1022,9 @@ function describe(result: RenderResult): string {
   return result.stated ? `${name} — ${result.kind} (${result.stated})` : `${name} — ${result.kind}`;
 }
 
-function showNotices(result: RenderResult): void {
-  const list = result.notices ?? [];
+// showNotices lists the rendering's notices and the layout's, what each left undrawn.
+function showNotices(result: RenderResult | undefined, shown: CanvasLayout | undefined): void {
+  const list = [...(result?.notices ?? []), ...(shown?.notices ?? [])];
   noticeList.replaceChildren();
   notices.hidden = list.length === 0;
   if (list.length === 0) {
@@ -1049,7 +1063,7 @@ function showHint(message: string): void {
 // showMenu opens a node's context menu where it was clicked, kept on screen;
 // its entries act on the rendering the node was drawn from.
 function showMenu(node: RenderNode, result: RenderResult, x: number, y: number): void {
-  const items = nodeMenu(node, result.palette);
+  const items = nodeMenu(node, result.palette, { related });
   menu.replaceChildren();
   if (items.length === 0) {
     hideMenu();
@@ -1063,6 +1077,11 @@ function showMenu(node: RenderNode, result: RenderResult, x: number, y: number):
     } else if (item.heading) {
       entry.className = "title";
       entry.textContent = item.label;
+    } else if (item.disabled) {
+      entry.className = "disabled";
+      entry.setAttribute("aria-disabled", "true");
+      entry.textContent = item.label;
+      entry.addEventListener("click", (event) => event.stopPropagation());
     } else {
       entry.textContent = item.label;
       const { command } = item;
@@ -1090,9 +1109,16 @@ function hideMenu(): void {
 // run hands a chosen entry to the extension with the drawing it was offered
 // on; the panel redraws once the document has changed.
 function run(command: MenuCommand): void {
-  if (command.kind === "reveal") {
-    vscode.postMessage({ type: "reveal", id: command.id, drawn });
-    return;
+  switch (command.kind) {
+    case "reveal":
+      vscode.postMessage({ type: "reveal", id: command.id, drawn });
+      return;
+    case "related":
+      vscode.postMessage({ type: "related", id: command.id, drawn });
+      return;
+    case "hide":
+      vscode.postMessage({ type: "hide", id: command.id, drawn });
+      return;
   }
   vscode.postMessage({ type: "edit", action: command, drawn });
 }
@@ -1117,5 +1143,5 @@ function highlight(id: string | undefined): void {
 
 // remember keeps what the panel is showing, so a window reload restores it.
 function remember(): void {
-    vscode.setState({ uri: documentURI, view: selected, last, style, routing, viewport, hidden: hiddenKinds === undefined ? undefined : [...hiddenKinds] });
+    vscode.setState({ uri: documentURI, view: selected, last, style, routing, viewport, hidden: hiddenKinds === undefined ? undefined : [...hiddenKinds], include });
 }

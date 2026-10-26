@@ -2768,6 +2768,11 @@ pub struct ServerInfoResponse {
     ///                   and answers with typed rows.
     ///    "render_document" - the RenderDocument RPC renders a named document to
     ///                   Markdown.
+    ///    "query_order_by" - Query.order_by sorts the matched elements; a service
+    ///                   without it would ignore the field, so a client checks.
+    ///    "render_document_html" - RenderDocumentRequest.form takes "html".
+    ///    "render_document_asciidoc" - RenderDocumentRequest.form takes "asciidoc"
+    ///                   and the response carries the document in `asciidoc`.
     ///    "render_view" - the RenderView RPC renders a declared view or targeted
     ///                   pseudo-view as machine-readable diagram data.
     ///    "export_graphs" - the ExportGraphs RPC exports the lowered graph of an
@@ -2848,6 +2853,11 @@ pub struct Query {
     /// Filter every considered element must satisfy. Unset matches all of them.
     #[prost(message, optional, tag="3")]
     pub r#where: ::core::option::Option<Constraint>,
+    /// Properties the matched elements are sorted by, in order of precedence,
+    /// each ascending; elements equal under every one keep declaration order.
+    /// Corresponds to the standard's `orderBy`. An unknown one fails the call.
+    #[prost(string, repeated, tag="4")]
+    pub order_by: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
 /// Constraint is the standard's Constraint, whose `@type` discriminates between
 /// its two forms. On the wire the form is the oneof arm, not a type tag.
@@ -2879,13 +2889,14 @@ pub struct PrimitiveConstraint {
     #[prost(enumeration="PrimitiveOperator", tag="3")]
     pub operator: i32,
     /// Values to compare against. The standard writes one value, and its clients
-    /// also write a list for `@type`; with `=` the element matches any of them,
-    /// while `>` and `<` require exactly one.
+    /// also write a list for `@type`; with `=`, `in` and `instanceOf` the element
+    /// matches any of them, while `<`, `<=`, `>` and `>=` require exactly one.
     #[prost(string, repeated, tag="4")]
     pub value: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
-/// CompositeConstraint combines constraints. An empty constraint list fails the
-/// call: it has no defensible verdict.
+/// CompositeConstraint combines constraints. The standard combines at least two
+/// (`constraint : Constraint \[2..*\]`): an empty list has no defensible verdict,
+/// and a one-member list is that member, so either fails the call.
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CompositeConstraint {
     #[prost(enumeration="CompositeOperator", tag="1")]
@@ -3634,22 +3645,27 @@ pub struct RenderDocumentRequest {
     /// not declare it, and INVALID_ARGUMENT when it declares something else.
     #[prost(string, tag="2")]
     pub document_id: ::prost::alloc::string::String,
-    /// Form to render: "markdown" (the default when empty) or "html", the
+    /// Form to render: "markdown" (the default when empty), "html", the
     /// standalone page with the default stylesheet that the CLI's -doc-form html
-    /// writes. Any other form fails with INVALID_ARGUMENT; PDF needs the CLI's
-    /// converter toolchain and is not offered here.
+    /// writes, or "asciidoc", the document the CLI's -doc-form asciidoc writes
+    /// (under the render_document_asciidoc capability). Any other form fails
+    /// with INVALID_ARGUMENT; PDF needs the CLI's converter toolchain and is not
+    /// offered here.
     #[prost(string, tag="3")]
     pub form: ::prost::alloc::string::String,
 }
 /// RenderDocumentResponse carries the rendered document in the form requested,
 /// byte-for-byte what the CLI's -render-document writes: markdown for the
-/// Markdown form, html for the HTML form, the other left empty.
+/// Markdown form, html for the HTML form, asciidoc for the AsciiDoc form, the
+/// others left empty.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct RenderDocumentResponse {
     #[prost(string, tag="1")]
     pub markdown: ::prost::alloc::string::String,
     #[prost(string, tag="2")]
     pub html: ::prost::alloc::string::String,
+    #[prost(string, tag="4")]
+    pub asciidoc: ::prost::alloc::string::String,
     /// The file a rendered set writes this document to in the requested form
     /// (-render-documents), which the other documents' links to it name.
     /// Populated under the render_document_file_name capability.
@@ -3677,6 +3693,13 @@ pub struct RenderViewRequest {
     /// overriding the depth the view states; 0 draws every level.
     #[prost(int32, tag="5")]
     pub depth: i32,
+    /// How a tree rendering folds a node's owned members into compartment rows,
+    /// as view.ParseCompartments reads it: "" or "positioned" (the default, only
+    /// the layout-less members of a tree some Layout positions), "most" (every
+    /// owned usage no Layout, nested definition or package keeps a node) or
+    /// "ports" (the port usages with the ports nested under them).
+    #[prost(string, tag="6")]
+    pub compartments: ::prost::alloc::string::String,
 }
 /// RenderViewResponse carries all machine-readable fields of the rendering.
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -3737,6 +3760,10 @@ pub struct RenderNode {
     pub geometry: ::core::option::Option<RenderGeometry>,
     #[prost(message, optional, tag="13")]
     pub style: ::core::option::Option<RenderStyle>,
+    /// The compartment of the parent node this node is drawn as a row of
+    /// ("attributes", "parts", "ports", ...); unset for a node drawn as a box.
+    #[prost(string, tag="14")]
+    pub compartment: ::prost::alloc::string::String,
 }
 /// RenderPort is a feature drawn on a node's border.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
@@ -4351,7 +4378,8 @@ impl EditFailure {
         }
     }
 }
-/// PrimitiveOperator is the standard's PrimitiveConstraint.operator.
+/// PrimitiveOperator is the standard's PrimitiveConstraint.operator, the seven
+/// literals of API & Services §7.1.4.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
 pub enum PrimitiveOperator {
@@ -4363,6 +4391,16 @@ pub enum PrimitiveOperator {
     Greater = 2,
     /// "<"
     Less = 3,
+    /// "<="
+    LessEqual = 4,
+    /// ">="
+    GreaterEqual = 5,
+    /// "in": the property's value is one of the listed values.
+    In = 6,
+    /// "instanceOf": the element's metaclass (`property` must be "@type")
+    /// conforms to one of the listed metaclasses, so a PartUsage is an instance
+    /// of Usage, Feature and Element.
+    InstanceOf = 7,
 }
 impl PrimitiveOperator {
     /// String value of the enum field names used in the ProtoBuf definition.
@@ -4375,6 +4413,10 @@ impl PrimitiveOperator {
             Self::Equal => "PRIMITIVE_OPERATOR_EQUAL",
             Self::Greater => "PRIMITIVE_OPERATOR_GREATER",
             Self::Less => "PRIMITIVE_OPERATOR_LESS",
+            Self::LessEqual => "PRIMITIVE_OPERATOR_LESS_EQUAL",
+            Self::GreaterEqual => "PRIMITIVE_OPERATOR_GREATER_EQUAL",
+            Self::In => "PRIMITIVE_OPERATOR_IN",
+            Self::InstanceOf => "PRIMITIVE_OPERATOR_INSTANCE_OF",
         }
     }
     /// Creates an enum from field names used in the ProtoBuf definition.
@@ -4384,6 +4426,10 @@ impl PrimitiveOperator {
             "PRIMITIVE_OPERATOR_EQUAL" => Some(Self::Equal),
             "PRIMITIVE_OPERATOR_GREATER" => Some(Self::Greater),
             "PRIMITIVE_OPERATOR_LESS" => Some(Self::Less),
+            "PRIMITIVE_OPERATOR_LESS_EQUAL" => Some(Self::LessEqual),
+            "PRIMITIVE_OPERATOR_GREATER_EQUAL" => Some(Self::GreaterEqual),
+            "PRIMITIVE_OPERATOR_IN" => Some(Self::In),
+            "PRIMITIVE_OPERATOR_INSTANCE_OF" => Some(Self::InstanceOf),
             _ => None,
         }
     }

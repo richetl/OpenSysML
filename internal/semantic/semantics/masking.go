@@ -143,10 +143,11 @@ func (m *Model) implicitMetadataBodyRedefinitions(sym *symbols.Symbol) []*symbol
 }
 
 // maskingRedefinedFeatures returns the features sym redefines by clause or by
-// case role, which its owner does not inherit.
+// case role, which its owner does not inherit. A library role (a view's `render`,
+// a state's `entry` action) leaves the library name reachable, as in the pilot.
 func (m *Model) maskingRedefinedFeatures(sym *symbols.Symbol) []*symbols.Symbol {
 	explicit := m.RedefinedFeatures(sym)
-	roles := m.ImplicitRoleRedefinitions(sym)
+	roles := m.caseRoleRedefinitions(sym)
 	if len(roles) == 0 {
 		return explicit
 	}
@@ -202,6 +203,11 @@ func inheritedIdentifier(
 // NamingFeatureOf is the feature sym takes its name and short name from when it
 // declares neither (KerML 8.3.3.3 namingFeature): referenced, else first redefined.
 func (m *Model) NamingFeatureOf(sym *symbols.Symbol) *symbols.Symbol {
+	return m.namingFeature(sym)
+}
+
+// NamingFeature returns the feature that gives sym its effective name.
+func (m *Model) NamingFeature(sym *symbols.Symbol) *symbols.Symbol {
 	return m.namingFeature(sym)
 }
 

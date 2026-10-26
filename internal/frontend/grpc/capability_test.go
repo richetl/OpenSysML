@@ -83,6 +83,12 @@ func TestCapabilityGatedRequestsAreRefused(t *testing.T) {
 			_, err := s.Query(ctx, &pb.QueryRequest{})
 			return err
 		}},
+		{"query order by", CapabilityQueryOrderBy, func(s *Service) error {
+			_, err := s.Query(ctx, &pb.QueryRequest{
+				ModelHash: "any", Query: &pb.Query{OrderBy: []string{"name"}},
+			})
+			return err
+		}},
 		{"oslc query", CapabilityOSLCQuery, func(s *Service) error {
 			_, err := s.Query(ctx, &pb.QueryRequest{OslcQuery: "oslc.where=rdf:type=\"PartUsage\""})
 			return err
@@ -315,6 +321,12 @@ func TestCapabilityGatedRequestsAreRefused(t *testing.T) {
 		{"render document html", CapabilityRenderDocumentHTML, func(s *Service) error {
 			_, err := s.RenderDocument(ctx, &pb.RenderDocumentRequest{
 				ModelHash: "any", DocumentId: "Any", Form: "html",
+			})
+			return err
+		}},
+		{"render document asciidoc", CapabilityRenderDocumentAsciiDoc, func(s *Service) error {
+			_, err := s.RenderDocument(ctx, &pb.RenderDocumentRequest{
+				ModelHash: "any", DocumentId: "Any", Form: "asciidoc",
 			})
 			return err
 		}},

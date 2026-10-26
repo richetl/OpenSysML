@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 )
@@ -71,13 +72,13 @@ func (q *Query) FixValue(v *Var, value string, src PinSource) error {
 			File: v.File, Span: v.Span, Location: v.Location,
 		}
 	}
-	if !q.declares(v) {
+	if !slices.Contains(q.Vars, v) {
 		return refuse("the query does not read it")
 	}
 	if v.Sort.Kind != SortDatatype {
 		return refuse("the feature's values are " + v.Sort.Name + ", which no name of a value denotes")
 	}
-	if !contains(v.Sort.Values, value) {
+	if !slices.Contains(v.Sort.Values, value) {
 		return refuse("it is not one of the values of " + v.Sort.Name)
 	}
 	q.Assertions = append(q.Assertions, Assertion{
@@ -95,26 +96,6 @@ func (q *Query) FixValue(v *Var, value string, src PinSource) error {
 	})
 	q.Pinned = append(q.Pinned, PinnedValue{Var: v, Value: value, Source: src, Index: len(q.Assertions) - 1})
 	return nil
-}
-
-// declares reports whether the variable is one the query reads.
-func (q *Query) declares(v *Var) bool {
-	for _, declared := range q.Vars {
-		if declared == v {
-			return true
-		}
-	}
-	return false
-}
-
-// contains reports whether values holds name.
-func contains(values []string, name string) bool {
-	for _, value := range values {
-		if value == name {
-			return true
-		}
-	}
-	return false
 }
 
 // MaxConfigurationsFromEnv is the bound the environment asks enumeration to use,
@@ -193,7 +174,7 @@ func (s *Solver) Enumerate(ctx context.Context, q *Query, vars []*Var, limit int
 		return nil, fmt.Errorf("%s %s: no variable to enumerate", q.Kind, q.Element)
 	}
 	for _, v := range vars {
-		if !q.declares(v) {
+		if !slices.Contains(q.Vars, v) {
 			return nil, &NotDeclaredError{Kind: q.Kind, Element: q.Element, Variable: v.Name}
 		}
 	}
@@ -249,6 +230,9 @@ func (s *session) enumerate(q *Query, vars []*Var, limit int) (*Result, error) {
 			return result, nil
 		}
 		values, err := s.values(vars)
+		if err == nil {
+			err = s.liveness(values)
+		}
 		if err != nil {
 			return fail(err)
 		}
@@ -304,6 +288,9 @@ func (s *session) deny(values []Assignment) error {
 func (s *session) blocking(values []Assignment) (string, error) {
 	parts := make([]string, 0, len(values))
 	for _, a := range values {
+		if a.Dead {
+			continue
+		}
 		value, err := DecodeValue(a)
 		if err != nil {
 			return "", s.solver.processError("get-value",
@@ -318,8 +305,56 @@ func (s *session) blocking(values []Assignment) (string, error) {
 		}
 		parts = append(parts, writeTerm(Binary(OpEq, Bool, VarTerm(a.Var), literal)))
 	}
-	if len(parts) == 1 {
+	switch len(parts) {
+	case 0:
+		return "true", nil
+	case 1:
 		return parts[0], nil
 	}
 	return "(and " + strings.Join(parts, " ") + ")", nil
+}
+
+// liveness marks the assignments the model gives no meaning: a variation point
+// that exists only under a variant the model does not select. The blocking
+// clause and the selection reported cover the live variables alone, so a dead
+// one cannot tell two selections apart.
+func (s *session) liveness(values []Assignment) error {
+	var guarded []int
+	var terms []string
+	for i, a := range values {
+		if a.Var.Live != nil {
+			guarded = append(guarded, i)
+			terms = append(terms, writeTerm(a.Var.Live))
+		}
+	}
+	if len(guarded) == 0 {
+		return nil
+	}
+	if err := s.send("(get-value (" + strings.Join(terms, " ") + "))\n"); err != nil {
+		return err
+	}
+	reply, err := s.read(cmdGetValue)
+	if err != nil {
+		return err
+	}
+	if msg, ok := reply.isError(); ok {
+		return s.solver.processError(cmdGetValue, "it would not say which variation points its model selects: "+msg, s.stderrText(), nil)
+	}
+	if !reply.IsList || len(reply.List) != len(guarded) {
+		return s.solver.processError(cmdGetValue, "its model answers "+quoteReply(reply)+" for the variation points it selects", s.stderrText(), nil)
+	}
+	for n, i := range guarded {
+		pair := reply.List[n]
+		if !pair.IsList || len(pair.List) != 2 || pair.List[1].IsList {
+			return s.solver.processError(cmdGetValue, "its model holds "+quoteReply(pair)+" rather than a selection and its truth", s.stderrText(), nil)
+		}
+		switch pair.List[1].Atom {
+		case "true":
+		case "false":
+			values[i].Dead = true
+		default:
+			return s.solver.processError(cmdGetValue, "its model gives "+pair.List[1].Atom+" for whether "+values[i].Var.Name+" is selected", s.stderrText(), nil)
+		}
+	}
+	return nil
 }

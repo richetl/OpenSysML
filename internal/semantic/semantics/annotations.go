@@ -121,7 +121,7 @@ func (m *Model) DeclaredAnnotationFactsOf(sym *symbols.Symbol) []symbols.Annotat
 // clause states on the elements it names — its type and bound values — as an
 // interface record keeps it; nil for any other symbol.
 func (m *Model) AboutAnnotationFactsOf(sym *symbols.Symbol) *symbols.AnnotationFacts {
-	if sym == nil || sym.Kind != symbols.SymbolMetadataUsage || !annotatesOthers(sym.Decl) {
+	if sym == nil || sym.Kind != symbols.SymbolMetadataUsage || !symbols.AnnotatesOthers(sym.Decl) {
 		return nil
 	}
 	a, ok := m.metadataAnnotation(sym.OwnerScope, sym.Decl)
@@ -138,7 +138,7 @@ func (m *Model) AboutAnnotationFactsOf(sym *symbols.Symbol) *symbols.AnnotationF
 // AnnotatedElementsOf returns the elements a metadata usage annotates through
 // its `about` clause, resolved; nil for any other symbol.
 func (m *Model) AnnotatedElementsOf(sym *symbols.Symbol) []*symbols.Symbol {
-	if sym.Kind != symbols.SymbolMetadataUsage || !annotatesOthers(sym.Decl) {
+	if sym.Kind != symbols.SymbolMetadataUsage || !symbols.AnnotatesOthers(sym.Decl) {
 		return nil
 	}
 	targets := m.annotatedElements(sym.OwnerScope, sym.Decl)
@@ -405,7 +405,7 @@ func (m *Model) declaredAnnotations(sym *symbols.Symbol) []annotation {
 		// `part seatBelt {@Safety{isMandatory = true;}}`: a metadata usage written
 		// as a member annotates the element owning the body, unless it states
 		// what it annotates with an `about` clause.
-		if !isMetadataUsage(member) || annotatesOthers(member) {
+		if !isMetadataUsage(member) || symbols.AnnotatesOthers(member) {
 			continue
 		}
 		if a, ok := m.metadataAnnotation(memberScope(sym, scope), member); ok {
@@ -525,7 +525,7 @@ func (m *Model) typeDefaults(typ *symbols.Symbol) map[string][]symbols.FilterVal
 		if !ok {
 			continue
 		}
-		name := simpleSymbolName(member)
+		name := SimpleSymbolName(member)
 		if name == "" {
 			continue
 		}
@@ -675,7 +675,7 @@ func (m *Model) indexAboutUsage(sym *symbols.Symbol) {
 		m.indexRecordedAboutUsage(sym)
 		return
 	}
-	if !annotatesOthers(sym.Decl) {
+	if !symbols.AnnotatesOthers(sym.Decl) {
 		return
 	}
 	a, ok := m.metadataAnnotation(sym.OwnerScope, sym.Decl)
@@ -743,10 +743,6 @@ func (m *Model) annotatedElements(scope *symbols.Scope, decl ast.Node) []aboutTa
 	}
 	return out
 }
-
-// annotatesOthers reports whether a metadata usage states what it annotates
-// (`metadata m about p;`, `@M about p;`), rather than annotating the element owning it.
-func annotatesOthers(decl ast.Node) bool { return symbols.AnnotatesOthers(decl) }
 
 // annotationValues reads the feature values an annotation body binds, as in
 // `@Safety{isMandatory = true;}`. A binding whose value is not a constant or an
@@ -832,7 +828,7 @@ func (m *Model) annotationValue(scope *symbols.Scope, value ast.Node) symbols.Fi
 	}
 	switch e := value.(type) {
 	case *ast.LiteralString:
-		return symbols.FilterValue{Kind: symbols.FilterValueString, Str: unquote(e.Value)}
+		return symbols.FilterValue{Kind: symbols.FilterValueString, Str: source.StringValue(e.Value)}
 	case *ast.FeatureReference:
 		if sym, ok := m.resolver.ResolveQualified(scope, e.Name); ok && sym != nil {
 			if fqn := m.fqnOf(sym); fqn != "" {
@@ -873,6 +869,17 @@ func (m *Model) DeclaredFeatureValues(sym *symbols.Symbol, feature string) ([]sy
 	return m.constantFeatureValues(member, make(map[*symbols.Symbol]bool))
 }
 
+// OwnFeatureValues returns the ordered constant values a feature's own
+// valuation binds (KerML Feature::valuation): what its declaration writes, or
+// what the features it redefines write when it writes none. Not a feature: ok
+// is false. The error is a symbols.NeedsHydration for a recorded declaration.
+func (m *Model) OwnFeatureValues(sym *symbols.Symbol) ([]symbols.FilterValue, bool, error) {
+	if m == nil || sym == nil || !sym.IsFeature() {
+		return nil, false, nil
+	}
+	return m.constantFeatureValues(sym, make(map[*symbols.Symbol]bool))
+}
+
 // constantFeatureValues reads the values member's declaration writes, or those
 // of the features it redefines when it writes none. A recorded feature's record
 // says whether it writes a value but not what: that reading needs its tree.
@@ -892,7 +899,12 @@ func (m *Model) constantFeatureValues(member *symbols.Symbol, seen map[*symbols.
 	if usage == nil || usage.Value == nil {
 		var values []symbols.FilterValue
 		found := false
-		for _, redefined := range m.RedefinedFeatures(member) {
+		redefined := m.RedefinedFeatures(member)
+		if len(redefined) == 0 {
+			// A parameter redefines its general's parameter by position.
+			redefined = m.ImplicitParameterRedefinitions(member)
+		}
+		for _, redefined := range redefined {
 			inherited, ok, err := m.constantFeatureValues(redefined, seen)
 			if err != nil {
 				return nil, false, err
@@ -1019,6 +1031,9 @@ func (m *Model) metaclassOf(sym *symbols.Symbol) *symbols.Symbol {
 		return m.kermlMetaclass("TextualRepresentation")
 	case symbols.SymbolDependency:
 		return m.kermlMetaclass("Dependency")
+	case symbols.SymbolAlias:
+		// `alias` declares a Membership of the aliased element (KerML 8.2.3.5.2).
+		return m.kermlMetaclass("Membership")
 	}
 	if meta := m.kermlMetaclass(kermlMetaclassName(sym, m.isKerMLDoc(sym))); meta != nil {
 		return meta
@@ -1352,6 +1367,20 @@ func (m *Model) ReflectiveElements(sym *symbols.Symbol, feature string) ([]*symb
 	if elems, ok := m.implicitOwnerElements(sym, feature); ok {
 		return elems, true
 	}
+	if sym.Kind == symbols.SymbolAlias {
+		if elems, ok := m.aliasMembershipElements(sym, feature); ok {
+			return elems, true
+		}
+	}
+	if elems, ok := m.namespaceRelationshipElements(sym, feature); ok {
+		return elems, true
+	}
+	if elems, ok := m.annotatingElementElements(sym, feature); ok {
+		return elems, true
+	}
+	if elems, ok := m.requirementElements(sym, feature); ok {
+		return elems, true
+	}
 	switch feature {
 	case "owningNamespace":
 		if !m.reflectiveMetaclassConforms(sym, "Element") {
@@ -1377,7 +1406,7 @@ func (m *Model) ReflectiveElements(sym *symbols.Symbol, feature string) ([]*symb
 		}
 		var out []*symbols.Symbol
 		if owner := m.ownerOf(sym); owner != nil && m.reflectiveMetaclassConforms(owner, "Type") {
-			out = append(out, owner)
+			out = append(out, m.variantFeaturingTypes(sym, owner)...)
 		}
 		if sym.Recorded() {
 			for _, target := range m.RecordedRelationshipTargets(sym, ast.RelFeaturedBy) {
@@ -1721,30 +1750,7 @@ func (m *Model) reflectiveFeatureTypes(sym *symbols.Symbol) []*symbols.Symbol {
 			return []*symbols.Symbol{annot.typ}
 		}
 	}
-	types := append([]*symbols.Symbol(nil), m.FeatureTypeSet(sym)...)
-	if !m.reflectiveMetaclassConforms(sym, "PartUsage") || m.resolver == nil || m.resolver.Index() == nil {
-		return types
-	}
-	for _, base := range m.resolver.Index().LookupQualified("Parts::parts") {
-		if base == nil || !base.IsFeature() {
-			continue
-		}
-		for _, typ := range m.baseFeatureTypes(base, nil) {
-			typFQN := m.fqnOf(typ)
-			found := false
-			for _, existing := range types {
-				if existing == typ || m.fqnOf(existing) == typFQN {
-					found = true
-					break
-				}
-			}
-			if !found {
-				types = append(types, typ)
-			}
-		}
-		break
-	}
-	return m.mostSpecificTypes(types)
+	return m.FeatureTypeSetWithImplied(sym)
 }
 
 func (m *Model) conformingTypes(sym *symbols.Symbol, target string) []*symbols.Symbol {
@@ -2028,6 +2034,11 @@ func (m *Model) ReflectiveFeatureValues(sym *symbols.Symbol, feature string) ([]
 		}
 		return values, true
 	}
+	if feature == "text" {
+		if values, ok := m.requirementTexts(sym); ok {
+			return values, true
+		}
+	}
 	if elements, ok := m.ReflectiveElements(sym, feature); ok {
 		values := make([]symbols.FilterValue, 0, len(elements))
 		for _, element := range elements {
@@ -2054,9 +2065,14 @@ func (m *Model) reflectiveFeatureValue(sym *symbols.Symbol, feature string) (sym
 	if sym.Implicit != nil {
 		return m.implicitRelationshipValue(sym, feature)
 	}
+	if sym.Kind == symbols.SymbolAlias {
+		if value, ok := m.aliasMembershipValue(sym, feature); ok {
+			return value, true
+		}
+	}
 	switch feature {
 	case "isImplied":
-		if _, ok := sym.RelationshipDecl(); ok {
+		if _, ok := sym.RelationshipDecl(); ok || sym.Kind == symbols.SymbolAlias {
 			return boolValue(false), true
 		}
 	case "isConjugated":
@@ -2065,14 +2081,14 @@ func (m *Model) reflectiveFeatureValue(sym *symbols.Symbol, feature string) (sym
 		}
 		return boolValue(len(m.ownedImplicitRelationships(sym, conjugationMetaclass)) > 0), true
 	case "name", "declaredName":
-		return stringOrEmpty(simpleSymbolName(sym)), true
+		return stringOrEmpty(SimpleSymbolName(sym)), true
 	case "shortName":
 		return stringOrEmpty(m.EffectiveShortNameOf(sym)), true
 	case "declaredShortName":
 		return stringOrEmpty(sym.ShortName), true
 	case "qualifiedName":
 		// Element::qualifiedName is null for an unnamed element (KerML 1.1 §8.3.2.1).
-		if simpleSymbolName(sym) == "" {
+		if SimpleSymbolName(sym) == "" {
 			return emptyValue(), true
 		}
 		return stringOrEmpty(m.fqnOf(sym)), true
@@ -2326,16 +2342,24 @@ func reflectiveMessageFlowUsage(sym *symbols.Symbol) bool {
 	return ok && kind == ast.UsageFlow && sym.Keyword() == "message"
 }
 
-func (m *Model) reflectiveUsageHasFeaturingType(sym *symbols.Symbol) bool {
-	if IsVariant(sym) {
-		owner := m.ownerOf(sym)
-		if owner == nil || !m.reflectiveMetaclassConforms(owner, "Usage") || !IsVariation(owner) {
-			return false
-		}
-		return m.reflectiveUsageHasFeaturingType(owner)
+// variantFeaturingTypes are the featuringTypes a feature takes from its owner:
+// the owner itself, except that a variant is an owned member but not an owned
+// feature of its variation, so it shares the featuringTypes of a variation
+// usage (SysML v2 checkUsageVariationUsageTypeFeaturing) and takes none from a
+// variation definition.
+func (m *Model) variantFeaturingTypes(sym, owner *symbols.Symbol) []*symbols.Symbol {
+	if !IsVariant(sym) || !IsVariation(owner) {
+		return []*symbols.Symbol{owner}
 	}
-	featuringTypes, ok := m.ReflectiveElements(sym, "featuringType")
-	return ok && len(featuringTypes) > 0
+	if !m.reflectiveMetaclassConforms(owner, "Usage") {
+		return nil
+	}
+	featuring, _ := m.ReflectiveElements(owner, "featuringType")
+	return featuring
+}
+
+func (m *Model) reflectiveUsageHasFeaturingType(sym *symbols.Symbol) bool {
+	return m.reflectiveExpectedFeaturingType(sym) != nil
 }
 
 func defaultUsageComposite(kind symbols.SymbolKind) bool {

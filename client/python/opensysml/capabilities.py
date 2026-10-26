@@ -51,6 +51,11 @@ CAPABILITY_VERIFICATION_ARGUMENTS = "verification_arguments"
 #: loaded model. Without it the service refuses queries with ``UNIMPLEMENTED``.
 CAPABILITY_QUERY = "query"
 
+#: ``Query.orderBy`` sorts the matched elements. Without it the service would
+#: ignore the field and answer in declaration order, so the client refuses to
+#: send a sorted query.
+CAPABILITY_QUERY_ORDER_BY = "query_order_by"
+
 #: The ``RunDocumentQuery`` RPC, which runs a named document query and answers
 #: typed rows. Without it the service refuses with ``UNIMPLEMENTED``.
 CAPABILITY_DOCUMENT_QUERY = "document_query"
@@ -76,6 +81,8 @@ CAPABILITY_CHECK = "check"
 #: HTML page instead of Markdown. Without it the service would render Markdown
 #: whatever form was asked, so the client refuses to ask for HTML.
 CAPABILITY_RENDER_DOCUMENT_HTML = "render_document_html"
+#: ``RenderDocumentRequest.form`` takes ``"asciidoc"``, answered in ``asciidoc``.
+CAPABILITY_RENDER_DOCUMENT_ASCIIDOC = "render_document_asciidoc"
 
 #: An enumeration literal as ``Value.enum_literal``. Without it a literal is
 #: reported as an unsupported null, which is indistinguishable from a value the

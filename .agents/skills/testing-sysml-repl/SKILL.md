@@ -323,6 +323,11 @@ XDG_CACHE_HOME=$C ./bin/sysml -validate file.kerml > warm.out 2>&1; echo $?
 cmp cold.out warm.out    # cold and warm must be byte-identical
 ```
 
+- Records are keyed by the build identity (`internal/workspace/libs/buildid.go`: a clean checkout's
+  revision, else the binary's linker build ID) besides the library content and the format version,
+  so no `rm -rf ~/.cache/sysml-ls` is needed between rebuilds: a binary built from different code
+  misses every record and derives again, and builds of one clean checkout share them. Redirect or clear
+  the cache only to measure a cold start or to prove cold == warm.
 - A known reproducer class: implicit parameter redefinition against cached (Decl-less) library
   symbols, e.g. `package R { behavior b { step u : FeatureReferencingPerformances::FeatureWritePerformance { in onOccurrence { feature redefines startingAt; } } } }`
   in a `.kerml` file — cold-clean/warm-broken before cache format 21.
@@ -3139,7 +3144,7 @@ Discovered while testing inline `entry action { … }` bodies and calc `out` ass
   independent negative assertions. Useful expected strings: `no value: output never assigned`,
   `output bound more than once` (declaration value plus a body assignment; two *body* assignments
   are legal, the last one winning), `assignment outside the calculation body: <name> is not declared
-  by the calculation`, `no result expression: calc … has no return expression`.
+  by the calculation`, `no value: calc … has no return expression`.
 
 ## "Did you mean" suggestions on unresolved references (PR #167)
 
@@ -3634,7 +3639,7 @@ Discriminators that separate a working string runtime from a broken one:
 - A 512 KiB string built by doubling inside a `for` loop (`acc = acc + acc` ×16, then
   `Length(acc)` → 524288) completes in seconds; use it as the cheap no-hang/no-quadratic check.
   Note that a calc whose body assigns to a `return acc` feature returns no value when *invoked from
-  another calc's expression* (`calculation returned no value`), so compute the length inside the
+  another calc's expression* (`no value: calc … ended without a return`), so compute the length inside the
   same body rather than wrapping the loop calc in another one.
 
 ## Runtime budgets, and `calc` recursion in particular (PR #198)
@@ -4978,7 +4983,7 @@ Parser PRs that "unblock a form" are best proven with three surfaces, in this or
    `%calc Sc::scaled 21.0` printing `= 42.00`. Typed runtime errors are visible the same way, e.g.
    `error: evaluation failed: unsupported declaration in a body expression: …` for a collection body
    that declares a feature, and
-   `error: calc invocation failed: no result expression: …` for a returned usage with no value.
+   `error: calc invocation failed: no value: …` for a returned usage with no value.
    Always follow an error with `%eval 1 + 1` → `= 2` to show the session survived.
 3. **A whole-corpus A/B sweep** for regressions:
 

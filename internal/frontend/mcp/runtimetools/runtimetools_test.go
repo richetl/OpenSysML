@@ -43,6 +43,11 @@ const demoModel = `package Demo {
 	}
 	requirement massLimit : MassLimit { attribute :>> maxMass = 2000.0; }
 	requirement massTiny : MassLimit { attribute :>> maxMass = 10.0; }
+	requirement def MassGroup {
+		subject vehicle : Vehicle;
+		requirement tiny : MassLimit { attribute :>> maxMass = 10.0; }
+	}
+	requirement massGroup : MassGroup;
 
 	part sedan : Vehicle { attribute :>> mass = 1200.0; }
 
@@ -366,6 +371,9 @@ func TestSymbolDescribesAnElement(t *testing.T) {
 	if resp.GetSymbol().GetKind() != "partDef" || !strings.Contains(out, "partDef Demo::Vehicle") {
 		t.Errorf("symbol = %v\n%s", resp.GetSymbol(), out)
 	}
+	if resp.GetSymbol().GetMetadata()["visibility"] != "default" || !strings.Contains(out, "metadata: visibility=default") {
+		t.Errorf("symbol metadata = %v\n%s", resp.GetSymbol().GetMetadata(), out)
+	}
 	if structured(t, res)["modelHash"] == "" {
 		t.Error("an implicit parse did not answer the model hash")
 	}
@@ -495,6 +503,13 @@ func TestVerificationToolsAnswerVerdicts(t *testing.T) {
 		t.Errorf("massLimit by sedan: %v\n%s", requirement.GetVerdict(), out)
 	}
 
+	// A subrequirement taking the container's subject fails for sedan, so the group fails.
+	var group pb.VerifyRequirementResponse
+	_, out = h.ok("verify_requirement", map[string]any{"modelHash": hash, "symbolId": "Demo::massGroup", "subjectSymbolId": "Demo::sedan"}, &group)
+	if group.GetVerdict().GetHolds() || !strings.Contains(out, "vehicle.mass <= maxMass") {
+		t.Errorf("massGroup by sedan: %v\n%s", group.GetVerdict(), out)
+	}
+
 	var satisfaction pb.VerifySatisfactionResponse
 	_, out = h.ok("verify_satisfaction", map[string]any{"modelHash": hash}, &satisfaction)
 	if len(satisfaction.GetVerdicts()) != 2 || !satisfaction.GetVerdicts()[0].GetHolds() || satisfaction.GetVerdicts()[1].GetHolds() {
@@ -515,11 +530,11 @@ func TestVerificationToolsAnswerVerdicts(t *testing.T) {
 
 	var calc pb.EvaluateCalcResponse
 	_, out = h.ok("evaluate_calc", map[string]any{"modelHash": hash, "symbolId": "Demo::Twice", "arguments": []any{value("intValue", 21)}}, &calc)
-	if calc.GetResult().GetIntValue() != 42 || !strings.HasPrefix(out, "42") {
+	if held := calc.GetResult().GetSequence().GetElements(); len(held) != 1 || held[0].GetIntValue() != 42 || !strings.HasPrefix(out, "(42)") {
 		t.Errorf("Twice(21) = %v\n%s", calc.GetResult(), out)
 	}
 	_, out = h.ok("evaluate_calc", map[string]any{"modelHash": hash, "symbolId": "Demo::add"}, &calc)
-	if calc.GetResult().GetRealValue() != 3 || !strings.HasPrefix(out, "3") {
+	if held := calc.GetResult().GetSequence().GetElements(); len(held) != 1 || held[0].GetRealValue() != 3 || !strings.HasPrefix(out, "(3") {
 		t.Errorf("add from its members: %v\n%s", calc.GetResult(), out)
 	}
 
@@ -528,7 +543,7 @@ func TestVerificationToolsAnswerVerdicts(t *testing.T) {
 	if analysis.GetError() != "" || len(analysis.GetOutputs()) == 0 || len(analysis.GetVerdicts()) == 0 {
 		t.Errorf("sedanCost: %v %v %q\n%s", analysis.GetOutputs(), analysis.GetVerdicts(), analysis.GetError(), out)
 	}
-	if !strings.Contains(out, "total = 2400") || !strings.Contains(out, "objective") {
+	if !strings.Contains(out, "total = (2400)") || !strings.Contains(out, "objective") {
 		t.Errorf("text:\n%s", out)
 	}
 
@@ -540,7 +555,7 @@ func TestVerificationToolsAnswerVerdicts(t *testing.T) {
 	if sweep.GetError() != "" || len(sweep.GetRows()) != 3 {
 		t.Errorf("sweep: %d rows, error %q\n%s", len(sweep.GetRows()), sweep.GetError(), out)
 	}
-	if !strings.Contains(out, "3 rows over n") || !strings.Contains(out, "n=3 -> result=6") {
+	if !strings.Contains(out, "3 rows over n") || !strings.Contains(out, "n=3 -> result=(6)") {
 		t.Errorf("text:\n%s", out)
 	}
 }
@@ -597,6 +612,10 @@ func TestQueriesAndRenderings(t *testing.T) {
 	h.ok("render_model_document", map[string]any{"paths": []string{telescope}, "documentId": documents[0], "form": "html"}, &doc)
 	if doc.GetHtml() == "" || doc.GetMarkdown() != "" {
 		t.Errorf("html form: markdown %d bytes, html %d bytes", len(doc.GetMarkdown()), len(doc.GetHtml()))
+	}
+	_, out = h.ok("render_model_document", map[string]any{"paths": []string{telescope}, "documentId": documents[0], "form": "asciidoc"}, &doc)
+	if doc.GetAsciidoc() == "" || doc.GetMarkdown() != "" || doc.GetHtml() != "" || !strings.Contains(out, strings.TrimRight(doc.GetAsciidoc(), "\n")) {
+		t.Errorf("asciidoc form: markdown %d bytes, html %d bytes, asciidoc %d bytes:\n%s", len(doc.GetMarkdown()), len(doc.GetHtml()), len(doc.GetAsciidoc()), out)
 	}
 	if msg := h.fails("render_model_document", map[string]any{"paths": []string{telescope}, "documentId": documents[0], "form": "pdf"}); !strings.Contains(msg, "INVALID_ARGUMENT") {
 		t.Errorf("pdf form: %s", msg)

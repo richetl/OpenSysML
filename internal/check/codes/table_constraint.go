@@ -458,13 +458,6 @@ var constraintCodes = []Entry{
 		Spec: "KerML 1.0 validateMetadataFeatureBody and §8.3.4.8.7 (model-level evaluability)",
 	},
 	{
-		Code: "part-usage-part-definition", Tier: TierConstraint, Severity: "error",
-		Summary: "a part usage typed by no part definition",
-		Meaning: "A part is typed by at least one part definition, directly or through what it subsets; an item definition alone does not make a part. " +
-			"Type the part by a part definition.",
-		Spec: "SysML v2 validatePartUsagePartDefinition",
-	},
-	{
 		Code: "portion-owner", Tier: TierConstraint, Severity: "error",
 		Summary: "a portion (snapshot or timeslice) owned by a non-occurrence",
 		Meaning: "A `snapshot` or `timeslice` is a portion of the occurrence that owns it. " +
@@ -500,6 +493,13 @@ var constraintCodes = []Entry{
 		Spec: "SysML v2 validateRequirementVerificationMembershipOwningType",
 	},
 	{
+		Code: "variant-kind", Tier: TierConstraint, Severity: "error",
+		Summary: "a variant whose kind is inconsistent with its owning variation",
+		Meaning: "A variant specializes the variation it is a variant of, so the variation definition, or the types of the variation usage, type the variant; here the variant's kind does not take a type of that kind (an action variant of a part variation, an attribute variant of an action variation). " +
+			"Declare the variant with the variation's kind, or move it to a variation of its own kind.",
+		Spec: "SysML v2 §7.6.7 and checkUsageVariationDefinitionSpecialization, checkUsageVariationUsageSpecialization",
+	},
+	{
 		Code: "variant-outside-variation", Tier: TierConstraint, Severity: "error",
 		Summary: "a variant that is not an owned member of a variation",
 		Meaning: "`variant` marks a member of a variation definition or usage; this one is declared elsewhere, or in an enumeration definition, whose enumerated values are variants already. " +
@@ -509,7 +509,7 @@ var constraintCodes = []Entry{
 	{
 		Code: "variation-member-not-variant", Tier: TierConstraint, Severity: "error",
 		Summary: "a variation owning a usage that is no variant",
-		Meaning: "Every owned usage of a variation definition or usage is a variant (an enumeration definition's every member an enumerated value). " +
+		Meaning: "Every owned usage of a variation definition or usage is a variant, an objective or an explicit parameter included (an enumeration definition's every member an enumerated value). " +
 			"Write `variant` before the usage, or declare it in a definition the variation specializes.",
 		Spec: "SysML v2 validateDefinitionVariationMembership and validateUsageVariationMembership",
 	},

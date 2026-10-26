@@ -254,8 +254,8 @@ func testBodilessModelCalcNamedAsABuiltin(t *testing.T) {
 	`
 	for _, calc := range []string{"Total", "Size", "Parsed", "Added"} {
 		err := calcErrorWithLibraries(t, src, calc, nil, 10000)
-		if !errors.Is(err, errNoResultExpression) {
-			t.Errorf("%s = %v, want %v", calc, err, errNoResultExpression)
+		if !errors.Is(err, ErrNoValue) {
+			t.Errorf("%s = %v, want %v", calc, err, ErrNoValue)
 		}
 	}
 }
@@ -453,7 +453,7 @@ func testStructuredValueOutsideTheDeclaredShape(t *testing.T) {
 	} {
 		idx, _, ctx := buildRuntimeWithLibraries(t, "<test>", parseAndBuild(t, src))
 		sym, scope := calcByName(t, idx.DocumentRoot("<test>"), "test", calc)
-		got, err := ctx.InvokeCalc(sym, nil, scope)
+		got, err := invokeValue(ctx, sym, nil, scope)
 		if err != nil || FormatValue(got) != want {
 			t.Errorf("%s = (%s, %v), want %s", calc, FormatValue(got), err, want)
 		}

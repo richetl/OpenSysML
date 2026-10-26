@@ -328,7 +328,7 @@ func (d *declaredValues) root(v *Var, fqn string) (runtime.Value, error) {
 		}
 		return val, nil
 	}
-	if val, err := d.held(simpleName(fqn)); err == nil {
+	if val, err := d.held(symbols.LastSegment(fqn)); err == nil {
 		return val, nil
 	}
 	if usage, declared := declaredUsage(v, fqn); declared && usage.Value != nil {
@@ -359,14 +359,6 @@ func declaredUsage(v *Var, fqn string) (*ast.Usage, bool) {
 	}
 	usage, ok := v.Symbol.Decl.(*ast.Usage)
 	return usage, ok
-}
-
-// simpleName is the name a feature answers to, unqualified.
-func simpleName(fqn string) string {
-	if at := strings.LastIndex(fqn, "::"); at >= 0 {
-		return fqn[at+2:]
-	}
-	return fqn
 }
 
 // held reads the value the object under check holds for a named feature.
@@ -424,10 +416,17 @@ func (n *nodeValues) valueOf(v *Var) (runtime.Value, error) {
 }
 
 // newNodeValues evaluates every reference the conditions state, naming each by
-// the variable the translation gives it.
+// the variable the translation gives it. A satisfaction's references are read with
+// its bindings, as its conditions read them: `s` is the object `by` names.
 func newNodeValues(ctx *runtime.Context, el diffElement, self *runtime.Instance) *nodeValues {
 	out := &nodeValues{byName: map[string]runtime.Value{}, fallback: newDeclaredValues(ctx, valueHost(el), self)}
 	subject := el.subject()
+	read := func(node ast.Node, scope *symbols.Scope) (runtime.Value, error) {
+		if el.kind == "satisfaction" {
+			return ctx.ReadInSatisfaction(el.assertion, self, scope, node)
+		}
+		return ctx.EvalWithScopeOn(node, scope, self)
+	}
 	var collect func(conds []runtime.Condition)
 	collect = func(conds []runtime.Condition) {
 		for _, cond := range conds {
@@ -440,7 +439,7 @@ func newNodeValues(ctx *runtime.Context, el diffElement, self *runtime.Instance)
 				if !ok {
 					continue
 				}
-				val, err := ctx.EvalWithScopeOn(node, cond.Scope, self)
+				val, err := read(node, cond.Scope)
 				if err != nil {
 					continue
 				}
@@ -462,6 +461,7 @@ func varNameOfReference(ctx *runtime.Context, subject Subject, node ast.Node, sc
 		features:  effectiveFeatures(ctx, subject.Symbol),
 		vars:      map[string]*Var{},
 		sorts:     map[string]Sort{},
+		origins:   map[string]*symbols.Symbol{},
 		guarded:   map[string]bool{},
 		baseUnits: map[string]string{},
 	}
@@ -623,6 +623,9 @@ func pinnedQuery(q *Query, pins []pin, deny bool) *Query {
 		out.Assertions = append(out.Assertions, pinAssertion(p))
 	}
 	switch {
+	case len(checked) == 0 && deny:
+		// A query checking nothing claims true (a requirement over no constraint), whose denial is false.
+		out.Assertions = append(out.Assertions, Assertion{Term: BoolTerm(false), From: Provenance{Role: RoleDenied, Condition: "not (true)"}})
 	case len(checked) == 0:
 	case deny:
 		terms := make([]*Term, 0, len(checked))
@@ -733,7 +736,7 @@ func (g *diffGate) check(t *testing.T, ctx *runtime.Context, el diffElement) dif
 		case errors.As(err, &refusal):
 			g.summary.refused(refusal.Construct + ": " + refusal.Reason)
 			return diffNotTranslated
-		case errors.Is(err, ErrNotTranslatable), errors.Is(err, ErrNoConditions):
+		case errors.Is(err, ErrNotTranslatable), errors.Is(err, ErrNoConditions), errors.Is(err, runtime.ErrNoRequirement):
 			g.summary.refused(err.Error())
 			return diffNotTranslated
 		}

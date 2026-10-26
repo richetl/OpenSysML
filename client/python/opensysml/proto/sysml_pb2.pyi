@@ -43,6 +43,10 @@ class PrimitiveOperator(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     PRIMITIVE_OPERATOR_EQUAL: _ClassVar[PrimitiveOperator]
     PRIMITIVE_OPERATOR_GREATER: _ClassVar[PrimitiveOperator]
     PRIMITIVE_OPERATOR_LESS: _ClassVar[PrimitiveOperator]
+    PRIMITIVE_OPERATOR_LESS_EQUAL: _ClassVar[PrimitiveOperator]
+    PRIMITIVE_OPERATOR_GREATER_EQUAL: _ClassVar[PrimitiveOperator]
+    PRIMITIVE_OPERATOR_IN: _ClassVar[PrimitiveOperator]
+    PRIMITIVE_OPERATOR_INSTANCE_OF: _ClassVar[PrimitiveOperator]
 
 class CompositeOperator(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     __slots__ = ()
@@ -77,6 +81,10 @@ PRIMITIVE_OPERATOR_UNSPECIFIED: PrimitiveOperator
 PRIMITIVE_OPERATOR_EQUAL: PrimitiveOperator
 PRIMITIVE_OPERATOR_GREATER: PrimitiveOperator
 PRIMITIVE_OPERATOR_LESS: PrimitiveOperator
+PRIMITIVE_OPERATOR_LESS_EQUAL: PrimitiveOperator
+PRIMITIVE_OPERATOR_GREATER_EQUAL: PrimitiveOperator
+PRIMITIVE_OPERATOR_IN: PrimitiveOperator
+PRIMITIVE_OPERATOR_INSTANCE_OF: PrimitiveOperator
 COMPOSITE_OPERATOR_UNSPECIFIED: CompositeOperator
 COMPOSITE_OPERATOR_AND: CompositeOperator
 COMPOSITE_OPERATOR_OR: CompositeOperator
@@ -1870,14 +1878,16 @@ class QueryResponse(_message.Message):
     def __init__(self, elements: _Optional[_Iterable[_Union[QueryResultElement, _Mapping]]] = ...) -> None: ...
 
 class Query(_message.Message):
-    __slots__ = ("scope", "select", "where")
+    __slots__ = ("scope", "select", "where", "order_by")
     SCOPE_FIELD_NUMBER: _ClassVar[int]
     SELECT_FIELD_NUMBER: _ClassVar[int]
     WHERE_FIELD_NUMBER: _ClassVar[int]
+    ORDER_BY_FIELD_NUMBER: _ClassVar[int]
     scope: _containers.RepeatedScalarFieldContainer[str]
     select: _containers.RepeatedScalarFieldContainer[str]
     where: Constraint
-    def __init__(self, scope: _Optional[_Iterable[str]] = ..., select: _Optional[_Iterable[str]] = ..., where: _Optional[_Union[Constraint, _Mapping]] = ...) -> None: ...
+    order_by: _containers.RepeatedScalarFieldContainer[str]
+    def __init__(self, scope: _Optional[_Iterable[str]] = ..., select: _Optional[_Iterable[str]] = ..., where: _Optional[_Union[Constraint, _Mapping]] = ..., order_by: _Optional[_Iterable[str]] = ...) -> None: ...
 
 class Constraint(_message.Message):
     __slots__ = ("primitive", "composite")
@@ -2434,28 +2444,32 @@ class RenderDocumentRequest(_message.Message):
     def __init__(self, model_hash: _Optional[str] = ..., document_id: _Optional[str] = ..., form: _Optional[str] = ...) -> None: ...
 
 class RenderDocumentResponse(_message.Message):
-    __slots__ = ("markdown", "html", "file_name")
+    __slots__ = ("markdown", "html", "asciidoc", "file_name")
     MARKDOWN_FIELD_NUMBER: _ClassVar[int]
     HTML_FIELD_NUMBER: _ClassVar[int]
+    ASCIIDOC_FIELD_NUMBER: _ClassVar[int]
     FILE_NAME_FIELD_NUMBER: _ClassVar[int]
     markdown: str
     html: str
+    asciidoc: str
     file_name: str
-    def __init__(self, markdown: _Optional[str] = ..., html: _Optional[str] = ..., file_name: _Optional[str] = ...) -> None: ...
+    def __init__(self, markdown: _Optional[str] = ..., html: _Optional[str] = ..., asciidoc: _Optional[str] = ..., file_name: _Optional[str] = ...) -> None: ...
 
 class RenderViewRequest(_message.Message):
-    __slots__ = ("model_hash", "view", "ports", "show", "depth")
+    __slots__ = ("model_hash", "view", "ports", "show", "depth", "compartments")
     MODEL_HASH_FIELD_NUMBER: _ClassVar[int]
     VIEW_FIELD_NUMBER: _ClassVar[int]
     PORTS_FIELD_NUMBER: _ClassVar[int]
     SHOW_FIELD_NUMBER: _ClassVar[int]
     DEPTH_FIELD_NUMBER: _ClassVar[int]
+    COMPARTMENTS_FIELD_NUMBER: _ClassVar[int]
     model_hash: str
     view: str
     ports: str
     show: _containers.RepeatedScalarFieldContainer[str]
     depth: int
-    def __init__(self, model_hash: _Optional[str] = ..., view: _Optional[str] = ..., ports: _Optional[str] = ..., show: _Optional[_Iterable[str]] = ..., depth: _Optional[int] = ...) -> None: ...
+    compartments: str
+    def __init__(self, model_hash: _Optional[str] = ..., view: _Optional[str] = ..., ports: _Optional[str] = ..., show: _Optional[_Iterable[str]] = ..., depth: _Optional[int] = ..., compartments: _Optional[str] = ...) -> None: ...
 
 class RenderViewResponse(_message.Message):
     __slots__ = ("view", "kind", "stated", "nodes", "edges", "columns", "rows", "canvas", "notes", "notices", "shown")
@@ -2484,7 +2498,7 @@ class RenderViewResponse(_message.Message):
     def __init__(self, view: _Optional[str] = ..., kind: _Optional[str] = ..., stated: _Optional[str] = ..., nodes: _Optional[_Iterable[_Union[RenderNode, _Mapping]]] = ..., edges: _Optional[_Iterable[_Union[RenderEdge, _Mapping]]] = ..., columns: _Optional[_Iterable[str]] = ..., rows: _Optional[_Iterable[_Union[RenderRow, _Mapping]]] = ..., canvas: _Optional[_Union[RenderCanvas, _Mapping]] = ..., notes: _Optional[_Iterable[_Union[RenderNote, _Mapping]]] = ..., notices: _Optional[_Iterable[str]] = ..., shown: _Optional[_Iterable[str]] = ...) -> None: ...
 
 class RenderNode(_message.Message):
-    __slots__ = ("id", "kind", "name", "name_synthesized", "type", "detail", "text", "stand_in", "parent", "ports", "origin", "geometry", "style")
+    __slots__ = ("id", "kind", "name", "name_synthesized", "type", "detail", "text", "stand_in", "parent", "ports", "origin", "geometry", "style", "compartment")
     ID_FIELD_NUMBER: _ClassVar[int]
     KIND_FIELD_NUMBER: _ClassVar[int]
     NAME_FIELD_NUMBER: _ClassVar[int]
@@ -2498,6 +2512,7 @@ class RenderNode(_message.Message):
     ORIGIN_FIELD_NUMBER: _ClassVar[int]
     GEOMETRY_FIELD_NUMBER: _ClassVar[int]
     STYLE_FIELD_NUMBER: _ClassVar[int]
+    COMPARTMENT_FIELD_NUMBER: _ClassVar[int]
     id: str
     kind: str
     name: str
@@ -2511,7 +2526,8 @@ class RenderNode(_message.Message):
     origin: Span
     geometry: RenderGeometry
     style: RenderStyle
-    def __init__(self, id: _Optional[str] = ..., kind: _Optional[str] = ..., name: _Optional[str] = ..., name_synthesized: _Optional[bool] = ..., type: _Optional[str] = ..., detail: _Optional[str] = ..., text: _Optional[str] = ..., stand_in: _Optional[bool] = ..., parent: _Optional[str] = ..., ports: _Optional[_Iterable[_Union[RenderPort, _Mapping]]] = ..., origin: _Optional[_Union[Span, _Mapping]] = ..., geometry: _Optional[_Union[RenderGeometry, _Mapping]] = ..., style: _Optional[_Union[RenderStyle, _Mapping]] = ...) -> None: ...
+    compartment: str
+    def __init__(self, id: _Optional[str] = ..., kind: _Optional[str] = ..., name: _Optional[str] = ..., name_synthesized: _Optional[bool] = ..., type: _Optional[str] = ..., detail: _Optional[str] = ..., text: _Optional[str] = ..., stand_in: _Optional[bool] = ..., parent: _Optional[str] = ..., ports: _Optional[_Iterable[_Union[RenderPort, _Mapping]]] = ..., origin: _Optional[_Union[Span, _Mapping]] = ..., geometry: _Optional[_Union[RenderGeometry, _Mapping]] = ..., style: _Optional[_Union[RenderStyle, _Mapping]] = ..., compartment: _Optional[str] = ...) -> None: ...
 
 class RenderPort(_message.Message):
     __slots__ = ("id", "name", "type", "direction")

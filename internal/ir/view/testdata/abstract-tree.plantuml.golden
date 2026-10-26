@@ -1,0 +1,76 @@
+@startuml
+' AbstractViews::familyTree — tree rendering (render asTreeDiagram)
+<style>
+root {
+  BackGroundColor white
+  FontName SansSerif
+  FontSize 14
+  FontColor black
+  LineColor #181818
+  HorizontalAlignment left
+}
+element {
+  BackGroundColor white
+  LineColor #181818
+  LineThickness 0.5
+  RoundCorner 0
+  Shadowing 0.0
+}
+start, end, activityBar {
+  BackGroundColor black
+}
+arrow {
+  LineColor #181818
+  LineThickness 1
+  FontSize 13
+}
+note {
+  BackGroundColor #FEFFDD
+  FontSize 13
+}
+.usage {
+  RoundCorner 20
+}
+.package {
+  LineThickness 1.5
+}
+.region {
+  LineStyle 4
+}
+</style>
+skinparam wrapWidth 300
+hide stereotype
+hide circle
+hide empty members
+class "<size:10>//«abstract part def»//</size>\n**Vehicle**" as n0 <<abstract part def>>
+class "<size:10>//«attribute»//</size>\n**mass**" as n1 <<attribute>> <<usage>>
+class "<size:10>//«abstract part»//</size>\n**vehicleFamily**" as n2 <<abstract part>> <<usage>>
+class "<size:10>//«abstract port»//</size>\n**fuel**" as n3 <<abstract port>> <<usage>>
+class "<size:10>//«abstract part»//</size>\n**engine**" as n4 <<abstract part>> <<usage>>
+class "<size:10>//«part»//</size>\n**chassis**" as n5 <<part>> <<usage>>
+class "**connect**" as n6 <<connect>> <<usage>>
+n2 -- n6
+class "<size:10>//«attribute»//</size>\n**mass**" as n7 <<attribute>> <<usage>>
+class "<size:10>//«variation part def»//</size>\n**Models**" as n8 <<variation part def>>
+class "<size:10>//«variant»//</size>\n**sedan**" as n9 <<variant>> <<usage>>
+class "<size:10>//«attribute»//</size>\n**mass**" as n10 <<attribute>> <<usage>>
+class "<size:10>//«abstract port»//</size>\n**fuel**" as n11 <<abstract port>> <<usage>>
+class "<size:10>//«abstract part»//</size>\n**engine**" as n12 <<abstract part>> <<usage>>
+class "<size:10>//«part»//</size>\n**chassis**" as n13 <<part>> <<usage>>
+class "**connect**" as n14 <<connect>> <<usage>>
+n9 -- n14
+class "<size:10>//«attribute»//</size>\n**mass**" as n15 <<attribute>> <<usage>>
+n0 o-- n1
+n2 --:|> n0
+n2 o-- n3
+n2 *-- n4
+n2 *-- n5
+n2 o-- n7
+n8 --|> n0
+n8 o-- n9
+n8 o-- n15
+n9 o-- n10
+n9 o-- n11
+n9 *-- n12
+n9 *-- n13
+@enduml

@@ -14,7 +14,7 @@ import (
 // QueryInput is a SysML v2 API & Services Query, or OSLC query text.
 type QueryInput struct {
 	ModelInput
-	Query     map[string]any `json:"query,omitempty" jsonschema:"the standard's Query as protojson writes it: {\"scope\":[qualified names],\"select\":[properties],\"where\":{\"primitive\":{\"property\":\"@type\",\"operator\":\"PRIMITIVE_OPERATOR_EQUAL\",\"value\":[\"PartUsage\"]}}} or a composite {\"composite\":{\"operator\":\"COMPOSITE_OPERATOR_AND\",\"constraint\":[...]}}; empty considers the whole model"`
+	Query     map[string]any `json:"query,omitempty" jsonschema:"the standard's Query as protojson writes it: {\"scope\":[qualified names],\"select\":[properties],\"where\":{\"primitive\":{\"property\":\"@type\",\"operator\":\"PRIMITIVE_OPERATOR_EQUAL\",\"value\":[\"PartUsage\"]}},\"orderBy\":[properties]} or a composite {\"composite\":{\"operator\":\"COMPOSITE_OPERATOR_AND\",\"constraint\":[at least two]}}; operators are PRIMITIVE_OPERATOR_EQUAL, _LESS, _LESS_EQUAL, _GREATER, _GREATER_EQUAL, _IN (value is a list) and _INSTANCE_OF (on @type, value names metaclasses); orderBy sorts ascending by each property in turn; empty considers the whole model"`
 	OSLCQuery string         `json:"oslcQuery,omitempty" jsonschema:"OSLC Query 3.0 parameter text, instead of query"`
 }
 
@@ -29,16 +29,17 @@ type RunDocumentQueryInput struct {
 type RenderDocumentInput struct {
 	ModelInput
 	DocumentID string `json:"documentId" jsonschema:"qualified name of the document, a part def specializing DocumentQueries::Document"`
-	Form       string `json:"form,omitempty" jsonschema:"markdown (the default) or html"`
+	Form       string `json:"form,omitempty" jsonschema:"markdown (the default), html or asciidoc"`
 }
 
 // RenderViewInput renders a view.
 type RenderViewInput struct {
 	ModelInput
-	View  string   `json:"view" jsonschema:"a qualified view name, or a #<kind>:<qualified name> pseudo-view targeting an element (#interconnection:Demo::Vehicle, #tree:Demo, #state:Demo::Lamp, #action:Demo::Descend, #sequence:..., #case:..., #requirement:..., #mixed:...)"`
-	Ports string   `json:"ports,omitempty" jsonschema:"minimal (the default) or full: how many of a part's ports are drawn"`
-	Show  []string `json:"show,omitempty" jsonschema:"optional notation elements to draw besides those the view's rendering shows, as sysml -render-show takes them: parameter-symbols, port-symbols, compartments, edge-labels, keywords, multiplicities, typings, qualifiers, or all"`
-	Depth int      `json:"depth,omitempty" jsonschema:"how many levels of nested elements to draw below each exposed element, overriding the view's own depth; 0 or absent draws every level"`
+	View         string   `json:"view" jsonschema:"a qualified view name, or a #<kind>:<qualified name> pseudo-view targeting an element (#interconnection:Demo::Vehicle, #tree:Demo, #state:Demo::Lamp, #action:Demo::Descend, #sequence:..., #case:..., #requirement:..., #mixed:...)"`
+	Ports        string   `json:"ports,omitempty" jsonschema:"minimal (the default) or full: how many of a part's ports are drawn"`
+	Show         []string `json:"show,omitempty" jsonschema:"optional notation elements to draw besides those the view's rendering shows, as sysml -render-show takes them: parameter-symbols, port-symbols, compartments, edge-labels, keywords, multiplicities, typings, qualifiers, or all"`
+	Compartments string   `json:"compartments,omitempty" jsonschema:"how a tree rendering folds a node's owned members into compartment rows of its parent: positioned (the default), most or ports, as sysml -render-compartments takes them"`
+	Depth        int      `json:"depth,omitempty" jsonschema:"how many levels of nested elements to draw below each exposed element, overriding the view's own depth; 0 or absent draws every level"`
 }
 
 // ExportGraphsInput names a behavior to export.
@@ -50,7 +51,7 @@ type ExportGraphsInput struct {
 func (g *group) registerQueries(s *mcp.Server) {
 	mcp.AddTool(s, &mcp.Tool{
 		Name: "query",
-		Description: "Select elements of a parsed model with a SysML v2 API & Services Query — scope, select, where — or OSLC query " +
+		Description: "Select elements of a parsed model with a SysML v2 API & Services Query — scope, select, where, orderBy — or OSLC query " +
 			"text (the Query RPC). Each matched element answers its qualified name, metamodel type and the properties select asked " +
 			"for. A query the service cannot evaluate fails with INVALID_ARGUMENT rather than answering empty. The result is the " +
 			"QueryResponse as protojson writes it.",
@@ -98,7 +99,7 @@ func (g *group) registerQueries(s *mcp.Server) {
 
 	mcp.AddTool(s, &mcp.Tool{
 		Name: "render_model_document",
-		Description: "Render a named document of a model given by modelHash, paths or sources (the workspace group's render_document renders by name over the root) — a part def specializing DocumentQueries::Document — to Markdown or HTML (the " +
+		Description: "Render a named document of a model given by modelHash, paths or sources (the workspace group's render_document renders by name over the root) — a part def specializing DocumentQueries::Document — to Markdown, HTML or AsciiDoc (the " +
 			"RenderDocument RPC, the CLI's -render-document), byte for byte what the CLI writes. The text is the rendered document; " +
 			"the result is the RenderDocumentResponse as protojson writes it.",
 		Annotations: toolkit.ReadOnly("Render document"),
@@ -115,6 +116,9 @@ func (g *group) registerQueries(s *mcp.Server) {
 		if text == "" {
 			text = resp.GetHtml()
 		}
+		if text == "" {
+			text = resp.GetAsciidoc()
+		}
 		return answer(resp, m, text)
 	})
 
@@ -129,7 +133,7 @@ func (g *group) registerQueries(s *mcp.Server) {
 		if err != nil {
 			return nil, nil, err
 		}
-		resp, err := g.svc.RenderView(ctx, &pb.RenderViewRequest{ModelHash: m.hash, View: in.View, Ports: in.Ports, Show: in.Show})
+		resp, err := g.svc.RenderView(ctx, &pb.RenderViewRequest{ModelHash: m.hash, View: in.View, Ports: in.Ports, Show: in.Show, Compartments: in.Compartments})
 		if err != nil {
 			return nil, nil, toolError(err)
 		}

@@ -90,7 +90,11 @@ func (fc *funcCompiler) retype(v Expr, t Type) Expr {
 	case NullLit:
 		return NullLit{T: t}
 	case SeqLit:
-		return SeqLit{Elems: v.Elems, T: t}
+		elems := make([]Expr, len(v.Elems))
+		for i, el := range v.Elems {
+			elems[i] = fc.retype(el, t)
+		}
+		return SeqLit{Elems: elems, T: t}
 	}
 	return v
 }
@@ -297,6 +301,15 @@ func (fc *funcCompiler) compileEquality(n *ast.OperatorExpr) (Expr, error) {
 	l, r, err := fc.rawOperands(n)
 	if err != nil {
 		return nil, err
+	}
+	// A function value held in a sequence (a bare calc result) compares as its one element.
+	where := fmt.Sprintf("'%s'", n.Operator)
+	if lt, rt := l.Type(), r.Type(); lt.Many() && lt.Elem().IsFn() && !rt.Many() {
+		fc.c.collections = true
+		l = ToOne{X: l, Where: where}
+	} else if rt.Many() && rt.Elem().IsFn() && !lt.Many() {
+		fc.c.collections = true
+		r = ToOne{X: r, Where: where}
 	}
 	if l.Type().MayUnset() || r.Type().MayUnset() {
 		neq := n.Operator == ast.OpNeq || n.Operator == ast.OpNeqEqEq
@@ -614,7 +627,7 @@ func (fc *funcCompiler) compileLambda(op SeqOp, b *ast.BodyExpr, paramTypes []Ty
 		if p.Type != nil {
 			sym, ok := fc.c.resolver.ResolveQualified(fc.scope, p.Type)
 			if !ok {
-				return Lambda{}, fc.unsupported(fmt.Sprintf("body parameter %s: type %s does not resolve", p.Name, qnText(p.Type)))
+				return Lambda{}, fc.unsupported(fmt.Sprintf("body parameter %s: type %s does not resolve", p.Name, p.Type.Text()))
 			}
 			if t, _, why := fc.valueType(sym); why != "" || t != paramTypes[i] && !(t == TypeReal && paramTypes[i] == TypeNum) {
 				return Lambda{}, fc.unsupported(fmt.Sprintf("body parameter %s typed other than %s", p.Name, paramTypes[i]))

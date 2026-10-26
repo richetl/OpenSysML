@@ -550,3 +550,43 @@ func TestCompletionOnDotOffersTheDerivedShortName(t *testing.T) {
 		}
 	}
 }
+
+// TestCompletionDetailWritesTheAbstractKeyword pins the completion detail as
+// the notation writes an abstract or variation declaration.
+func TestCompletionDetailWritesTheAbstractKeyword(t *testing.T) {
+	src := "package P {\n\tabstract part def Vehicle;\n\tvariation part def Models :> Vehicle;\n\tabstract part fleet : Vehicle;\n\tpart v : Vehicle;\n}\n"
+	items := completionAt(t, src, "part v : Vehicle;")
+	for label, want := range map[string]string{"Vehicle": "abstract part def", "Models": "variation part def", "fleet": "abstract part : Vehicle"} {
+		it, ok := items[label]
+		if !ok {
+			t.Errorf("completion missing %q", label)
+			continue
+		}
+		if it.Detail != want {
+			t.Errorf("%q detail = %q, want %q", label, it.Detail, want)
+		}
+	}
+}
+
+// A redefined feature is not inherited under its name (KerML §7.3.4.5), so after
+// `u.` the subject is offered as the role the case declares, not as the library's
+// `subj`.
+func TestCompletionOnDotOmitsRedefinedRoleNames(t *testing.T) {
+	src := `package P {
+	use case def U {
+		subject s : ScalarValues::Integer;
+	}
+	use case u : U;
+	part reader {
+		u.
+	}
+}
+`
+	items := completionAt(t, src, "\t\tu.")
+	if _, ok := items["s"]; !ok {
+		t.Errorf("completion after 'u.' missing the declared subject 's'; got %v", labelsOf(items))
+	}
+	if _, ok := items["subj"]; ok {
+		t.Error("completion after 'u.' offered 'subj', which the subject 's' redefines")
+	}
+}

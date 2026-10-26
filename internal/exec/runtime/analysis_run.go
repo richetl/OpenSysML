@@ -306,7 +306,10 @@ func (ctx *Context) runCase(sym *symbols.Symbol, args AnalysisArgs, scope *symbo
 
 	var run *calcRun
 	if asUsage {
-		run, err = ctx.calcUsageRun(reader, sym)
+		// A run is requested, not a read: an input the usage leaves open refuses it.
+		if run, err = ctx.calcUsageRun(reader, sym); err == nil && run.open != "" {
+			run, err = nil, shape.unboundParameter(run.open)
+		}
 	} else {
 		run, err = ctx.analysisRun(shape, reader, calcArgs, false)
 	}
@@ -444,7 +447,7 @@ func (shape *calcShape) analysisArgs(args AnalysisArgs) (calcArgs, error) {
 	open := make([]*calcParameter, 0, len(shape.Params))
 	for i := range shape.Params {
 		param := &shape.Params[i]
-		if _, bound := named[param.Name]; bound || param.IsSubject {
+		if _, bound := named[param.Name]; bound || param.IsSubject || param.IsActor {
 			continue
 		}
 		open = append(open, param)

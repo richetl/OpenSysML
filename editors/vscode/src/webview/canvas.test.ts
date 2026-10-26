@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { test } from "node:test";
 
@@ -26,7 +27,8 @@ const result: RenderResult = {
   artifact: "",
   nodes: [
     node("a", "tank", { type: "Tank", x: 10, y: 20, width: 120, height: 60 }),
-    node("b", "valve", { parent: "a" }),
+    // Placed where the tank's fixed box has no room for it: a stated place is drawn, an unplaced child is not.
+    node("b", "valve", { parent: "a", x: 26, y: 72 }),
     node("c", "pump", { fqn: undefined }),
     node("d", "", { kind: "fork" }),
   ],
@@ -83,7 +85,7 @@ test("liftNode floats the dragged subtree over a canvas that stays put, drawn la
 test("liftNode redraws the edges at the lifted subtree: an inner one moves whole, a crossing one follows its lifted end", () => {
   const withInner: RenderResult = {
     ...result,
-    nodes: [...result.nodes!, node("e", "gauge", { parent: "a" })],
+    nodes: [...result.nodes!, node("e", "gauge", { parent: "a", x: 154, y: 72 })],
     edges: [
       ...result.edges!,
       { from: "b", to: "e", label: "reads", kind: "connection", fqn: "M::be", route: [{ x: 60, y: 60 }] },
@@ -154,8 +156,8 @@ test("drawCanvas draws edges with the arrowhead their kind takes and handles on 
   const svg = drawCanvas(layoutCanvas(result));
   const edges = [...svg.querySelectorAll<SVGGElement>("g.opensysml-edge")];
   assert.deepEqual(edges.map((edge) => edge.dataset.edge), ["0", "1"]);
-  assert.equal(edges[0].querySelector("polyline")?.getAttribute("marker-end"), "url(#arrow-open)");
-  assert.equal(edges[1].querySelector("polyline")?.getAttribute("marker-end"), "url(#arrow)");
+  assert.equal(edges[0].querySelector("polyline")?.getAttribute("marker-end"), "url(#arrow)");
+  assert.equal(edges[1].querySelector("polyline")?.getAttribute("marker-end"), "url(#arrow-open)");
   assert.equal(edges[0].querySelector("text")?.textContent, "supply");
   assert.equal(edges[1].querySelector("text"), null);
   // Only the declared connection gets handles: one waypoint and one per segment.
@@ -186,7 +188,7 @@ test("drawCanvas marks a tree's relationship edges the way the graphical notatio
   };
   const svg = drawCanvas(layoutCanvas(tree));
   const defs = [...svg.querySelectorAll("defs marker")].map((marker) => marker.id);
-  assert.deepEqual(defs, ["arrow", "arrow-open", "triangle-hollow", "diamond-filled", "diamond-hollow"]);
+  assert.deepEqual(defs, ["arrow", "arrow-open", "triangle-hollow", "triangle-dots", "triangle-bar", "diamond-filled", "diamond-hollow", "circle-plus", "triangle-four-dots", "portion", "circle-hollow"]);
   assert.equal(svg.querySelector("#triangle-hollow path")?.getAttribute("class"), "arrow-hollow");
   assert.equal(svg.querySelector("#diamond-filled path")?.getAttribute("class"), "arrow-fill");
   const lines = [...svg.querySelectorAll<SVGPolylineElement>("g.opensysml-edge polyline")];
@@ -194,7 +196,7 @@ test("drawCanvas marks a tree's relationship edges the way the graphical notatio
     [null, "url(#triangle-hollow)"],
     ["url(#diamond-filled)", null],
     ["url(#diamond-hollow)", null],
-    [null, "url(#triangle-hollow)"],
+    [null, "url(#triangle-dots)"],
   ]);
   assert.deepEqual([...svg.querySelectorAll<SVGGElement>("g.opensysml-edge")].map((group) => group.classList.contains("typing")), [false, false, false, true]);
   assert.deepEqual([...svg.querySelectorAll("g.opensysml-edge text")].map((text) => text.textContent), ["wheels[4]", "driver[0..1]"]);
@@ -203,26 +205,24 @@ test("drawCanvas marks a tree's relationship edges the way the graphical notatio
   assert.equal(svg.querySelectorAll("g.edge-handles").length, 0);
 });
 
-test("drawCanvas leaves out the edges and handles at nodes a collapsed owner hides", () => {
+test("drawCanvas draws a collapsed node's ports, the edges at them and its collapsed mark", () => {
   const svg = drawCanvas(layoutCanvas({
     ...result,
     nodes: [
       node("a", "tank", { x: 10, y: 20, collapsed: true }),
-      node("b", "valve", { parent: "a" }),
-      node("e", "gauge", { parent: "b" }),
+      node("b", "out", { kind: "port", parent: "a" }),
       node("c", "pump"),
     ],
     edges: [
-      { from: "b", to: "e", label: "", kind: "connection", fqn: "M::be", route: [{ x: 50, y: 50 }] },
       { from: "b", to: "c", label: "", kind: "connection", fqn: "M::bc", route: [{ x: 300, y: 300 }] },
       { from: "a", to: "c", label: "", kind: "connection", fqn: "M::ac" },
     ],
   }));
-  assert.deepEqual([...svg.querySelectorAll<SVGGElement>("g.opensysml-node")].map((group) => group.dataset.opensysmlId), ["a", "c"]);
+  assert.deepEqual([...svg.querySelectorAll<SVGGElement>("g.opensysml-node")].map((group) => group.dataset.opensysmlId), ["a", "b", "c"]);
   assert.equal(svg.querySelector('g[data-opensysml-id="a"] text.collapsed')?.textContent, "+");
-  // Neither the edge inside the collapsed owner nor the one crossing its border is drawn; the owner's own is.
-  assert.deepEqual([...svg.querySelectorAll<SVGGElement>("g.opensysml-edge")].map((edge) => edge.dataset.edge), ["2"]);
-  assert.deepEqual([...svg.querySelectorAll<SVGGElement>("g.edge-handles")].map((group) => group.dataset.edge), ["2"]);
+  assert.ok(svg.querySelector('g[data-opensysml-id="a"] .shape.container'), "a collapsed node with ports is drawn as a container");
+  assert.deepEqual([...svg.querySelectorAll<SVGGElement>("g.opensysml-edge")].map((edge) => edge.dataset.edge), ["0", "1"]);
+  assert.deepEqual([...svg.querySelectorAll<SVGGElement>("g.edge-handles")].map((group) => group.dataset.edge), ["0", "1"]);
 });
 
 test("drawCanvas draws a sequence's lifelines", () => {
@@ -329,6 +329,85 @@ test("drawCanvas preserves the portless SVG output", () => {
   const svg = drawCanvas(layoutCanvas(result));
   assert.equal(
     createHash("sha256").update(svg.outerHTML).digest("hex"),
-    "83e9891b39565506610ab53d65fc7a583f5ab415504eae3b857f59235745b3a2",
+    "14464e966eed0316973b050700e38acaf046ff35d97ebb3761b363bd3871a58d",
   );
+});
+
+test("drawCanvas marks the notation's remaining relationship glyphs", () => {
+  const graph: RenderResult = {
+    ...result,
+    kind: "definition",
+    nodes: [node("p", "Plant"), node("t", "tank"), node("s", "spare"), node("f", "filling"), node("e", "startup"), node("c", "keepLevel"), node("u", "Uses"), node("l", "Lib"), node("v", "tankView"), node("k", "Tank"), node("a", "open"), node("b", "pour")],
+    edges: [
+      { from: "s", to: "t", label: "references", kind: "reference subsetting" },
+      { from: "p", to: "f", label: "", kind: "portion" },
+      { from: "p", to: "e", label: "event", kind: "event" },
+      { from: "p", to: "c", label: "require", kind: "require" },
+      { from: "u", to: "l", label: "L", kind: "unowned membership" },
+      { from: "v", to: "k", label: "expose", kind: "expose" },
+      { from: "a", to: "b", label: "«succession flow»", kind: "succession flow" },
+    ],
+  };
+  const svg = drawCanvas(layoutCanvas(graph));
+  const defs = [...svg.querySelectorAll("defs marker")].map((marker) => marker.id);
+  assert.deepEqual(defs, ["arrow", "arrow-open", "triangle-hollow", "triangle-dots", "triangle-bar", "diamond-filled", "diamond-hollow", "circle-plus", "triangle-four-dots", "portion", "circle-hollow"]);
+  assert.equal(svg.querySelectorAll("#triangle-four-dots circle").length, 4);
+  assert.equal(svg.querySelector("#portion path")?.getAttribute("class"), "arrow-fill");
+  assert.equal(svg.querySelector("#circle-hollow circle")?.getAttribute("class"), "arrow-hollow");
+  const lines = [...svg.querySelectorAll<SVGPolylineElement>("g.opensysml-edge polyline")];
+  assert.deepEqual(lines.map((line) => [line.getAttribute("marker-start"), line.getAttribute("marker-end")]), [
+    [null, "url(#triangle-four-dots)"],
+    ["url(#portion)", null],
+    [null, "url(#arrow-open)"],
+    [null, "url(#arrow-open)"],
+    ["url(#circle-hollow)", null],
+    [null, "url(#arrow-open)"],
+    [null, "url(#arrow)"],
+  ]);
+  // A kind of more than one word is classed with hyphens, so a style sheet can address it.
+  const classes = [...svg.querySelectorAll<SVGGElement>("g.opensysml-edge")].map((group) => group.getAttribute("class"));
+  assert.deepEqual(classes.slice(0, 2), ["opensysml-edge reference-subsetting", "opensysml-edge portion"]);
+  assert.equal(classes[6], "opensysml-edge succession-flow");
+});
+
+test("drawCanvas ends every edge kind in the marker the notation table states", () => {
+  // The table in docs/project/view-rendering-forms.md is the oracle the Go
+  // writers are held to; its canvas column names the marker (`end` or `start`)
+  // or `none`, and this reads the same rows so the two cannot drift.
+  const document = readFileSync("../../docs/project/view-rendering-forms.md", "utf8");
+  const section = document.split("\n### Notation table\n")[1]?.split("\n### ")[0] ?? "";
+  const rows = section.split("\n").filter((line) => line.startsWith("| `") || line.startsWith("| objective"));
+  assert.ok(rows.length > 0, "the notation table has rows");
+  const kinds: string[] = [];
+  const want: Record<string, [string | null, string | null]> = {};
+  for (const row of rows) {
+    const cells = row.replace(/\\\|/g, "\u0000").split("|").map((cell) => cell.trim().replace(/\u0000/g, "|"));
+    const canvas = cells[7].replace(/`/g, "");
+    for (const kind of [...cells[2].matchAll(/`([^`]*)`/g)].map((m) => m[1])) {
+      kinds.push(kind);
+      if (canvas === "none") {
+        want[kind] = [null, null];
+      } else {
+        const [position, marker] = canvas.split(" ");
+        want[kind] = position === "start" ? [`url(#${marker})`, null] : [null, `url(#${marker})`];
+      }
+    }
+  }
+  const graph: RenderResult = {
+    ...result,
+    kind: "tree",
+    nodes: [node("a", "A"), node("b", "B")],
+    edges: kinds.map((kind) => ({ from: "a", to: "b", label: "", kind })),
+  };
+  const svg = drawCanvas(layoutCanvas(graph));
+  const lines = [...svg.querySelectorAll<SVGPolylineElement>("g.opensysml-edge polyline")];
+  assert.equal(lines.length, kinds.length);
+  const markers = new Set([...svg.querySelectorAll("defs marker")].map((marker) => `url(#${marker.id})`));
+  kinds.forEach((kind, i) => {
+    const got: [string | null, string | null] = [lines[i].getAttribute("marker-start"), lines[i].getAttribute("marker-end")];
+    assert.deepEqual(got, want[kind], `${kind} edge markers`);
+    for (const marker of got) {
+      if (marker !== null) assert.ok(markers.has(marker), `${kind} ends in a marker the defs declare`);
+    }
+  });
 });

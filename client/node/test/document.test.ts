@@ -38,6 +38,10 @@ const REPORT_HTML = join(
   repoRoot,
   "internal/doc/docrender/testdata/telescope_report.golden.html",
 );
+const REPORT_ADOC = join(
+  repoRoot,
+  "internal/doc/docrender/testdata/telescope_report.golden.adoc",
+);
 const VIEW_FIXTURE = join(repoRoot, "conformance/fixtures/views.sysml");
 const BEHAVIOR_FIXTURE = join(repoRoot, "conformance/fixtures/behavior.sysml");
 
@@ -208,6 +212,13 @@ test("renderDocument answers the golden html", async () => {
   assert.equal(html, readFileSync(REPORT_HTML, "utf8"));
 });
 
+test("renderDocument answers the golden asciidoc", async () => {
+  await using connection = await connect();
+  const model = await connection.loads(readFileSync(REPORT_FIXTURE, "utf8"));
+  const asciidoc = await model.renderDocument("Observatory::MassReport", { form: "asciidoc" });
+  assert.equal(asciidoc, readFileSync(REPORT_ADOC, "utf8"));
+});
+
 test("renderView returns ports, edge endpoints, and origins", async () => {
   await using connection = await connect();
   const model = await connection.load(VIEW_FIXTURE);
@@ -217,6 +228,21 @@ test("renderView returns ports, edge endpoints, and origins", async () => {
   assert.ok(rendered.edges[0]?.fromPort);
   assert.ok(rendered.edges[0]?.toPort);
   assert.ok(rendered.nodes.every((node) => node.origin !== undefined));
+});
+
+test("renderView folds members into compartment rows on request", async () => {
+  await using connection = await connect();
+  const model = await connection.load(VIEW_FIXTURE);
+  const boxes = await model.renderView("#tree:RenderViewDemo::Assembly");
+  assert.ok(boxes.nodes.every((node) => node.compartment === ""));
+  const folded = await model.renderView("#tree:RenderViewDemo::Assembly", { compartments: "most" });
+  const sender = folded.nodes.find((node) => node.name === "sender");
+  assert.equal(sender?.compartment, "parts");
+  assert.ok(folded.nodes.length < boxes.nodes.length);
+  await assert.rejects(
+    model.renderView("#tree:RenderViewDemo::Assembly", { compartments: "rows" as "most" }),
+    RangeError,
+  );
 });
 
 test("exportGraphs returns the canonical graphs form of a behavior", async () => {

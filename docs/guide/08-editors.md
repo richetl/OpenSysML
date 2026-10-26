@@ -112,6 +112,16 @@ REPL's `%render` command prints, as an SVG canvas of its own, and redraws as you
   nothing to draw says why (the view exposes nothing, its filter rejects every element it
   exposes, the document has an error) in the status line and in place of the drawing, and the
   same summary is written to the SysML v2 Output channel.
+- **Related elements.** *Show related elements…* on a node's right-click menu lists what relates
+  to it, grouped by relationship kind with a count for each — what it specializes and what
+  specializes it, the definitions typing it and the usages it types, its owner and owned
+  members, the elements connections, flows and bindings join it to, the actions its successions
+  reach — and the elements you check are drawn in the panel with the
+  edges between them and what is already drawn, laid out like any node the model does not place.
+  A node drawn this way has a dashed border; *Hide from diagram* leaves it out again (the entry is
+  greyed on a node the view itself draws, which only an edit to the view can remove). The list is
+  this panel's alone: nothing is written to the `.sysml` file, switching to another view starts
+  it afresh, and an element the diagram's kind draws nothing for is reported beneath the diagram.
 - **Resource use.** The panel requests a diagram only while it is visible, and only after a
   burst of editing has settled. The panel draws its own SVG, so nothing is fetched from the
   network.
@@ -200,6 +210,14 @@ any other: hover, go-to-definition, the outline and semantic highlighting work i
 navigation continues from one library file to the next (from `Occurrences.kerml` to `Base.kerml`,
 say). The editor is read-only and the server refuses an edit to it — the library is what the
 server validates the model against, and changing it would change what every diagnostic means.
+
+A workspace that holds the library twice — a `sysml.library` copy under the folder beside the
+bundled one, or an `OPENSYSML_LIBRARY_PATH` tree with two copies — gets the
+[`library-declared-twice`](../reference/diagnostics.md#library-declared-twice) warning once, on
+the first file of the copy references do not resolve to, naming both locations and the one in
+use. A copy of one library file beside the bundled library stands in for the bundled file and is
+not a duplication; two such copies are, as is a user `library package` declared by two files. The
+same warning reaches `sysml -validate`, the prompt, gRPC/Connect validation and the MCP server.
 
 Other clients get the locations too, but need to know how to show the file behind the URI: the
 server serves its text through the `opensysml/stdlibContent` request, and a client registers a
@@ -418,7 +436,8 @@ part and calls `verify_requirement` instead of reasoning about the arithmetic.
 
 The server speaks the protocol over stdin and stdout, so it is never run at a prompt; the host
 starts it. With nothing installed but Node, the command is `npx -y @openmbee/sysml-mcp`, which
-installs the release binary for the platform from npm on first use:
+installs the release binary for the platform from npm on first use (`npx -y @openmbee/opensysml-mcp`
+is the same package under the name the other OpenSysML npm packages share):
 
 ```bash
 claude mcp add --transport stdio sysml -- npx -y @openmbee/sysml-mcp -root .
@@ -437,8 +456,14 @@ sysml-mcp -print-config vscode -print-config-npx   # the npx form
 
 The block names the binary by its absolute path, by the command `-print-config-command`
 gives, or `npx -y @openmbee/sysml-mcp` with `-print-config-npx`; `-tools lsp,runtime` or
-`-root models` go into its `args`. The
-[MCP server reference](../reference/sysml-mcp.md) has every host's block, the full tool
+`-root models` go into its `args`. For remote agents, or several agents over one project,
+`sysml-mcp -http 8765` serves one long-lived server over the Streamable HTTP transport at
+`http://localhost:8765/mcp` (a port alone binds loopback and needs no token; any other address
+is served only with a bearer token, `-token-file mcp.token`, that every client sends), and
+`sysml-mcp -print-config <host> -http 8765` writes the block that connects to it, the token's
+`Authorization` header included when the server has one; the clients
+then share the workspace and the `session_*` names. The
+[MCP server reference](../reference/sysml-mcp.md) has every host's block, the transports, the full tool
 catalogue with what each tool does, and the conventions the tools share: 1-based line and
 column positions, paths relative to the root, and nothing written to disk without
 `"apply": true`.

@@ -56,12 +56,16 @@ export const CAPABILITY_VERIFICATION_QUESTIONS = "verification_questions";
 export const CAPABILITY_VERIFICATION_ARGUMENTS = "verification_arguments";
 /** The `Query` RPC. */
 export const CAPABILITY_QUERY = "query";
+/** `orderBy` on `Query`; a service without it would ignore the field. */
+export const CAPABILITY_QUERY_ORDER_BY = "query_order_by";
 /** The `RunDocumentQuery` RPC. */
 export const CAPABILITY_DOCUMENT_QUERY = "document_query";
 /** The `RenderDocument` RPC. */
 export const CAPABILITY_RENDER_DOCUMENT = "render_document";
 /** `form` on `RenderDocumentRequest` asking for HTML rather than Markdown. */
 export const CAPABILITY_RENDER_DOCUMENT_HTML = "render_document_html";
+/** `form` on `RenderDocumentRequest` asking for AsciiDoc, answered in `asciidoc`. */
+export const CAPABILITY_RENDER_DOCUMENT_ASCIIDOC = "render_document_asciidoc";
 /** The `RenderView` RPC, returning typed diagram data. */
 export const CAPABILITY_RENDER_VIEW = "render_view";
 /** The `ExportGraphs` RPC, exporting a behavior's lowered graph as `graphs:1` JSON. */

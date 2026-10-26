@@ -1016,7 +1016,9 @@ can filter a model OpenSysML parsed. The standard's schema is authoritative:
 `PrimitiveConstraint`, `CompositeConstraint`.
 
 **Implementation:** `internal/frontend/grpc/query.go` (`Service.Query`), reported from
-`GetServerInfo` as the `query` capability. Python: `model.query(...)`
+`GetServerInfo` as the `query` capability, with `orderBy` under `query_order_by` (a service
+without it would ignore the field, so every client checks before sending a sorted query).
+Python: `model.query(...)`
 (`client/python/opensysml/query.py`). The JSON a hand-written client sends and
 receives for this call is shown, captured, on
 [the wire contract](wire-contract.md#query).
@@ -1027,11 +1029,12 @@ receives for this call is shown, captured, on
 Query          scope[]    elements to consider; empty is the whole loaded model
                select[]   properties to report; empty reports every one
                where      one Constraint; absent selects the whole scope
+               orderBy[]  properties to sort by, in order of precedence; empty keeps declaration order
 
 Constraint     PrimitiveConstraint | CompositeConstraint      (a protobuf oneof)
 
-PrimitiveConstraint   property, operator (= > <), value[], inverse
-CompositeConstraint   operator (and | or), constraint[]        (nests arbitrarily)
+PrimitiveConstraint   property, operator (instanceOf = < <= > >= in), value[], inverse
+CompositeConstraint   operator (and | or), constraint[2..*]    (nests arbitrarily)
 ```
 
 The RPC takes the same shape, with the standard's JSON names preserved, so
@@ -1090,7 +1093,7 @@ answer.
 | `type` | Qualified name of the resolved type of a typed feature; absent when untyped or unresolved | |
 | `satisfiedRequirement` | The requirement a non-verification satisfy usage references, or the satisfy usage itself when it declares the requirement; absent when unresolved or not a satisfy usage | |
 | `satisfyingFeature` | The feature named by a satisfy usage's `by` clause; a feature chain (`by v.heater`) reports the feature the chain ends at; absent when there is no `by` clause or it is unresolved | |
-| `elementId` | The `elementId` `Convert` writes for the element (qualified id form), read from a conversion of the model made once: a declared id as declared, a standard-library element's normative id (a library file's copy included), any other the encoding of its qualified or positional name. It is the API JSON `@id` too, except in a model of several identity scopes, whose `@id` the scope qualifies. Absent for a library element a model gives an id of its own, which `Convert` references by name. A query reading it of a model `Convert` refuses is `FAILED_PRECONDITION`. Reported only when a query selects or constrains it, never by an empty `select`, since reading it converts the model | |
+| `elementId` | The `elementId` `Convert` writes for the element (qualified id form), read from a conversion of the model made once: a declared id as declared, a bundled library element's fixed id — a standard-library element's normative id, an OpenSysML extension's extension id (a library file's copy included) — any other the encoding of its qualified or positional name. It is the API JSON `@id` too, except in a model of several identity scopes, whose `@id` the scope qualifies. Absent for a library element a model gives an id of its own, which `Convert` references by name. A query reading it of a model `Convert` refuses is `FAILED_PRECONDITION`. Reported only when a query selects or constrains it, never by an empty `select`, since reading it converts the model | |
 | `multiplicityLower` | Declared lower bound | ✅ |
 | `multiplicityUpper` | Declared upper bound, `*` when unbounded | ✅ |
 
@@ -1149,25 +1152,53 @@ Where the standard is vague, these are the choices this implementation makes:
 - `=` compares the property's value as text, and matches if it equals **any** of
   the listed values. The standard writes one value and its clients write a list
   for `@type`; one value is the degenerate case of the same rule.
-- `>` and `<` compare numbers, and require exactly one operand and an ordered
-  property (the `multiplicity*` pair). A non-ordered property, more than one
-  operand, or an operand that is not a number is an `INVALID_ARGUMENT` error, not
-  a false verdict. `*` parses as infinity, so `multiplicityUpper > 1` holds for
-  an unbounded feature.
+- `>`, `>=`, `<` and `<=` compare numbers, and require exactly one operand and an
+  ordered property (the `multiplicity*` pair). A non-ordered property, more than
+  one operand, or an operand that is not a number is an `INVALID_ARGUMENT` error,
+  not a false verdict. `*` parses as infinity, so `multiplicityUpper > 1` holds
+  for an unbounded feature, and the inclusive forms hold at the bound itself
+  (`multiplicityLower <= 2` selects `attribute x : Real [2..*]`).
+- `in` is membership of the property's value in the listed values — the same
+  verdict `=` gives a list, under the operator the standard spells it with. An
+  empty list is malformed.
+- `instanceOf` applies to `@type` only, and asks the metamodel rather than the
+  text: the element's metaclass must **conform to** one of the listed metaclasses
+  through the library's reflective metaclass hierarchy
+  (`semantics.Model.InstanceOf`), so a `PartUsage` is an instance of `Usage`,
+  `Feature` and `Element`, while `@type = Usage` matches nothing (no element's
+  metaclass is the abstract `Usage`). A metaclass the library does not declare,
+  or `instanceOf` on any other property, is an `INVALID_ARGUMENT` error.
+- A `CompositeConstraint` combines **at least two** constraints, as the standard's
+  `constraint : Constraint [2..*]` says; an empty or one-member list is malformed
+  (write the one constraint on its own).
 - An element that *has no value* for the property fails the comparison; this is a
   fact about the element, not a fault in the query.
 - `inverse` negates the verdict of its own constraint, so a constraint and its
   inverse partition the scope.
 - `and`/`or` combine nested verdicts, short-circuiting once one is decisive.
 - The whole `where` tree is judged **before** any element is read, so a fault in
-  it — an unknown property, a missing operator, an empty composite, `>` on an
-  unordered property — is reported whatever the scope holds, including a model
-  that declares nothing (`TestQueryFaultIsReportedWithNoElementsToConsider`), and
-  wherever it sits, including under an already-decisive sibling.
+  it — an unknown property, a missing operator, an empty or one-member composite,
+  `>` on an unordered property, `instanceOf` of an undeclared metaclass — is
+  reported whatever the scope holds, including a model that declares nothing
+  (`TestQueryFaultIsReportedWithNoElementsToConsider`), and wherever it sits,
+  including under an already-decisive sibling.
 - `scope` considers each named element **and everything nested inside it**, in
   declaration order, parents first; a name the model does not have is an error.
   An empty scope enumerates the parsed document (not the standard library, which
   is reachable by naming a library element as a scope).
+- `orderBy` sorts the matched elements by the listed properties in order of
+  precedence, each **ascending**: the first property orders, each later one
+  breaks the ties of those before it, and declaration order breaks the last
+  ones (the sort is stable). An unknown property is an `INVALID_ARGUMENT`
+  error, as it is in `select` and `where`, even when nothing would be sorted.
+  Comparison per property (`corequery.CompareOrderValues`): an element without
+  the property precedes every element with it; two values of an ordered property
+  (`multiplicityLower`, `multiplicityUpper`) compare as numbers with `*` the
+  greatest, so `1 < 9 < 10 < *`; two values of any other property compare
+  byte-wise as text, which puts `false` before `true` and capitals before
+  lower-case names. Every property has one value type, so present-versus-absent
+  is the only mixed comparison. Sorting by a property `select` leaves out does
+  not add it to the answer. The same comparison orders OSLC `oslc.orderBy`.
 
 ### Not supported — by design of the standard
 
@@ -1180,8 +1211,9 @@ one:
   Containment is expressible only as a `scope`; specialization is not expressible
   at all, even though `semantics.Model` can answer it.
 - No `owningProject` / `@id` on the query resource (single-model service, no
-  project or commit store), no derived or computed properties, and no ordering or
-  paging of results — elements come back in declaration order.
+  project or commit store), no derived or computed properties, and no paging of
+  results — elements come back in `orderBy` order, or declaration order without
+  one.
 
 ---
 
@@ -1228,10 +1260,13 @@ above), an object as its id, its path and the usage it stands for.
 `RenderDocument` takes no bindings, because a document binds its queries'
 parameters in the model; it answers the rendered CommonMark Markdown,
 byte-identical to `-render-document` on the same model. Its `form` field
-(`markdown`, the default, or `html`) picks the HTML backend's standalone page
-instead, answered in `html` and byte-identical to `-doc-form html`; asking for
-HTML needs the `render_document_html` capability, and PDF is not offered, since
-it needs the CLI's converter toolchain.
+(`markdown`, the default, `html` or `asciidoc`) picks the HTML backend's
+standalone page instead, answered in `html` and byte-identical to `-doc-form
+html`, or the AsciiDoc backend's document, answered in `asciidoc` and
+byte-identical to `-doc-form asciidoc`; asking for HTML needs the
+`render_document_html` capability and AsciiDoc the `render_document_asciidoc`
+capability, and PDF is not offered, since it needs the CLI's converter
+toolchain.
 
 `RenderView` answers a named view or targeted pseudo-view as ordered nodes,
 edges, table and matrix rows, notes, source spans and optional canvas/geometry/style data,
@@ -1247,11 +1282,21 @@ elements there are. It is advertised by `render_view`, and a service without
 that capability refuses the request with `UNIMPLEMENTED`.
 Its `depth` field draws that many levels of nested elements below each exposed
 element, overriding the view's own `depth`; `0` draws every level the view allows.
-Python exposes this as `model.render_view(view_name, ports="minimal", show=None, depth=0)`,
+Its `compartments` field folds a tree rendering's owned members into compartment rows of their
+owner as `sysml -render-compartments` does: `""` or `"positioned"` (the default) the layout-less
+members of a tree some `Layout` positions alone, `"most"` every owned usage no `Layout`, nested
+definition or package keeps a node, `"ports"` the port usages with the ports nested under them;
+another name is refused as `INVALID_ARGUMENT` naming the three. A row comes back as a node whose
+`compartment` names the compartment of its `parent` it is drawn in (`attributes`, `parts`, `ports`,
+…), empty for a node drawn as a box.
+Python exposes this as `model.render_view(view_name, ports="minimal", show=None, depth=0,
+compartments="positioned")`,
 returning a typed `RenderedView` whose `shown` lists the elements drawn; Rust as
-`Model::render_view_showing(name, ports, &["edge-labels"])`; Go as
-`RenderView(ctx, model, name, opensysml.WithShow("edge-labels"), opensysml.WithDepth(1))`
-with the result's `Shown`.
+`Model::render_view_showing(name, ports, &["edge-labels"])` and
+`Model::render_view_folded(name, ports, &[], 0, RenderViewCompartments::Most)`; Go as
+`RenderView(ctx, model, name, opensysml.WithShow("edge-labels"), opensysml.WithDepth(1),
+opensysml.WithCompartments("most"))`
+with the result's `Shown`; Node as `model.renderView(name, { compartments: "most" })`.
 
 `ExportGraphs` answers the lowered graph of an action or state machine — the
 subject's `ActionGraph`/`StateGraph` IR and that of every behavior it performs —
@@ -1358,8 +1403,9 @@ it.
 
 Known limitations: the response carries no provenance for *successful* rows
 (only failures name their source), and the document IR is not exposed in a
-structured form — Markdown, and HTML under the `render_document_html`
-capability, are the document forms served; the PDF form `sysml -render-document
+structured form — Markdown, HTML under the `render_document_html` capability
+and AsciiDoc under the `render_document_asciidoc` capability are the document
+forms served; the PDF form `sysml -render-document
 -doc-form pdf` writes is not.
 
 ---

@@ -184,6 +184,11 @@ func (fc *funcCompiler) compileFuncArg(node ast.Node, where string) (funcValue, 
 		if err != nil {
 			return funcValue{}, err
 		}
+		if v.Type().Many() && v.Type().Elem().IsFn() {
+			// A function value held in a sequence (a bare calc result) is its one element.
+			fc.c.collections = true
+			v = ToOne{X: v, Where: where}
+		}
 		if !v.Type().Scalar() || !v.Type().IsFn() {
 			return funcValue{}, fc.unsupported(fmt.Sprintf("%s: a %s where a function value is expected", where, v.Type()))
 		}
@@ -198,10 +203,15 @@ func (fc *funcCompiler) compileFuncArg(node ast.Node, where string) (funcValue, 
 			if b.sampled != nil {
 				return funcValue{}, fc.unsupported(fmt.Sprintf("%s: %s, a SampledFunction, where a function value is expected", where, qn.Parts[0].Text))
 			}
-			if b.t.Scalar() && b.t.IsFn() {
+			if b.t.Scalar() && b.t.IsFn() || b.t.Many() && b.t.Elem().IsFn() {
 				v, err := fc.compileExpr(node)
 				if err != nil {
 					return funcValue{}, err
+				}
+				if v.Type().Many() {
+					// A function value held in a sequence (a bare calc result) is its one element.
+					fc.c.collections = true
+					v = ToOne{X: v, Where: where}
 				}
 				return funcValue{dyn: v.Type(), read: v}, nil
 			}
@@ -210,7 +220,7 @@ func (fc *funcCompiler) compileFuncArg(node ast.Node, where string) (funcValue, 
 	}
 	sym, ok := fc.c.resolver.ResolveQualified(fc.scope, qn)
 	if !ok {
-		return funcValue{}, fc.unsupported(fmt.Sprintf("%s: %s does not resolve", where, qnText(qn)))
+		return funcValue{}, fc.unsupported(fmt.Sprintf("%s: %s does not resolve", where, qn.Text()))
 	}
 	f, err := fc.functionValueOf(sym, where)
 	return referenced(f), err
@@ -524,8 +534,9 @@ func (fc *funcCompiler) compileSample(n *ast.InvocationExpr) (Sample, error) {
 // materialization after it, and the SampledFunction's once all are collected.
 var sampleSteps = SampleSteps{Enter: 4, Before: 4, After: 1, Done: 1}
 
-// projectionSteps are the steps Domain or Range spends reading `fn.samples.domainValue`.
-const projectionSteps = 3
+// projectionSteps are the steps Domain or Range spends reading `fn.samples.domainValue`:
+// the chain, read as one from `fn`, and `fn` itself.
+const projectionSteps = 2
 
 // temp is a fresh hidden local of type t.
 func (fc *funcCompiler) temp(t Type) Param {

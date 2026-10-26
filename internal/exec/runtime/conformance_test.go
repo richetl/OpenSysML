@@ -187,6 +187,8 @@ type ExpectedOutcome struct {
 	// Evaluate names the element to execute or evaluate: a qualified path
 	// ("test::p::a") also reaches one nested in a part. empty searches the model.
 	Evaluate string `json:"evaluate,omitempty"`
+	// Before names actions performed to completion on the case's runtime before its own.
+	Before []string `json:"before,omitempty"`
 	// Trace opts a case into a golden trace it does not carry yet, so
 	// -update-traces writes one. A case already carrying a golden needs no opt-in.
 	Trace bool `json:"trace,omitempty"`
@@ -222,6 +224,10 @@ type ExpectedOutcome struct {
 	Verdict       string            `json:"verdict,omitempty"`
 	VerdictDetail string            `json:"verdictDetail,omitempty"`
 	Subcases      map[string]string `json:"subcases,omitempty"`
+	// Verifications are, for a requirement case, the runs of the verification cases
+	// verifying the requirement, reported about no object as `-requirement` reports
+	// them, in order; stated, all of them are checked.
+	Verifications []ExpectedVerificationRun `json:"verifications,omitempty"`
 
 	// Performers are the objects that each perform the case's behavior, for a
 	// case whose contract depends on which object performs it — two objects
@@ -245,32 +251,14 @@ type ExpectedOutcome struct {
 	// exhibits or performs them, one entry per object whose performance the case
 	// states.
 	Objects []ObjectRun `json:"objects,omitempty"`
+	// Transfers names the messages an occurrence case realizes, in run order.
+	Transfers []string `json:"transfers,omitempty"`
 	// Materialization states what reading every feature value of the instance,
 	// and of the objects those hold, reports — the check `-instantiate` makes.
 	Materialization *ExpectedMaterialization `json:"materialization,omitempty"`
 	// Validation states what validating the instance as a whole reports: every
 	// assertion about it and the objects it holds, in report order.
 	Validation *ExpectedValidation `json:"validation,omitempty"`
-}
-
-// ExpectedValidation is the report of validating an instance as a whole: each
-// verdict in order, whether the object is shown valid, whether the walk was
-// bounded, and the unreadable feature values.
-type ExpectedValidation struct {
-	Verdicts []ExpectedObjectVerdict `json:"verdicts"`
-	Valid    *bool                   `json:"valid,omitempty"`
-	Bounded  bool                    `json:"bounded,omitempty"`
-	Unread   []string                `json:"unread,omitempty"`
-}
-
-// ExpectedObjectVerdict is one verdict of a validation: the assertion's kind and
-// text, the object's path from the root (empty for the root), status and error text.
-type ExpectedObjectVerdict struct {
-	Kind      string `json:"kind"`
-	Assertion string `json:"assertion"`
-	Object    string `json:"object,omitempty"`
-	Status    string `json:"status"`
-	Error     string `json:"error,omitempty"`
 }
 
 // ExpectedMaterialization is the report of reading an instance's feature values in full:
@@ -303,7 +291,7 @@ type ObjectRun struct {
 }
 
 // TestExecutionConformance runs all behavioral execution conformance tests.
-// Each case consists of <name>.sysml and <name>.expected.json.
+// Each case consists of <name>.sysml (or <name>.kerml) and <name>.expected.json.
 // Cases listed in known_failures.txt are skipped with SKIP log.
 func TestExecutionConformance(t *testing.T) {
 	conformanceDir := filepath.Join("testdata", "conformance")
@@ -432,8 +420,8 @@ func runConformanceCase(t *testing.T, conformanceDir, caseName string, policy Sc
 }
 
 func runConformanceCaseWithOwned(t *testing.T, conformanceDir, caseName string, policy SchedulePolicy, forceOwned bool) {
-	// Load .sysml file
-	sysmlPath := filepath.Join(conformanceDir, caseName+".sysml")
+	// Load the model, .sysml or .kerml
+	sysmlPath := fixtures.ModelPath(conformanceDir, caseName)
 	sysmlData, err := os.ReadFile(sysmlPath)
 	if err != nil {
 		t.Fatalf("failed to read %s: %v", sysmlPath, err)
@@ -505,6 +493,8 @@ func runConformanceCaseWithOwned(t *testing.T, conformanceDir, caseName string, 
 		runVerificationConformance(t, ctx, idx, sysmlPath, expected)
 	case "instance":
 		runInstanceConformance(t, ctx, idx, sysmlPath, expected, forceOwned)
+	case "occurrence":
+		runOccurrenceConformance(t, ctx, idx, sysmlPath, expected, forceOwned)
 	default:
 		if forceOwned {
 			t.Skip("no object owns connectors before execution")
@@ -606,7 +596,7 @@ func exploreConformanceCase(t *testing.T, fresh func() *Context, idx *symbols.In
 	if len(expected.Outcomes) == 0 {
 		if len(exploration.BudgetsHit) > 0 {
 			t.Errorf("exploration %s under %s; raise the budget in %s with \"exploreBudget\": {\"runs\": N, \"depth\": D}",
-				exploration.Status(), policy, filepath.Base(strings.TrimSuffix(path, ".sysml"))+".expected.json")
+				exploration.Status(), policy, filepath.Base(strings.TrimSuffix(path, filepath.Ext(path)))+".expected.json")
 		}
 		return
 	}
@@ -678,7 +668,7 @@ func exploreConformanceCase(t *testing.T, fresh func() *Context, idx *symbols.In
 	}
 	if len(exploration.BudgetsHit) > 0 {
 		t.Errorf("exploration %s under %s; raise the budget in %s with \"exploreBudget\": {\"runs\": N, \"depth\": D}",
-			exploration.Status(), policy, filepath.Base(strings.TrimSuffix(path, ".sysml"))+".expected.json")
+			exploration.Status(), policy, filepath.Base(strings.TrimSuffix(path, filepath.Ext(path)))+".expected.json")
 	}
 }
 
@@ -809,6 +799,7 @@ func admissibleSchemaProblems(expected ExpectedOutcome, oracleTitles map[string]
 			problems = append(problems, "exploreBudget: "+err.Error())
 		}
 	}
+	problems = append(problems, beforeSchemaProblems(expected)...)
 	if len(expected.Outcomes) == 0 {
 		if expected.Admissible != "" {
 			problems = append(problems, "admissible is stated without outcomes to admit")
@@ -1044,6 +1035,7 @@ func runActionConformance(t *testing.T, ctx *Context, idx *symbols.Index, path s
 		runActionPerformers(t, ctx, idx, actionSym, expected.Performers)
 		return
 	}
+	performBefore(t, ctx, idx, rootScope, actionSym, expected)
 
 	// Execute action
 	outcome, err := ctx.ActionOutcomePerformedBy(actionSym, nil, nil)
@@ -1088,44 +1080,6 @@ func runActionConformance(t *testing.T, ctx *Context, idx *symbols.Index, path s
 	}
 }
 
-// runActionPerformers performs an action once per object performing it and
-// checks each performance against what that object expects: its outputs, the
-// feature values the body left on the object, or the error it must fail with.
-func runActionPerformers(t *testing.T, ctx *Context, idx *symbols.Index, actionSym *symbols.Symbol, performers []Performer) {
-	t.Helper()
-	for _, performer := range performers {
-		self, err := ctx.Instantiate(oneSymbol(t, idx, performer.Object))
-		if err != nil {
-			t.Fatalf("instantiate %s: %v", performer.Object, err)
-		}
-		t.Run(performer.Object, func(t *testing.T) {
-			outcome, err := ctx.ActionOutcomePerformedBy(actionSym, self, nil)
-			if performer.Error != "" {
-				requireError(t, "performance by "+performer.Object, err, performer.Error)
-				return
-			}
-			if err != nil {
-				t.Fatalf("performance by %s failed: %v", performer.Object, err)
-			}
-			validateTerminated(t, outcome.Terminated, performer.Terminated)
-			validateOutputs(t, ctx, performer.Outputs, outcome.Outputs)
-			for path, expectedVal := range performer.Slots {
-				fv, err := featureValueAtPath(t, ctx, self, path)
-				if err != nil {
-					t.Errorf("feature value %q of %s: %v", path, performer.Object, err)
-					continue
-				}
-				value, err := fv.ReadValue(path)
-				if err != nil {
-					t.Errorf("feature value %q of %s: %v", path, performer.Object, err)
-					continue
-				}
-				validateValue(t, ctx, path, expectedVal, value)
-			}
-		})
-	}
-}
-
 // runStateConformance executes a state machine and validates the final state. A
 // case naming performers runs the machine once per object performing it, each
 // against the outcome that object expects.
@@ -1140,10 +1094,7 @@ func runStateConformance(t *testing.T, ctx *Context, idx *symbols.Index, path st
 		return
 	}
 	for _, performer := range expected.Performers {
-		self, err := ctx.Instantiate(oneSymbol(t, idx, performer.Object))
-		if err != nil {
-			t.Fatalf("instantiate %s: %v", performer.Object, err)
-		}
+		self := performerObject(t, ctx, idx, performer.Object)
 		if forceOwned {
 			if err := forceOwnedConnectors(ctx, self); err != nil {
 				t.Fatalf("OwnedConnectors(%s) failed before execution: %v", performer.Object, err)
@@ -1156,6 +1107,7 @@ func runStateConformance(t *testing.T, ctx *Context, idx *symbols.Index, path st
 				Terminated:  performer.Terminated,
 				StateVisits: performer.StateVisits,
 				Outputs:     performer.Outputs,
+				Error:       performer.Error,
 			})
 		})
 	}
@@ -1264,26 +1216,32 @@ func runOneStatePerformance(t *testing.T, ctx *Context, stateSym *symbols.Symbol
 // results the case states for it, every other event queued and run.
 func callingPerformance(t *testing.T, ctx *Context, stateSym *symbols.Symbol, self *Instance, events []ExpectedEvent) (*StateExecutor, error) {
 	t.Helper()
-	exec, err := ctx.CreateStateExecutorFor(stateSym, self)
+	exec, reused, err := ctx.stateRunFor(stateSym, self, true)
+	release := func() {
+		if exec != nil && !reused {
+			exec.Release()
+		}
+	}
 	if err != nil {
+		release()
 		return nil, err
 	}
 	for i, event := range events {
 		queued := queuedEvents(t, events[i:i+1])[0]
 		if event.Results == nil {
 			if err := exec.Enqueue(queued); err != nil {
-				exec.Release()
+				release()
 				return nil, err
 			}
 			if err := exec.RunToCompletion(); err != nil {
-				exec.Release()
+				release()
 				return nil, err
 			}
 			continue
 		}
 		results, err := exec.Call(queued.Call, queued.Args)
 		if err != nil {
-			exec.Release()
+			release()
 			return nil, fmt.Errorf("call %d %s: %w", i, queued.Call, err)
 		}
 		validateOutputs(t, ctx, event.Results, results)
@@ -1535,11 +1493,21 @@ func runRequirementConformance(t *testing.T, ctx *Context, idx *symbols.Index, p
 	// Find requirement definition/usage
 	rootScope := idx.DocumentRoot(path)
 	reqSym := namedOrFoundSymbol(t, idx, expected.Evaluate, rootScope, ast.DefRequirement, ast.UsageRequirement)
+	var root *Instance
+	if expected.Instantiate != "" {
+		var err error
+		if root, err = ctx.Instantiate(oneSymbol(t, idx, expected.Instantiate)); err != nil {
+			t.Fatalf("instantiate %s: %v", expected.Instantiate, err)
+		}
+	}
 
 	// Evaluate requirement using symbol's defining scope (where sibling features
 	// visible). A violated condition is a verdict, not a failure.
 	satisfied, err := ctx.EvaluateRequirement(reqSym, reqSym.OwnerScope)
-	if err != nil && !errors.Is(err, ErrViolated) {
+	switch {
+	case expected.Error != "":
+		requireError(t, "EvaluateRequirement", err, expected.Error)
+	case err != nil && !errors.Is(err, ErrViolated):
 		t.Fatalf("EvaluateRequirement failed: %v", err)
 	}
 
@@ -1548,6 +1516,10 @@ func runRequirementConformance(t *testing.T, ctx *Context, idx *symbols.Index, p
 		if satisfied != *expected.Satisfied {
 			t.Errorf("requirement satisfied = %v, want %v", satisfied, *expected.Satisfied)
 		}
+	}
+	if expected.Verifications != nil {
+		scopes := caseDocumentRoots(idx, path, expected)
+		checkVerificationRuns(t, ctx, root, "requirement", ctx.VerificationResultsOn(scopes, reqSym, nil), expected.Verifications)
 	}
 }
 
@@ -1599,30 +1571,40 @@ func checkCaseRun(t *testing.T, ctx *Context, idx *symbols.Index, result Analysi
 		}
 	}
 
-	verdicts := make(map[string]AnalysisVerdict, len(result.Verdicts))
-	for _, verdict := range result.Verdicts {
-		verdicts[verdict.Name] = verdict
-	}
-	for name, want := range expected.Verdicts {
-		verdict, ok := verdicts[name]
-		if !ok {
-			t.Errorf("no verdict for %q among %v", name, verdictNames(result.Verdicts))
-			continue
-		}
-		if got := verdict.Status.String(); got != want {
-			t.Errorf("%s %s: verdict %q (%s), want %q", verdict.Kind, name, got, verdict.Detail, want)
-		}
-	}
-	if len(result.Verdicts) != len(expected.Verdicts) {
-		t.Errorf("the case reported %d verdict(s) %v, the outcome states %d",
-			len(result.Verdicts), verdictNames(result.Verdicts), len(expected.Verdicts))
-	}
+	checkAnalysisVerdicts(t, "", result.Verdicts, expected.Verdicts)
 	if expected.Evaluations != nil {
 		checkEvaluations(t, ctx, result.Evaluations, expected.Evaluations)
 	}
 
 	for name, expectedVal := range expected.Reads {
 		validateRead(t, ctx, idx, name, expectedVal)
+	}
+}
+
+// checkAnalysisVerdicts validates the objective and assertion verdicts a run
+// reported against the ones the outcome states by name, under label when given.
+func checkAnalysisVerdicts(t *testing.T, label string, got []AnalysisVerdict, want map[string]string) {
+	t.Helper()
+	if label != "" {
+		label += ": "
+	}
+	verdicts := make(map[string]AnalysisVerdict, len(got))
+	for _, verdict := range got {
+		verdicts[verdict.Name] = verdict
+	}
+	for name, wantStatus := range want {
+		verdict, ok := verdicts[name]
+		if !ok {
+			t.Errorf("%sno verdict for %q among %v", label, name, verdictNames(got))
+			continue
+		}
+		if status := verdict.Status.String(); status != wantStatus {
+			t.Errorf("%s%s %s: verdict %q (%s), want %q", label, verdict.Kind, name, status, verdict.Detail, wantStatus)
+		}
+	}
+	if len(got) != len(want) {
+		t.Errorf("%sthe case reported %d verdict(s) %v, the outcome states %d",
+			label, len(got), verdictNames(got), len(want))
 	}
 }
 
@@ -1853,7 +1835,7 @@ func runInstanceConformance(t *testing.T, ctx *Context, idx *symbols.Index, path
 	validateIdentity(t, ctx, inst, expected)
 	validateObjectRuns(t, ctx, typeSym, inst, expected)
 	validateMaterialization(t, ctx, inst, expected.Materialization)
-	validateValidation(t, ctx, idx.DocumentRoot(path), inst, expected.Validation)
+	validateValidation(t, ctx, caseDocumentRoots(idx, path, expected), inst, expected.Validation)
 
 	for name, wantSatisfied := range expected.Constraints {
 		feat := featureNamed(ctx, typeSym, name)
@@ -1889,62 +1871,6 @@ func validateMaterialization(t *testing.T, ctx *Context, inst *Instance, expecte
 	}
 	for i, want := range expected.Errors {
 		requireError(t, fmt.Sprintf("materialization error %d", i+1), errs[i], want)
-	}
-}
-
-// validateValidation checks what validating the instance as a whole reports
-// against what the case states, when it states it: the verdicts in order.
-func validateValidation(t *testing.T, ctx *Context, scope *symbols.Scope, inst *Instance, expected *ExpectedValidation) {
-	t.Helper()
-	if expected == nil {
-		return
-	}
-	report, err := ctx.ValidateObject(inst, []*symbols.Scope{scope})
-	if err != nil {
-		t.Fatalf("validation: %v", err)
-	}
-	if expected.Valid != nil && report.Valid() != *expected.Valid {
-		t.Errorf("validation: valid = %v, want %v", report.Valid(), *expected.Valid)
-	}
-	if report.Bounded != expected.Bounded {
-		t.Errorf("validation: bounded = %v, want %v", report.Bounded, expected.Bounded)
-	}
-	if len(report.Unread) != len(expected.Unread) {
-		t.Errorf("validation: %d unread %v, want %d %v", len(report.Unread), report.Unread, len(expected.Unread), expected.Unread)
-	} else {
-		for i, want := range expected.Unread {
-			requireError(t, fmt.Sprintf("validation unread %d", i+1), report.Unread[i], want)
-		}
-	}
-	var got []string
-	for _, v := range report.Verdicts {
-		got = append(got, fmt.Sprintf("%s %q on %q: %s", v.Kind, v.Text, strings.Join(v.Path, "."), v.Status))
-	}
-	if len(report.Verdicts) != len(expected.Verdicts) {
-		t.Errorf("validation: %d verdict(s), want %d:\n%s", len(report.Verdicts), len(expected.Verdicts), strings.Join(got, "\n"))
-		return
-	}
-	for i, want := range expected.Verdicts {
-		v := report.Verdicts[i]
-		wantText := fmt.Sprintf("%s %q on %q: %s", want.Kind, want.Assertion, want.Object, want.Status)
-		if got[i] != wantText {
-			t.Errorf("validation verdict %d: %s, want %s", i+1, got[i], wantText)
-			continue
-		}
-		if v.Element == nil {
-			t.Errorf("validation verdict %d: names no element", i+1)
-		}
-		if v.Subject == nil {
-			t.Errorf("validation verdict %d: names no subject", i+1)
-		}
-		switch {
-		case want.Error != "":
-			requireError(t, fmt.Sprintf("validation verdict %d", i+1), v.Err, want.Error)
-		case v.Status == ValidationHolds && v.Err != nil:
-			t.Errorf("validation verdict %d holds yet carries %v", i+1, v.Err)
-		case v.Status != ValidationHolds && v.Err == nil:
-			t.Errorf("validation verdict %d is %s yet carries no error", i+1, v.Status)
-		}
 	}
 }
 
@@ -2107,16 +2033,16 @@ func identityPair(t *testing.T, ctx *Context, inst *Instance, pair []string) (in
 	return objectAtPath(t, ctx, inst, pair[0]), objectAtPath(t, ctx, inst, pair[1])
 }
 
-// objectAtPath walks a dotted path of feature names from inst and returns the
-// object it reaches. A numeric segment indexes into the collection the feature
-// before it holds, counted from 1 ("units.2").
+// objectAtPath walks a dotted path of member names from inst (Kernel members such
+// as `this` included, as featureValueAtPath reads them) and returns the object it
+// reaches. A numeric segment indexes into the collection before it ("units.2").
 func objectAtPath(t *testing.T, ctx *Context, inst *Instance, path string) int64 {
 	t.Helper()
 	cur := inst
 	segments := strings.Split(path, ".")
 	for i := 0; i < len(segments); i++ {
 		name := segments[i]
-		fv, err := cur.GetFeatureValue(ctx, name)
+		fv, err := cur.MemberValue(ctx, name)
 		if err != nil {
 			t.Fatalf("%s: feature value %q: %v", path, name, err)
 		}
@@ -2171,16 +2097,6 @@ func featureNamed(ctx *Context, typeSym *symbols.Symbol, name string) *Effective
 		}
 	}
 	return nil
-}
-
-// findBehavioralSymbol searches for first symbol matching defKind or usageKind,
-// failing the test when there is none.
-func findBehavioralSymbol(t *testing.T, scope *symbols.Scope, defKind ast.DefinitionKind, usageKind ast.UsageKind) *symbols.Symbol {
-	sym := lookupBehavioralSymbol(scope, defKind, usageKind)
-	if sym == nil {
-		t.Fatalf("no behavioral symbol found (defKind=%v, usageKind=%v)", defKind, usageKind)
-	}
-	return sym
 }
 
 // namedOrFoundSymbol returns the symbol the case names by qualified path, which

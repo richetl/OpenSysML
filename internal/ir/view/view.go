@@ -166,6 +166,34 @@ type Renderer struct {
 	// verdicts overlays verification verdicts on a requirement rendering; nil
 	// draws it structurally.
 	verdicts Verdicts
+	// included are elements drawn besides the exposed ones (SetIncluded).
+	included []*symbols.Symbol
+}
+
+// SetIncluded names elements every rendering draws besides what its view
+// exposes, as if the view exposed them too; nil draws the view's own content.
+func (r *Renderer) SetIncluded(included []*symbols.Symbol) { r.included = included }
+
+// withIncluded appends the included elements the exposed ones do not already
+// name, recording where each was declared in out.Included.
+func (r *Renderer) withIncluded(exposed []*symbols.Symbol, out *Rendering) []*symbols.Symbol {
+	if len(r.included) == 0 {
+		return exposed
+	}
+	seen := map[symbols.ElementKey]bool{}
+	for _, sym := range exposed {
+		seen[symbols.KeyOf(sym)] = true
+	}
+	for _, sym := range r.included {
+		key := symbols.KeyOf(sym)
+		if sym == nil || seen[key] {
+			continue
+		}
+		seen[key] = true
+		exposed = append(exposed, sym)
+		out.Included = append(out.Included, symbolOrigin(sym))
+	}
+	return exposed
 }
 
 // NewRenderer returns a renderer over the model and resolver of a loaded
@@ -188,16 +216,15 @@ const (
 	EdgeFlow
 	// EdgeBinding is a binding equating two features.
 	EdgeBinding
-	// EdgeSpecialization is a specialization, subsetting or redefinition, from
-	// the specific element to the general one.
+	// EdgeSpecialization is a specialization (or subclassification), from the
+	// specific element to the general one.
 	EdgeSpecialization
 	// EdgeTyping is a feature typing, from a usage to its definition.
 	EdgeTyping
 	// EdgeComposition is a composite usage, from its owner to it; in a case
 	// diagram, a case contained in another.
 	EdgeComposition
-	// EdgeReference is a referential usage, from its owner to it; in a case or
-	// mixed diagram, a performing or exhibiting usage to its target.
+	// EdgeReference is a referential usage, from its owner to it.
 	EdgeReference
 	// EdgeContainment is a package owning another, from the owner.
 	EdgeContainment
@@ -220,6 +247,41 @@ const (
 	EdgeInclude
 	// EdgeAnchor attaches an objective to a case.
 	EdgeAnchor
+	// EdgeDependency is a dependency of no particular kind, from the client.
+	EdgeDependency
+	// EdgeSubsetting is a subsetting, from the subsetting feature to the subsetted one.
+	EdgeSubsetting
+	// EdgeRedefinition is a redefinition, from the redefining feature to the redefined one.
+	EdgeRedefinition
+	// EdgePerform is a performing usage to the action it performs, in a case or mixed diagram.
+	EdgePerform
+	// EdgeExhibit is an exhibiting usage to the state it exhibits, in a case or mixed diagram.
+	EdgeExhibit
+	// EdgeSuccessionFlow is a succession flow: a flow whose target also follows
+	// its source, drawn dashed with a filled head and the text «succession flow».
+	EdgeSuccessionFlow
+	// EdgeRequire is a requirement constraint membership, from the requirer to
+	// the required constraint or requirement.
+	EdgeRequire
+	// EdgeAssume is an assumed constraint membership, from the assumer to the
+	// assumed constraint.
+	EdgeAssume
+	// EdgeAssert is an asserted constraint, from the assertor to the constraint.
+	EdgeAssert
+	// EdgeFrame is a framed concern, from the framer to the concern.
+	EdgeFrame
+	// EdgeEvent is an event occurrence, from the eventer to the occurrence.
+	EdgeEvent
+	// EdgePortion is a timeslice or snapshot, from the occurrence to its portion.
+	EdgePortion
+	// EdgeReferenceSubsetting is a reference subsetting (`::>`), from the
+	// referencing usage to the referenced one.
+	EdgeReferenceSubsetting
+	// EdgeUnownedMembership is a namespace's membership of an element it does
+	// not own — an alias — from the namespace.
+	EdgeUnownedMembership
+	// EdgeExpose is a view's exposure of an element, from the view.
+	EdgeExpose
 )
 
 // String names an edge kind the way the notation speaks of it.
@@ -263,6 +325,36 @@ func (k EdgeKind) String() string {
 		return "include"
 	case EdgeAnchor:
 		return "anchor"
+	case EdgeDependency:
+		return "dependency"
+	case EdgeSubsetting:
+		return "subsetting"
+	case EdgeRedefinition:
+		return "redefinition"
+	case EdgePerform:
+		return "perform"
+	case EdgeExhibit:
+		return "exhibit"
+	case EdgeSuccessionFlow:
+		return "succession flow"
+	case EdgeRequire:
+		return "require"
+	case EdgeAssume:
+		return "assume"
+	case EdgeAssert:
+		return "assert"
+	case EdgeFrame:
+		return "frame"
+	case EdgeEvent:
+		return "event"
+	case EdgePortion:
+		return "portion"
+	case EdgeReferenceSubsetting:
+		return "reference subsetting"
+	case EdgeUnownedMembership:
+		return "unowned membership"
+	case EdgeExpose:
+		return "expose"
 	}
 	return "edge"
 }
@@ -295,6 +387,9 @@ type Node struct {
 	// Typings are the qualified names of the elements Type resolves to, in its
 	// order; a member of one is drawn as the type's own. Empty when none resolves.
 	Typings []string
+	// FromType marks a member the node has from its type rather than declares itself; it
+	// is drawn under the node as the type's own, so a folding that hides it hides nothing of the node's.
+	FromType bool
 	// Detail is what else the rendering says about the node, such as a state's
 	// "initial" or "already shown". It is empty when there is nothing to add.
 	Detail string
@@ -488,12 +583,17 @@ type Rendering struct {
 	// connection to something the view does not expose, a behavior that does not
 	// lower.
 	Notices []string
+	// Included is where each element drawn by SetIncluded rather than by the
+	// view was declared, in the order the renderer was given them.
+	Included []Origin
 	// depthCut counts the elements a depth bound kept the walk from drawing.
 	depthCut int
 
 	emptyReason string
 	// drawn collects the elements drawn while rendering, nil when no one asked.
 	drawn *Drawn
+	// folds are the behaviour roots whose collapsed nodes foldCollapsed folds once every edge is drawn.
+	folds []*Node
 	// narrowed marks a rendering showing() already narrowed to its Shown.
 	narrowed bool
 	// sites records, while a tree renders, what each of its nodes draws; nil
@@ -573,6 +673,7 @@ func (r *Renderer) render(view *symbols.Symbol, drawn *Drawn) (*Rendering, error
 		return nil, err
 	}
 	out := &Rendering{View: r.notationName(view), Kind: kind, Stated: stated, Shown: r.shownOf(view), drawn: drawn}
+	exposed = r.withIncluded(exposed, out)
 	switch kind {
 	case KindTree:
 		r.renderTree(view, exposed, out)
@@ -591,13 +692,14 @@ func (r *Renderer) render(view *symbols.Symbol, drawn *Drawn) (*Rendering, error
 	case KindMatrix:
 		r.renderMatrix(exposed, r.matrixShownKinds(view), false, out)
 	case KindSequence:
-		r.renderSequence(exposed, out)
+		r.renderSequence(view, exposed, out)
 	case KindRequirement, KindDefinition, KindPackage:
 		r.renderGeneral(view, exposed, out)
 	default:
 		// Unreachable: KindOf refuses an unsupported kind.
 		return nil, &UnsupportedKindError{Kind: kind, View: r.notationName(view), Stated: stated}
 	}
+	foldCollapsed(out)
 	r.noteDepthCuts(view, out)
 	if out.Empty() && out.emptyReason == "" {
 		out.emptyReason = r.exposureReason(view, exposed, out)
@@ -621,6 +723,7 @@ func (r *Renderer) render(view *symbols.Symbol, drawn *Drawn) (*Rendering, error
 // *UnsupportedKindError.
 func (r *Renderer) RenderExposed(exposed []*symbols.Symbol, kind Kind, stated string) (*Rendering, error) {
 	out := &Rendering{Kind: kind, Stated: stated}
+	exposed = r.withIncluded(exposed, out)
 	switch kind {
 	case KindTree:
 		r.renderTree(nil, exposed, out)
@@ -639,12 +742,13 @@ func (r *Renderer) RenderExposed(exposed []*symbols.Symbol, kind Kind, stated st
 	case KindMatrix:
 		r.renderMatrix(exposed, allMatrixKinds(), true, out)
 	case KindSequence:
-		r.renderSequence(exposed, out)
+		r.renderSequence(nil, exposed, out)
 	case KindRequirement, KindDefinition, KindPackage:
 		r.renderGeneral(nil, exposed, out)
 	default:
 		return nil, &UnsupportedKindError{Kind: kind, Stated: stated, Remedy: remedyFor(kind)}
 	}
+	foldCollapsed(out)
 	r.noteDepthCuts(nil, out)
 	if out.Empty() && out.emptyReason == "" {
 		out.emptyReason = exposedReason(exposed, out)
@@ -1032,15 +1136,6 @@ func referenceText(node ast.Node) string {
 		sb.WriteString(source.NameText(part.Text))
 	}
 	return sb.String()
-}
-
-// simpleName is the last segment of a qualified name, which is what a nested
-// node is labeled with.
-func simpleName(fqn string) string {
-	if i := strings.LastIndex(fqn, "::"); i >= 0 {
-		return fqn[i+2:]
-	}
-	return fqn
 }
 
 // notationName writes a reference read as joined qualified text (a `render`

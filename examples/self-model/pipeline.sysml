@@ -23,6 +23,7 @@ package OpenSysMLArtifacts {
     item def InstanceGraph;
     item def RdfGraph;
     item def QueryRows;
+    item def ProseBlocks;
     item def DocumentPlan;
     item def DocumentTree;
     item def AnalysisQuestion;
@@ -238,7 +239,6 @@ package OpenSysMLPipeline {
         part typeRelationships : ConstraintCheck { attribute :>> goType = "TypeRelationshipsPass"; }
         part conjugatedSpecialization : TypeCheck { attribute :>> goType = "W11EConjugatedSpecializationPass"; }
         part implicitBase : ConstraintCheck { attribute :>> goType = "ImplicitBasePass"; }
-        part partUsageDefinition : ConstraintCheck { attribute :>> goType = "PartUsageDefinitionPass"; }
         part multiplicityBounds : ConstraintCheck { attribute :>> goType = "MultiplicityBoundsPass"; }
         part referenceSubsetting : ConstraintCheck { attribute :>> goType = "ReferenceSubsettingPass"; }
         part topLevelImports : ConstraintCheck { attribute :>> goType = "TopLevelImportPass"; }
@@ -276,6 +276,10 @@ package OpenSysMLPipeline {
         part variability : ConstraintCheck { attribute :>> goType = "W8DVariabilityPass"; }
         part variantOwners : ConstraintCheck {
             attribute :>> goType = "VariantOwnerPass";
+            attribute :>> elementScoped = true;
+        }
+        part variantKinds : ConstraintCheck {
+            attribute :>> goType = "VariantKindPass";
             attribute :>> elementScoped = true;
         }
         part relatedElements : ConstraintCheck { attribute :>> goType = "W10BRelatedElementsPass"; }

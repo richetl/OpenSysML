@@ -32,12 +32,13 @@ const (
 	constraintCommand  = "%constraint"
 	requirementCommand = "%requirement"
 	depthOption        = "depth="
+	compartmentsOption = "compartments="
 )
 
 // renderUsage is how %render is written: a view, the form to write it in, text
 // when none is named, then a palette, style and port display the form draws.
 const (
-	renderUsage    = "usage: %render <name> [text|mermaid|markdown|dot|plantuml|d2|csv|tsv] [palette] [pilot|cameo] [minimal|full] [splines|ortho|polyline] [verdicts] [show=<elements>] [depth=<levels>] [link=<template>]"
+	renderUsage    = "usage: %render <name> [text|mermaid|markdown|dot|plantuml|d2|csv|tsv] [palette] [pilot|cameo] [minimal|full] [splines|ortho|polyline] [verdicts] [compartments=<folding>] [show=<elements>] [depth=<levels>] [link=<template>]"
 	renderRunUsage = "usage: %render-run <timeline|sequence> [text|mermaid|plantuml|svg|svg-animated|dot] [link=<template>]"
 )
 
@@ -195,6 +196,7 @@ var metaCommandTable = []metaCommand{
 	{name: "%documents", group: groupSession, desc: "list the model's documents by the names %render-document reads"},
 	{name: "%views", group: groupSession, args: "[diagrams] [<kind>...]", desc: "list the model's views and their kinds by the names %render reads; diagrams keeps the graph-shaped ones"},
 	{name: "%clear", group: groupSession, desc: "reset the session"},
+	{name: "%workspace", group: groupSession, desc: "show the directory a root namespace a submission leaves unresolved is looked for under: the model file there declaring it loads as %load would"},
 	{name: "%load", group: groupSession, args: "[--cells <sel>] <path>... | [--id=<project id>] [--name=<name>] [--branch=<branch>] [<name>]", desc: "submit the contents of files, directories or globs (a .ipynb notebook's code cells declare, --cells 1,3-5 or tag:<tag> picking cells), or load a repository project's model: named, by --id or by --name, at a branch or its default; a name that is a path on disk loads the files",
 		part: repositoryLinked, partArgs: "[--cells <sel>] <path>...", partDesc: "submit the contents of files, directories or globs; a .ipynb notebook's code cells declare, its % commands and expressions skipped, --cells 1,3-5 or tag:<tag> picking cells"},
 	{name: "%print", group: groupSession, args: "[name]", desc: "print the session model as SysML notation, or just the named element", linked: notationLinked},
@@ -235,7 +237,7 @@ var metaCommandTable = []metaCommand{
 	{name: "%builtins", group: groupLibrary, desc: "list the library functions this build implements directly"},
 	{name: "%view", group: groupLibrary, args: argName, desc: "show what a view exposes, and the views nested in it"},
 	{name: "%graphs", group: groupLibrary, args: argName, desc: "export the lowered graph of an action or state machine, and of every behavior it performs, as the canonical graphs:1 JSON an external engine is sent"},
-	{name: "%render", group: groupLibrary, args: "<name> [form [palette] [style] [ports] [lines] [verdicts] [show=<elements>] [depth=<levels>] [link=<template>]]", desc: "render a view as the rendering it states — as text, as a Mermaid diagram, a Markdown table or relationship matrix, or as Graphviz DOT, PlantUML or D2, filled from a named palette, drawn in a style (pilot or cameo) with its lines routed as splines, ortho or polyline, overlaid with verdicts, limited to the elements show= names and the depth= levels, and optionally linking elements to their source with a link template"},
+	{name: "%render", group: groupLibrary, args: "<name> [form [palette] [style] [ports] [lines] [verdicts] [compartments=<folding>] [show=<elements>] [depth=<levels>] [link=<template>]]", desc: "render a view as the rendering it states — as text, as a Mermaid diagram, a Markdown table or relationship matrix, or as Graphviz DOT, PlantUML or D2, filled from a named palette, drawn in a style (pilot or cameo) with its lines routed as splines, ortho or polyline, overlaid with verdicts, a tree's owned members folded into compartment rows as compartments= says (positioned, most or ports), limited to the elements show= names and the depth= levels, and optionally linking elements to their source with a link template"},
 	{name: "%viz", group: groupLibrary, args: "[--view=<VIEW>] [--style=<STYLE>...] [form] <name> [<name>...]", desc: "draw the named elements on demand, with no view declared, as the pilot kernel's %viz does: VIEW is DEFAULT, TREE, INTERCONNECTION, STATE, ACTION, SEQUENCE, MIXED or CASE in any letter case, DEFAULT (the view when none is named) choosing the kind from what the names resolve to; each --style is a direction (TB, LR, RL, BT), a drawing style (pilot or cameo), a palette, a port display, or a pilot style that is accepted and noted as not drawn; the form is any %render form, text when none is named"},
 
 	{name: "%instantiate", group: groupRuntime, args: argName, desc: "create an instance of a part def"},
@@ -272,6 +274,7 @@ var metaCommandTable = []metaCommand{
 	{name: "%break", group: groupAction, args: "<node>", desc: "set breakpoint at node"},
 	{name: "%stop", group: groupAction, desc: "stop current debugging session"},
 
+	{name: "%occurrence", group: groupBehavioral, args: argName, desc: "perform an occurrence def as the interaction its body states: each message transferred between its lifelines in the order their events admit"},
 	{name: "%state", group: groupState, args: "<name> [<object>]", desc: "debug the machine an object exhibits (naming that machine alone attaches to the one object exhibiting it; with none or several, name the object), or a state machine performed by an object; an object is named, #<id>, or a path such as car.fl"},
 	{name: "%send", group: groupState, args: "<signal>[(<p>=<expr>, ...)] [to <object>]", desc: "send a signal to an object's machine, by default the one being debugged; an object is named, #<id>, or a path such as car.fl"},
 	{name: "%events", group: groupState, desc: "show event queue and signals in flight"},
@@ -399,6 +402,8 @@ func (s *Session) metaSessionCommand(fields []string, line string) (metaResult, 
 		return metaOut(decls, false, nil), true
 	case "%clear":
 		return metaOut(append([]string{"session cleared"}, s.clear()...), false, nil), true
+	case "%workspace":
+		return metaOut(s.doWorkspace(), false, nil), true
 	case "%documents":
 		return metaOut(s.doDocuments()), true
 	case "%views":
@@ -553,7 +558,7 @@ func (s *Session) metaRender(args []string) ([]string, bool, error) {
 // renderOptionWord reports whether word is a rendering option rather than a
 // form, so the text form is understood before it.
 func renderOptionWord(word string) bool {
-	if strings.HasPrefix(word, "show=") || strings.HasPrefix(word, "link=") || strings.HasPrefix(word, depthOption) {
+	if strings.HasPrefix(word, "show=") || strings.HasPrefix(word, "link=") || strings.HasPrefix(word, depthOption) || strings.HasPrefix(word, compartmentsOption) {
 		return true
 	}
 	if o, ok := view.ParseOverlay(word); ok && o != "" {
@@ -625,6 +630,9 @@ func (r *renderArgs) read(word string) string {
 	if strings.HasPrefix(word, "link=") {
 		return r.readLink(strings.TrimPrefix(word, "link="))
 	}
+	if strings.HasPrefix(word, compartmentsOption) {
+		return r.readCompartments(strings.TrimPrefix(word, compartmentsOption))
+	}
 	if style, ok := view.ParseDrawingStyle(word); ok {
 		return setOnce(&r.opts.Style, style)
 	}
@@ -655,6 +663,18 @@ func (r *renderArgs) readShown(names string) string {
 		return fmt.Sprintf("show= names the optional notation elements to draw, %s; %s", view.ElementNames(), renderUsage)
 	}
 	r.opts.Show = shown
+	return ""
+}
+
+func (r *renderArgs) readCompartments(name string) string {
+	if r.opts.Compartments != "" {
+		return renderUsage
+	}
+	compartments, ok := view.ParseCompartments(name)
+	if !ok {
+		return fmt.Sprintf("compartments= names the folding of a tree's owned members into compartment rows, %s; %s", view.CompartmentsNames(), renderUsage)
+	}
+	r.opts.Compartments = compartments
 	return ""
 }
 
@@ -834,6 +854,11 @@ func (s *Session) metaDebugCommand(fields []string, line string) (metaResult, bo
 		return metaOut(s.doBreak(nameText(fields[1]))), true
 	case "%stop":
 		return metaOut(s.doStop()), true
+	case "%occurrence":
+		if len(fields) < 2 {
+			return metaOut([]string{"usage: %occurrence <name>"}, false, nil), true
+		}
+		return metaOut(s.withTrace(s.runOccurrence(nameText(fields[1]))).Lines, false, nil), true
 	// State machine debugging
 	case "%state":
 		if len(fields) < 2 {
@@ -1062,8 +1087,33 @@ func (s *Session) evalExpr(expr string) ([]string, error) {
 }
 
 // evalValue evaluates an expression as evalExpr does, keeping the value beside
-// the lines the prompt prints for it.
+// the lines the prompt prints for it. An expression that fails naming a root
+// namespace a workspace file declares is evaluated again once that file loads.
 func (s *Session) evalValue(expr string) (evaluated, error) {
+	ev, err := s.evalValueOnce(expr)
+	if err == nil {
+		return ev, nil
+	}
+	notices, loaded := s.loadWorkspaceForText(expr)
+	if !loaded {
+		return ev, withNotices(err, notices)
+	}
+	ev, err = s.evalValueOnce(expr)
+	ev.lines = append(notices, ev.lines...)
+	return ev, withNotices(err, notices)
+}
+
+// withNotices carries what resolving against the workspace reported under the
+// error it did not avert, so the user reads why before what failed.
+func withNotices(err error, notices []string) error {
+	if err == nil || len(notices) == 0 {
+		return err
+	}
+	return fmt.Errorf("%w\n%s", err, strings.Join(notices, "\n"))
+}
+
+// evalValueOnce evaluates an expression against the session as it stands.
+func (s *Session) evalValueOnce(expr string) (evaluated, error) {
 	// Try literal evaluation first (works even with empty session)
 	literalResult, isLiteral, litErr := s.tryEvalLiteral(expr)
 	if isLiteral {
@@ -1323,12 +1373,14 @@ func (s *Session) evalWithoutDeclarations(ctx *runtime.Context, expr string) (ev
 const noDeclarationsLoaded = "no declarations loaded (literals work, but feature references need declarations)"
 
 // declarationsWouldAnswer reports whether err is a failure declarations would
-// answer — a name, a unit or a value nothing declares — rather than the answer
-// of the expression itself.
+// answer — a name, a unit or a feature's value nothing declares — rather than
+// the answer of the expression itself. A result the expression's own body never
+// binds is also no value, but one no declaration would supply.
 func declarationsWouldAnswer(err error) bool {
+	var noValue *runtime.NoValueError
 	return errors.Is(err, runtime.ErrUnresolvedReference) ||
 		errors.Is(err, semantics.ErrNotAUnit) ||
-		errors.Is(err, runtime.ErrNoValue)
+		errors.As(err, &noValue)
 }
 
 // evalError reports an evaluation failure, giving one that carries the span of
@@ -2085,17 +2137,26 @@ func (s *Session) calcVerdict(calcName, argText string) Verdict {
 // the command line — can tell an evaluated calculation from one that could not be run.
 func (s *Session) evalCalc(calcName, argText string) ([]string, []NamedValue, *analysis.Plan, error) {
 	sym, err := s.calcSymbol(calcName)
+	var notices []string
 	if err != nil {
-		return nil, nil, nil, err
+		// The calc may be declared by a workspace file not yet loaded.
+		var loaded bool
+		if notices, loaded = s.loadWorkspaceForText(calcName); !loaded {
+			return nil, nil, nil, withNotices(err, notices)
+		}
+		if sym, err = s.calcSymbol(calcName); err != nil {
+			return nil, nil, nil, withNotices(err, notices)
+		}
 	}
 	ctx, err := s.getOrCreateRuntime()
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, withNotices(err, notices)
 	}
 	lines, outputs, plan, err := s.evalCalcIn(s.dispatched(), ctx, sym, calcName, argText)
 	if err != nil {
-		return nil, nil, plan, err
+		return nil, nil, plan, withNotices(err, notices)
 	}
+	lines = append(notices, lines...)
 	values := make([]NamedValue, 0, len(outputs))
 	for _, out := range outputs {
 		values = append(values, NamedValue{Name: out.Name, Value: formatValue(ctx, out.Value)})
@@ -2584,8 +2645,8 @@ func (s *Session) heldRoots() []*runtime.Instance {
 // the session holds no object of that definition: it decided nothing yet.
 func (s *Session) satisfyNeedsObject(a *runtime.SatisfyAssertion, typ *symbols.Symbol) Verdict {
 	name := s.objectLabelOf(typ)
-	return Verdict{Subject: satisfyText(a), Status: VerdictUnresolved, Lines: []string{
-		fmt.Sprintf("? %s needs an object of %s: none is instantiated", satisfyText(a), name),
+	return Verdict{Subject: a.Text(), Status: VerdictUnresolved, Lines: []string{
+		fmt.Sprintf("? %s needs an object of %s: none is instantiated", a.Text(), name),
 	}}
 }
 
@@ -2631,7 +2692,7 @@ func (s *Session) satisfyVerdict(ctx *runtime.Context, a *runtime.SatisfyAsserti
 
 // satisfyVerdictOn is satisfyVerdict about a given object, reported under owner.
 func (s *Session) satisfyVerdictOn(ctx *runtime.Context, a *runtime.SatisfyAssertion, subject *runtime.Instance, owner string) Verdict {
-	result, plan, err := s.check(satisfyText(a), ctx, func(ctx *runtime.Context) (runtime.CheckResult, error) {
+	result, plan, err := s.check(a.Text(), ctx, func(ctx *runtime.Context) (runtime.CheckResult, error) {
 		return ctx.CheckSatisfactionOn(a, subject)
 	})
 	subject, owner = s.reportedSubject(result, subject, owner)
@@ -2645,16 +2706,16 @@ func (s *Session) satisfyVerdictOn(ctx *runtime.Context, a *runtime.SatisfyAsser
 // satisfactionVerdict reports what checking a satisfaction assertion decided.
 func satisfactionVerdict(a *runtime.SatisfyAssertion, result runtime.CheckResult, err error, subject *runtime.Instance, owner string) Verdict {
 	if unevaluable(err) {
-		return unevaluableVerdict(satisfyText(a), satisfyText(a), err, subject, owner)
+		return unevaluableVerdict(a.Text(), a.Text(), err, subject, owner)
 	}
 	if err != nil || !result.Holds {
-		return Verdict{Subject: satisfyText(a), Status: VerdictFails, Lines: []string{
-			fmt.Sprintf("✗ %s fails%s", satisfyText(a), onInstance(subject, owner)),
+		return Verdict{Subject: a.Text(), Status: VerdictFails, Lines: []string{
+			fmt.Sprintf("✗ %s fails%s", a.Text(), onInstance(subject, owner)),
 			"  " + verdictDetail("Required condition", err),
 		}}
 	}
-	return Verdict{Subject: satisfyText(a), Status: VerdictHolds, Lines: []string{
-		fmt.Sprintf("✓ %s holds%s", satisfyText(a), onInstance(subject, owner)),
+	return Verdict{Subject: a.Text(), Status: VerdictHolds, Lines: []string{
+		fmt.Sprintf("✓ %s holds%s", a.Text(), onInstance(subject, owner)),
 	}}
 }
 

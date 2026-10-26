@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -23,6 +24,7 @@ type options struct {
 	timeout             time.Duration
 	update, check       bool
 	lostAgainst         string
+	libraries           string
 	log                 io.Writer
 }
 
@@ -61,6 +63,10 @@ func Main(args []string, stderr io.Writer) int {
 	if *rootsFlag != "" {
 		opts.roots = strings.Split(*rootsFlag, ",")
 	}
+	if opts.libraries, err = diff.LibrariesHandedOver(root); err != nil {
+		fmt.Fprintf(stderr, "%s: %v\n", toolName, err)
+		return 1
+	}
 	if _, err := os.Stat(opts.launcher); os.IsNotExist(err) {
 		message := fmt.Sprintf("pilot JSON exporter is absent at %s; run ./scripts/download-pilot-json-exporter.sh to provision it", opts.launcher)
 		if opts.check {
@@ -85,7 +91,7 @@ func run(opts options) error {
 	if err != nil {
 		return err
 	}
-	record, err := provenance(opts.repo, built)
+	record, err := provenance(opts.repo, built, opts.libraries)
 	if err != nil {
 		return err
 	}
@@ -96,7 +102,7 @@ func run(opts options) error {
 	unkeyed := map[string]map[string]int{"ours": {}, "pilot": {}}
 	shared := make(map[string]map[string][]string)
 	for _, root := range roots() {
-		if len(opts.roots) > 0 && !contains(opts.roots, root.Name) {
+		if len(opts.roots) > 0 && !slices.Contains(opts.roots, root.Name) {
 			continue
 		}
 		files, err := diff.CollectFiles(opts.repo, root)
@@ -108,7 +114,7 @@ func run(opts options) error {
 		}
 		dir := filepath.Join(opts.repo, filepath.FromSlash(root.Dir))
 		fmt.Fprintf(opts.log, "%s: %d files\n", root.Name, len(files))
-		pilot, err := runPilot(opts.launcher, dir, files, opts.timeout)
+		pilot, err := runPilot(opts.launcher, dir, []string{opts.libraries}, files, opts.timeout)
 		if err != nil {
 			return err
 		}
@@ -190,13 +196,4 @@ func run(opts options) error {
 		return baseline.Reproduces(committed, fresh)
 	}
 	return nil
-}
-
-func contains(list []string, item string) bool {
-	for _, candidate := range list {
-		if candidate == item {
-			return true
-		}
-	}
-	return false
 }

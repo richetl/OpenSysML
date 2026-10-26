@@ -228,19 +228,27 @@ func unionSerials(a, b []int64) []int64 {
 }
 
 // underControl runs what follows under the choice points the serials name — a
-// guard read standing on them, a branch drawn among alternatives — until the
-// function returned is called; every write made meanwhile stands on them too.
-func (ctx *Context) underControl(serials []int64) func() {
+// guard read standing on them, a branch drawn among alternatives — until
+// releaseControl of what it returns; every write made meanwhile stands on them too.
+func (ctx *Context) underControl(serials []int64) int {
 	n := len(ctx.controls)
 	ctx.controls = append(ctx.controls, serials...)
-	return func() { ctx.controls = ctx.controls[:n] }
+	return n
 }
+
+// releaseControl ends the control underControl returned n for.
+func (ctx *Context) releaseControl(n int) { ctx.controls = ctx.controls[:n] }
 
 // standingOf is what a move with the footprint reads stands on: the control it
 // runs under and the marks of every place it reads, every mark where the
 // declarations do not decide the places and dynamicAll holds.
 func (ctx *Context) standingOf(fp lower.Footprint, dynamicAll bool) []int64 {
-	deps := slices.Clone(ctx.controls)
+	return ctx.readStanding(slices.Clone(ctx.controls), fp, dynamicAll)
+}
+
+// readStanding unions onto deps the marks of every place the footprint reads,
+// every mark where the declarations do not decide the places and dynamicAll holds.
+func (ctx *Context) readStanding(deps []int64, fp lower.Footprint, dynamicAll bool) []int64 {
 	marks := &ctx.run.marks
 	if fp.Dynamic && dynamicAll {
 		return unionSerials(deps, marks.all())
@@ -249,6 +257,19 @@ func (ctx *Context) standingOf(fp lower.Footprint, dynamicAll bool) []int64 {
 		deps = unionSerials(deps, marks.of(ctx.placeOf(r)))
 	}
 	return deps
+}
+
+// deriveMarks records what a feature valued by an expression stands on as its
+// value is derived: the marks of the places the expression reads, as a write
+// computed from them would. Deriving is a read, not a move, so it stands on no
+// control; a derivation reading nothing order-dependent clears the mark, as a
+// clean write does.
+func (ctx *Context) deriveMarks(place lower.Place, scope *symbols.Scope, value ast.Node) {
+	if place.Name == "" || value == nil {
+		return
+	}
+	fp := ctx.model.expressionFootprint(scope, value)
+	ctx.writeMarks([]lower.Place{place}, ctx.readStanding(nil, fp, true))
 }
 
 // placeOf is the place as the run holds it: a parameter of the action performed,

@@ -16,6 +16,8 @@ import (
 	"github.com/Open-MBEE/OpenSysML/internal/semantic/semantics"
 	"github.com/Open-MBEE/OpenSysML/internal/semantic/symbols"
 	"github.com/Open-MBEE/OpenSysML/internal/syntax/ast"
+
+	"github.com/Open-MBEE/OpenSysML/tests/fixtures"
 )
 
 // steppedRun drives one conformance case the way the trace harness does, one
@@ -186,12 +188,21 @@ func newSteppedRun(t *testing.T, conformanceDir, testName string, expected Expec
 	case "requirement", "satisfy":
 		// The conformance harness checks these cases' verdicts itself; the round
 		// trip compares what the checks leave behind.
-		sysmlPath := filepath.Join(conformanceDir, testName+".sysml")
+		sysmlPath := fixtures.ModelPath(conformanceDir, testName)
 		check := runRequirementConformance
 		if expected.Type == "satisfy" {
 			check = runSatisfyConformance
 		}
 		run.finish = func() error { check(t, ctx, idx, sysmlPath, expected); return nil }
+	case "occurrence":
+		// Realizing the occurrence's messages is the one step.
+		occurrenceSym := namedOrFoundSymbol(t, idx, expected.Evaluate, rootScope, ast.DefOccurrence, ast.UsageOccurrence)
+		run.step = func() (bool, error) {
+			_, err := ctx.ExecuteOccurrence(occurrenceSym)
+			return false, err
+		}
+		run.finish = func() error { return nil }
+		return run
 	case "instance":
 		// Materializing the object is the one step; the machines of its objects
 		// run to completion after it.
@@ -355,11 +366,8 @@ func runObjectMachines(t *testing.T, ctx *Context, first *Instance, expected Exp
 func runPerformers(t *testing.T, run *steppedRun, idx *symbols.Index, stateSym *symbols.Symbol, performers []Performer) error {
 	t.Helper()
 	for _, performer := range performers {
-		self, err := run.ctx.Instantiate(oneSymbol(t, idx, performer.Object))
-		if err != nil {
-			return err
-		}
-		exec, err := run.ctx.CreateStateExecutorFor(stateSym, self)
+		self := performerObject(t, run.ctx, idx, performer.Object)
+		exec, _, err := run.ctx.stateRunFor(stateSym, self, true)
 		if err != nil {
 			return err
 		}
