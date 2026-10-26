@@ -1701,6 +1701,9 @@ jobs:
             NPM_VERSION="$(python client/python/scripts/check_version.py --node)"
             JAVA_VERSION="$(python client/python/scripts/check_version.py --java)"
             RUST_VERSION="$(python client/python/scripts/check_version.py --rust)"
+            # Nothing publishes the .NET client either: it is released as the
+            # checkout of this tag, which must declare the tag's version.
+            DOTNET_VERSION="$(python client/python/scripts/check_version.py --dotnet)"
             # Nothing publishes the editors, but their manifests carry the same
             # version, so a tag fails here when one disagrees; no export needed.
             python client/python/scripts/check_version.py --editors > /dev/null
@@ -1711,7 +1714,13 @@ jobs:
             echo "export NPM_VERSION=${NPM_VERSION}" >> "$BASH_ENV"
             echo "export JAVA_VERSION=${JAVA_VERSION}" >> "$BASH_ENV"
             echo "export RUST_VERSION=${RUST_VERSION}" >> "$BASH_ENV"
-            echo "Building opensysml ${VERSION} (pre-release: ${PRE_RELEASE}, npm ${NPM_VERSION}, maven ${JAVA_VERSION}, crates ${RUST_VERSION})"
+            echo "Building opensysml ${VERSION} (pre-release: ${PRE_RELEASE}, npm ${NPM_VERSION}, maven ${JAVA_VERSION}, crates ${RUST_VERSION}, .NET checkout ${DOTNET_VERSION})"
+
+      # The checkout of the tag is the .NET client's release, so the public API it
+      # ships must be the shipped baseline, promoted on the release branch.
+      - run:
+          name: Check the .NET client's public API is promoted to shipped
+          command: python client/dotnet/scripts/dotnet-gates.py promote-api --check
 
       # The committed table pins the releases that existed when it was last
       # back-filled, never the one being cut, so the wheel would otherwise rely

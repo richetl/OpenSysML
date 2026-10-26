@@ -2,6 +2,7 @@
 """Tests for dotnet-gates.py, with stand-in dotnet hosts and reports."""
 
 import contextlib
+import glob
 import importlib.util
 import io
 import json
@@ -705,6 +706,122 @@ class ConformanceCheckTest(unittest.TestCase):
         with contextlib.redirect_stdout(stdout):
             self.assertEqual(gates.main(argv), 0)
         self.assertEqual(stdout.getvalue(), "OK 3 results agree with the reference runner; 2 reviewed skips excluded\n")
+
+
+class PromoteApiTest(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.root = self.tmp.name
+
+    def project(self, name, shipped, unshipped):
+        directory = os.path.join(self.root, name)
+        os.makedirs(directory)
+        for file, text in ((gates.API_SHIPPED, shipped), (gates.API_UNSHIPPED, unshipped)):
+            with open(os.path.join(directory, file), "w", encoding="utf-8") as f:
+                f.write(text)
+        return directory
+
+    @staticmethod
+    def read(directory, file):
+        with open(os.path.join(directory, file), encoding="utf-8") as f:
+            return f.read()
+
+    def test_promotes_the_unshipped_entries_in_ordinal_order_and_leaves_the_header(self):
+        lib = self.project("Lib", "#nullable enable\nN.B.get -> int\n", "#nullable enable\nN.C() -> void\nN.A\n\nN.a\n")
+
+        [(project, added, removed)] = gates.promote_api(self.root)
+
+        self.assertTrue(project.endswith("Lib"))
+        self.assertEqual((added, removed), (3, 0))
+        self.assertEqual(self.read(lib, gates.API_SHIPPED), "#nullable enable\nN.A\nN.B.get -> int\nN.C() -> void\nN.a\n")
+        self.assertEqual(self.read(lib, gates.API_UNSHIPPED), "#nullable enable\n")
+        self.assertEqual(gates.promote_api(self.root, check=True), [(project, 0, 0)])
+
+    def test_a_removal_deletes_the_shipped_entry_it_names(self):
+        lib = self.project("Lib", "#nullable enable\nN.A\nN.B\n", "#nullable enable\n*REMOVED*N.A\nN.A(int x) -> void\n")
+
+        self.assertEqual(gates.promote_api(self.root)[0][1:], (1, 1))
+
+        self.assertEqual(self.read(lib, gates.API_SHIPPED), "#nullable enable\nN.A(int x) -> void\nN.B\n")
+
+    def test_a_baseline_without_the_nullable_header_stays_without_it(self):
+        lib = self.project("Lib", "", "N.A\n")
+
+        gates.promote_api(self.root)
+
+        self.assertEqual(self.read(lib, gates.API_SHIPPED), "N.A\n")
+        self.assertEqual(self.read(lib, gates.API_UNSHIPPED), "")
+
+    def test_check_fails_while_anything_is_unshipped_and_changes_nothing(self):
+        self.project("A", "#nullable enable\nN.A\n", "#nullable enable\n")
+        b = self.project("B", "#nullable enable\nN.B\n", "#nullable enable\nN.C\n*REMOVED*N.B\n")
+
+        with self.assertRaisesRegex(gates.GateError, r"not promoted to shipped:\n  .*B: 1 unshipped and 1 removed entries\n.*promote-api") as raised:
+            gates.promote_api(self.root, check=True)
+
+        self.assertNotRegex(str(raised.exception), r"A: ")
+        self.assertEqual(self.read(b, gates.API_UNSHIPPED), "#nullable enable\nN.C\n*REMOVED*N.B\n")
+        self.assertEqual(self.read(b, gates.API_SHIPPED), "#nullable enable\nN.B\n")
+
+    def test_refuses_an_inconsistent_baseline_before_writing_any_project(self):
+        cases = [
+            ("#nullable enable\n", "#nullable enable\nN.A\nN.A\n", r"'N.A' is unshipped twice"),
+            ("#nullable enable\nN.A\n", "#nullable enable\nN.A\n", r"'N.A' is unshipped but already shipped"),
+            ("#nullable enable\n", "#nullable enable\n*REMOVED*N.A\n", r"'N.A' is removed but was never shipped"),
+            ("#nullable enable\n", "N.A\n", r"disagree on '#nullable enable'"),
+            ("#nullable enable\n", "#nullable enable\nN.A\n#nullable enable\n", r"is a directive the baseline does not place there"),
+        ]
+        for shipped, unshipped, message in cases:
+            with self.subTest(message=message):
+                self.tmp.cleanup()
+                os.makedirs(self.root)
+                first = self.project("A", "#nullable enable\n", "#nullable enable\nN.Z\n")
+                self.project("B", shipped, unshipped)
+
+                with self.assertRaisesRegex(gates.GateError, message):
+                    gates.promote_api(self.root)
+
+                self.assertEqual(self.read(first, gates.API_UNSHIPPED), "#nullable enable\nN.Z\n")
+                self.assertEqual(self.read(first, gates.API_SHIPPED), "#nullable enable\n")
+
+    def test_refuses_a_root_without_a_baseline_and_a_missing_shipped_file(self):
+        with self.assertRaisesRegex(gates.GateError, r"no project under .* has a PublicAPI.Unshipped.txt"):
+            gates.promote_api(self.root)
+        lib = self.project("Lib", "", "")
+        os.remove(os.path.join(lib, gates.API_SHIPPED))
+        with self.assertRaisesRegex(gates.GateError, r"cannot read .*PublicAPI.Shipped.txt"):
+            gates.promote_api(self.root)
+
+    def test_the_real_baselines_promote_to_a_shipped_set_that_keeps_every_entry(self):
+        before = {}
+        for unshipped in glob.glob(os.path.join(gates.API_ROOT, "*", gates.API_UNSHIPPED)):
+            name = os.path.basename(os.path.dirname(unshipped))
+            shipped = os.path.join(os.path.dirname(unshipped), gates.API_SHIPPED)
+            self.project(name, self.read(os.path.dirname(shipped), gates.API_SHIPPED), self.read(os.path.dirname(unshipped), gates.API_UNSHIPPED))
+            entries = [line for line in (self.read(os.path.dirname(shipped), gates.API_SHIPPED) + self.read(os.path.dirname(unshipped), gates.API_UNSHIPPED)).splitlines() if line.strip() and not line.startswith("#")]
+            removed = {line[len(gates.API_REMOVED):] for line in entries if line.startswith(gates.API_REMOVED)}
+            before[name] = {line for line in entries if not line.startswith(gates.API_REMOVED)} - removed
+        self.assertIn("OpenMBEE.OpenSysML", before)
+
+        gates.promote_api(self.root)
+
+        for name, entries in before.items():
+            shipped = self.read(os.path.join(self.root, name), gates.API_SHIPPED).splitlines()
+            self.assertEqual(shipped[0], gates.API_NULLABLE)
+            self.assertEqual(set(shipped[1:]), entries)
+            self.assertEqual(shipped[1:], sorted(entries))
+        gates.promote_api(self.root, check=True)
+
+    def test_main_reports_each_project(self):
+        self.project("Lib", "#nullable enable\n", "#nullable enable\nN.A\n")
+        stdout, stderr = io.StringIO(), io.StringIO()
+        with mock.patch.object(gates, "API_ROOT", self.root), contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+            self.assertEqual(gates.main(["promote-api", "--check"]), 1)
+            self.assertEqual(gates.main(["promote-api"]), 0)
+            self.assertEqual(gates.main(["promote-api", "--check"]), 0)
+        self.assertRegex(stderr.getvalue(), r"\Aerror: the public API is not promoted to shipped:\n  \S*Lib: 1 unshipped and 0 removed entries\n")
+        self.assertRegex(stdout.getvalue(), r"\AOK \S*Lib: shipped 1 entries, removed 0\nOK \S*Lib: nothing unshipped\n\Z")
 
 
 if __name__ == "__main__":

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text.Json;
@@ -230,6 +231,21 @@ public sealed class ParityInventoryTests
 
         var reordered = Committed with { Rpcs = [Committed.Rpcs[1], Committed.Rpcs[0], .. Committed.Rpcs.Skip(2)] };
         Assert.Contains("The rows are not in the order the schema declares the RPCs.", Check(reordered));
+    }
+
+    [Fact]
+    public void TheReadmeCoverageTableIsTheInventorysRows()
+    {
+        var readme = File.ReadAllText(Repository.PathOf("client", "dotnet", "README.md")).ReplaceLineEndings("\n");
+        var start = readme.IndexOf("\n## Coverage\n", StringComparison.Ordinal);
+        Assert.True(start >= 0, "client/dotnet/README.md has no Coverage section");
+        var end = readme.IndexOf("\n## ", start + 1, StringComparison.Ordinal);
+        var section = readme[start..(end < 0 ? readme.Length : end)].Split('\n');
+
+        Assert.Single(section, line => line == "| RPC | Status | Called by |");
+        Assert.Equal(
+            Committed.Rpcs.Select(row => $"| `{row.Rpc}` | {row.Status} | {string.Join(", ", row.Methods.Select(method => $"`{method}`"))} |"),
+            section.Where(line => line.StartsWith("| `", StringComparison.Ordinal)));
     }
 
     [Fact]

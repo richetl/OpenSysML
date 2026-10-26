@@ -58,6 +58,10 @@ internal sealed partial class PrivateService : IServiceProcess
     /// <summary>The arguments every private service is started with, after the binary.</summary>
     internal static IReadOnlyList<string> Arguments { get; } = ["-port", "0", "-health-port", "0", "-report-address", "-exit-with-parent"];
 
+    /// <summary>How long to wait before each retry of a start the kernel refused because the binary was open for writing.</summary>
+    internal static IReadOnlyList<TimeSpan> BusyRetryDelays { get; } =
+        [TimeSpan.FromMilliseconds(50), TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(200), TimeSpan.FromMilliseconds(400), TimeSpan.FromMilliseconds(800)];
+
     /// <inheritdoc/>
     public Uri Address { get; private set; } = null!;
 
@@ -95,30 +99,7 @@ internal sealed partial class PrivateService : IServiceProcess
     internal static async Task<IServiceProcess> StartAsync(ServiceIdentity identity, ILogger logger, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var start = new ProcessStartInfo(identity.Path)
-        {
-            RedirectStandardInput = true,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true,
-        };
-        foreach (var argument in Arguments)
-        {
-            start.ArgumentList.Add(argument);
-        }
-
-        var process = new Process { StartInfo = start };
-        try
-        {
-            process.Start();
-        }
-        catch (Exception error) when (error is Win32Exception or InvalidOperationException or PlatformNotSupportedException)
-        {
-            process.Dispose();
-            throw new ServiceStartException($"sysml-grpc at {identity.Path} could not be started: {error.Message}", error);
-        }
-
+        var process = await LaunchAsync(identity.Path, logger, cancellationToken).ConfigureAwait(false);
         var service = new PrivateService(process, identity, logger);
         LogStarting(logger, identity.Path, service.ProcessId);
         string? failure;
@@ -141,6 +122,57 @@ internal sealed partial class PrivateService : IServiceProcess
         await service.StopQuietlyAsync().ConfigureAwait(false);
         var ending = service.Exited.IsCompleted ? $" It {await service.Exited.ConfigureAwait(false)}." : string.Empty;
         throw new ServiceStartException($"sysml-grpc at {identity.Path} (process {service.ProcessId}) {failure}.{ending}{service.DescribeTail()}");
+    }
+
+    /// <summary>
+    /// Starts the process. Linux refuses to execute a file any process holds open for writing
+    /// (<c>ETXTBSY</c>), and a child another thread forks holds a copy of every descriptor this process has
+    /// open until it executes, so a binary this process has just written, as the cache does, can be briefly
+    /// busy: that refusal alone is retried, after <see cref="BusyRetryDelays"/>.
+    /// </summary>
+    private static async Task<Process> LaunchAsync(string path, ILogger logger, CancellationToken cancellationToken)
+    {
+        for (var attempt = 0; ; attempt++)
+        {
+            var process = new Process { StartInfo = StartInfo(path) };
+            try
+            {
+                process.Start();
+                return process;
+            }
+            catch (Win32Exception error) when (IsTextFileBusy(error) && attempt < BusyRetryDelays.Count)
+            {
+                process.Dispose();
+                LogBusy(logger, path, BusyRetryDelays[attempt]);
+                await Task.Delay(BusyRetryDelays[attempt], cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception error) when (error is Win32Exception or InvalidOperationException or PlatformNotSupportedException)
+            {
+                process.Dispose();
+                throw new ServiceStartException($"sysml-grpc at {path} could not be started: {error.Message}", error);
+            }
+        }
+    }
+
+    // ETXTBSY is 26 on Linux, macOS and the BSDs; Windows reports its own error codes.
+    private static bool IsTextFileBusy(Win32Exception error) => !OperatingSystem.IsWindows() && error.NativeErrorCode == 26;
+
+    private static ProcessStartInfo StartInfo(string path)
+    {
+        var start = new ProcessStartInfo(path)
+        {
+            RedirectStandardInput = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true,
+        };
+        foreach (var argument in Arguments)
+        {
+            start.ArgumentList.Add(argument);
+        }
+
+        return start;
     }
 
     /// <inheritdoc/>
@@ -384,6 +416,9 @@ internal sealed partial class PrivateService : IServiceProcess
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Starting the private service {Path} as process {ProcessId}")]
     private static partial void LogStarting(ILogger logger, string path, int processId);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "The private service {Path} is open for writing, which the kernel refuses to execute; retrying in {Delay}")]
+    private static partial void LogBusy(ILogger logger, string path, TimeSpan delay);
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "The private service {Path}, process {ProcessId}, listens at {Address}")]
     private static partial void LogStarted(ILogger logger, string path, int processId, Uri address);

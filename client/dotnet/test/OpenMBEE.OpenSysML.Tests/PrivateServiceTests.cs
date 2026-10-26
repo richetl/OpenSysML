@@ -229,6 +229,68 @@ public sealed partial class PrivateServiceTests
         Assert.False(File.Exists(child.ArgumentsFile));
     }
 
+    [Fact]
+    public async Task ABinaryOpenForWritingIsStartedOnceItIsClosed()
+    {
+        Assert.SkipUnless(OperatingSystem.IsLinux(), "Only Linux refuses to execute a file that is open for writing.");
+        using var child = FakeChild.Serving();
+        var writer = new FileStream(child.Path, FileMode.Open, FileAccess.Write, FileShare.ReadWrite);
+        var logged = 0;
+        var logger = new ListLogger { Logged = _ => { if (Interlocked.Increment(ref logged) == 2) { writer.Dispose(); } } };
+
+        IServiceProcess service;
+        try
+        {
+            service = await PrivateService.StartAsync(Identity(child), logger, Token);
+        }
+        finally
+        {
+            await writer.DisposeAsync();
+        }
+
+        Assert.Equal(new Uri("http://127.0.0.1:50051/"), service.Address);
+        var busy = logger.Entries.Where(e => e.Message.Contains("is open for writing", StringComparison.Ordinal)).ToList();
+        Assert.Equal(2, busy.Count);
+        Assert.All(busy, e => Assert.Equal(Microsoft.Extensions.Logging.LogLevel.Debug, e.Level));
+        Assert.Contains(child.Path, busy[0].Message, StringComparison.Ordinal);
+        await service.StopAsync();
+        await FakeChild.AssertGoneAsync(service.ProcessId);
+    }
+
+    [Fact]
+    public async Task ABinaryThatStaysOpenForWritingFailsTheStartWithTheKernelsReasonOnceTheRetriesAreSpent()
+    {
+        Assert.SkipUnless(OperatingSystem.IsLinux(), "Only Linux refuses to execute a file that is open for writing.");
+        using var child = FakeChild.Serving();
+        await using var writer = new FileStream(child.Path, FileMode.Open, FileAccess.Write, FileShare.ReadWrite);
+        var logger = new ListLogger();
+
+        var error = await Assert.ThrowsAsync<ServiceStartException>(() => PrivateService.StartAsync(Identity(child), logger, Token));
+
+        Assert.StartsWith($"sysml-grpc at {child.Path} could not be started: ", error.Message, StringComparison.Ordinal);
+        Assert.Equal(26, Assert.IsType<Win32Exception>(error.InnerException).NativeErrorCode);
+        Assert.Equal(
+            PrivateService.BusyRetryDelays.Select(delay => $"The private service {child.Path} is open for writing, which the kernel refuses to execute; retrying in {delay}"),
+            logger.Entries.Select(e => e.Message));
+        Assert.False(File.Exists(child.ArgumentsFile), "nothing ran");
+    }
+
+    [Fact]
+    public async Task CancellingAStartWaitingOutABusyBinaryStartsNothing()
+    {
+        Assert.SkipUnless(OperatingSystem.IsLinux(), "Only Linux refuses to execute a file that is open for writing.");
+        using var child = FakeChild.Serving();
+        await using var writer = new FileStream(child.Path, FileMode.Open, FileAccess.Write, FileShare.ReadWrite);
+        using var cancel = CancellationTokenSource.CreateLinkedTokenSource(Token);
+        var logger = new ListLogger { Logged = _ => cancel.Cancel() };
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => PrivateService.StartAsync(Identity(child), logger, cancel.Token));
+
+        Assert.Single(logger.Entries);
+        await writer.DisposeAsync();
+        Assert.False(File.Exists(child.ArgumentsFile), "nothing ran");
+    }
+
     private static ServiceIdentity Identity(FakeChild child, TimeSpan? startup = null, TimeSpan? shutdown = null) =>
         new(child.Path, "unhashed", startup ?? TimeSpan.FromSeconds(30), shutdown ?? TimeSpan.FromSeconds(10), null);
 

@@ -120,6 +120,13 @@ quick_case_ docs-only docs docs/guide/index.md
 quick_case_ java-manifest java,mdk,python client/java/pom.xml
 quick_case_ node-only node client/node/src/node/binary.ts
 quick_case_ dotnet-props dotnet,python client/dotnet/Directory.Build.props
+# A draft touching only the .NET client, its gates, its SDK pin or the signing fixtures it
+# serves still runs the .NET client job; a schema or scenario change waits for the full tier.
+quick_case_ dotnet-only dotnet client/dotnet/src/OpenMBEE.OpenSysML/Internal/PrivateService.cs
+quick_case_ dotnet-gates dotnet client/dotnet/scripts/dotnet-gates.py
+quick_case_ dotnet-sdk-pin dotnet global.json
+quick_case_ signed-release-fixture dotnet,python client/python/tests/fixtures/signed_release/SHA256SUMS.txt.bundle
+quick_case_ conformance go conformance/scenarios/01-server-info.json
 quick_case_ vscode-grammar go,vscode editors/vscode/tools/gengrammar/grammar.go
 
 if [[ "$failures" -ne 0 ]]; then

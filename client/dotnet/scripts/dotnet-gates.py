@@ -6,6 +6,7 @@
     python3 client/dotnet/scripts/dotnet-gates.py sample --expect LINE [--dotnet DOTNET] [--binary PATH]
     python3 client/dotnet/scripts/dotnet-gates.py conformance-check --report R --log L --junit J \
         --reference-report RR --reference-log RL --expected-skips E
+    python3 client/dotnet/scripts/dotnet-gates.py promote-api [--check]
 
 `preflight` fails unless `dotnet`, invoked from the repository root, is exactly the
 SDK root global.json pins and a .NET 10 runtime is installed beside it: global.json's
@@ -35,6 +36,11 @@ not compared, the wall time each row of a sweep, of runs or of a comparison repo
 states in the records it generates and the hash of the recorded model that follows from it, which is
 compared only as present or not. A .NET skip the expected skips list is excluded, as reviewed; nothing else is. The
 service's capabilities are compared as a set, since the client holds them as one.
+
+`promote-api` moves each library's PublicAPI.Unshipped.txt into the PublicAPI.Shipped.txt beside
+it, as a release does: entries are added, `*REMOVED*` entries delete what they name, and the
+shipped baseline is written in ordinal order. With --check it changes nothing and fails while
+anything is unshipped, which the release workflow runs at the tag.
 """
 
 import argparse
@@ -61,6 +67,11 @@ REQUIRE_VARIABLE = "OPENSYSML_REQUIRE_SERVICE"
 STARTUP_TIMEOUT = 30
 RUN_TIMEOUT = 120
 SHUTDOWN_GRACE = 10
+API_ROOT = os.path.join(REPO_ROOT, "client", "dotnet", "src")
+API_SHIPPED = "PublicAPI.Shipped.txt"
+API_UNSHIPPED = "PublicAPI.Unshipped.txt"
+API_REMOVED = "*REMOVED*"
+API_NULLABLE = "#nullable enable"
 
 
 class GateError(Exception):
@@ -671,6 +682,95 @@ def conformance_check(report, log, junit, reference_report, reference_log, expec
     return agreed, excluded
 
 
+def _api_baseline(path):
+    """Read a public API baseline file.
+
+    Args:
+        path (str): A PublicAPI.Shipped.txt or PublicAPI.Unshipped.txt
+
+    Returns:
+        tuple[bool, list[str]]: Whether it opens with `#nullable enable`, and its entries in order
+
+    Raises:
+        GateError: If it is missing, or holds a directive other than the leading `#nullable enable`
+    """
+    try:
+        with open(path, encoding="utf-8") as f:
+            lines = f.read().splitlines()
+    except OSError as e:
+        raise GateError(f"cannot read {path}: {e}") from e
+    nullable = bool(lines) and lines[0] == API_NULLABLE
+    entries = [line for line in lines[1 if nullable else 0:] if line.strip()]
+    for entry in entries:
+        if entry.startswith("#"):
+            raise GateError(f"{path}: {entry!r} is a directive the baseline does not place there")
+    return nullable, entries
+
+
+def promote_api(root=None, check=False):
+    """Move every project's unshipped public API into its shipped baseline, as a release does.
+
+    Each `PublicAPI.Unshipped.txt` under ROOT/<project> is folded into the `PublicAPI.Shipped.txt`
+    beside it: an entry is added, a `*REMOVED*` entry deletes the shipped entry it names, the
+    shipped baseline is written in ordinal order, and the unshipped one is left with its header
+    alone. Every project is validated before any file is written.
+
+    Args:
+        root (str, optional): The directory whose projects are promoted; client/dotnet/src by default
+        check (bool): Fail if anything is unshipped, instead of promoting it
+
+    Returns:
+        list[tuple[str, int, int]]: Per project, its path from the repository root and the
+            entries added to and removed from its shipped baseline
+
+    Raises:
+        GateError: If no project has a baseline, the two files of a project disagree on
+            `#nullable enable`, an entry is unshipped twice or is already shipped, a removal names
+            no shipped entry, or, with check, a project has anything unshipped
+    """
+    root = API_ROOT if root is None else root
+    unshipped_paths = sorted(glob.glob(os.path.join(root, "*", API_UNSHIPPED)))
+    if not unshipped_paths:
+        raise GateError(f"no project under {root} has a {API_UNSHIPPED}")
+    plans, pending = [], []
+    for unshipped_path in unshipped_paths:
+        directory = os.path.dirname(unshipped_path)
+        project = _normalized(os.path.relpath(directory, REPO_ROOT))
+        shipped_path = os.path.join(directory, API_SHIPPED)
+        shipped_nullable, shipped = _api_baseline(shipped_path)
+        unshipped_nullable, unshipped = _api_baseline(unshipped_path)
+        if shipped_nullable != unshipped_nullable:
+            raise GateError(f"{project}: {API_SHIPPED} and {API_UNSHIPPED} disagree on {API_NULLABLE!r}")
+        added = [entry for entry in unshipped if not entry.startswith(API_REMOVED)]
+        removed = [entry[len(API_REMOVED):] for entry in unshipped if entry.startswith(API_REMOVED)]
+        problems = sorted({entry for entry in added if added.count(entry) > 1})
+        problems = [f"{entry!r} is unshipped twice" for entry in problems]
+        problems += [f"{entry!r} is unshipped but already shipped" for entry in added if entry in shipped]
+        problems += [f"{entry!r} is removed but was never shipped" for entry in removed if entry not in shipped]
+        if problems:
+            raise GateError(f"{project}:\n  " + "\n  ".join(problems))
+        if check:
+            if added or removed:
+                pending.append(f"{project}: {len(added)} unshipped and {len(removed)} removed entries")
+            continue
+        result = sorted(set(shipped).difference(removed).union(added))
+        header = [API_NULLABLE] if shipped_nullable else []
+        plans.append((project, shipped_path, unshipped_path, header, result, len(added), len(removed)))
+    if pending:
+        raise GateError(
+            "the public API is not promoted to shipped:\n  " + "\n  ".join(pending)
+            + "\nrun python3 client/dotnet/scripts/dotnet-gates.py promote-api on the release branch"
+        )
+    if check:
+        return [(_normalized(os.path.relpath(os.path.dirname(p), REPO_ROOT)), 0, 0) for p in unshipped_paths]
+    for _, shipped_path, unshipped_path, header, result, _, _ in plans:
+        with open(shipped_path, "w", encoding="utf-8", newline="\n") as f:
+            f.write("\n".join(header + result) + "\n")
+        with open(unshipped_path, "w", encoding="utf-8", newline="\n") as f:
+            f.write("\n".join(header) + "\n" if header else "")
+    return [(project, added, removed) for project, _, _, _, _, added, removed in plans]
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     commands = parser.add_subparsers(dest="command", required=True)
@@ -690,12 +790,17 @@ def main(argv=None):
     chk.add_argument("--reference-report", required=True, help="the reference runner's -report")
     chk.add_argument("--reference-log", required=True, help="the reference runner's -v output")
     chk.add_argument("--expected-skips", required=True, help="the .NET client's expected-skips.json")
+    api = commands.add_parser("promote-api", help="move the unshipped public API into the shipped baseline")
+    api.add_argument("--check", action="store_true", help="fail if anything is unshipped instead of promoting it")
     args = parser.parse_args(argv)
 
     try:
         if args.command == "preflight":
             sdk, runtimes = preflight(args.dotnet)
             print(f"OK .NET SDK {sdk}, runtime {', '.join(runtimes)}")
+        elif args.command == "promote-api":
+            for project, added, removed in promote_api(check=args.check):
+                print(f"OK {project}: nothing unshipped" if args.check else f"OK {project}: shipped {added} entries, removed {removed}")
         elif args.command == "sample":
             served = sample(args.expect, args.dotnet, args.binary)
             print(f"OK {args.expect}")

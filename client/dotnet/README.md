@@ -176,7 +176,13 @@ started it; each line of its output goes to that logger at `Trace`.
 `StartupTimeout` (30 seconds by default) bounds the wait for the address. A child that
 reports something other than a loopback `host:port`, exits or ends its output first, or
 reports nothing in time is stopped, and the open fails with `ServiceStartException` quoting
-how it ended and what it last wrote. `BinaryPath`, `ExpectedBinarySha256`, `IsolatedService`,
+how it ended and what it last wrote. A binary the operating system cannot execute fails the
+open the same way, with its reason, except one refusal: Linux will not execute a file any
+process holds open for writing (`ETXTBSY`), and a child another thread of this process is
+forking holds a copy of every open descriptor until it executes its own program, so a binary
+this process has just written, as the shared cache does, can be busy for a moment. That start
+alone is retried, five times over about one and a half seconds, logged at `Debug`, before it
+fails. `BinaryPath`, `ExpectedBinarySha256`, `IsolatedService`,
 `DownloadVersion` and `GithubRepo` only describe a private service, so they are refused
 alongside `Address` or with `AutoStart` false; when `OPENSYSML_SERVICE` names a service instead,
 they are unused and a warning says so. `DownloadVersion` and `GithubRepo` describe a release to
@@ -995,6 +1001,49 @@ scalar. A missing one is a `CapabilityException` naming the first the service wo
 To a service without `rational_values`, a Rational a `double` holds exactly is sent as that
 `double`, which is the same number; any other still needs the capability.
 
+## Coverage
+
+Every RPC of the service and the public methods that call it, as the
+[parity inventory](#parity-inventory) records them, in schema order; a test fails when this table
+and the inventory disagree. An RPC the schema adds is listed `deferred` until a public method
+calls it. Every field of the messages these RPCs exchange is classified in the inventory too, and
+the [conformance runner](#conformance) runs every RPC's scenarios over each protocol, skipping only
+the reviewed requests the API cannot express.
+
+| RPC | Status | Called by |
+| --- | --- | --- |
+| `GetServerInfo` | implemented | `Connection.OpenAsync` |
+| `ParseFile` | implemented | `Connection.LoadAsync`, `Connection.LoadContentAsync` |
+| `ParseSources` | implemented | `Connection.ParseSourcesAsync` |
+| `GetSymbol` | implemented | `Model.SymbolAsync`, `Model.FindSymbolAsync`, `Model.FindAsync`, `Model.LookupAsync` |
+| `GetDiagnostics` | implemented | `Model.GetDiagnosticsAsync` |
+| `Evaluate` | implemented | `Model.EvalAsync`, `Model.EvaluateAsync` |
+| `Instantiate` | implemented | `Model.InstantiateAsync` |
+| `ExecuteAction` | implemented | `Model.ExecuteActionAsync`, `Model.ExploreActionAsync` |
+| `ExecuteState` | implemented | `Model.ExecuteStateAsync`, `Model.ExploreStateAsync` |
+| `Convert` | implemented | `Connection.ConvertAsync`, `Model.ConvertAsync`, `Model.ToNotationAsync`, `Model.ToTurtleAsync`, `Model.ToApiJsonAsync`, `Model.SaveAsync` |
+| `Migrate` | implemented | `Connection.MigrateAsync` |
+| `ApplyEdits` | implemented | `Model.Edit().ApplyAsync`, `Model.ApplyEditsAsync` |
+| `VerifyConstraint` | implemented | `Model.VerifyConstraintAsync` |
+| `VerifyRequirement` | implemented | `Model.VerifyRequirementAsync` |
+| `VerifySatisfaction` | implemented | `Model.VerifySatisfactionAsync`, `Model.SatisfiedAsync` |
+| `ValidateInstance` | implemented | `Model.ValidateInstanceAsync` |
+| `EvaluateCalc` | implemented | `Model.CalcAsync` |
+| `RunAnalysis` | implemented | `Model.RunAnalysisAsync`, `Model.ExploreAnalysisAsync` |
+| `CheckBehavior` | implemented | `Model.CheckActionAsync`, `Model.CheckStateAsync` |
+| `RunSweep` | implemented | `Model.RunSweepAsync` |
+| `RunRuns` | implemented | `Model.RunActionRunsAsync`, `Model.RunAnalysisRunsAsync` |
+| `SelfCheck` | implemented | `Model.SelfCheckAsync` |
+| `RecordRun` | implemented | `Model.RecordRunAsync` |
+| `ListEngines` | implemented | `Connection.ListEnginesAsync` |
+| `Query` | implemented | `Model.QueryAsync`, `Model.QueryOslcAsync` |
+| `RunDocumentQuery` | implemented | `Model.RunDocumentQueryAsync` |
+| `RenderDocument` | implemented | `Model.RenderDocumentAsync` |
+| `RenderView` | implemented | `Model.RenderViewAsync` |
+| `ExportGraphs` | implemented | `Model.ExportGraphsAsync` |
+| `ImportData` | implemented | `Model.ImportDataAsync` |
+| `CompareResults` | implemented | `Model.CompareResultsAsync` |
+
 ## Building and testing
 
 ```bash
@@ -1323,6 +1372,13 @@ the core version it is released with. `python3 client/python/scripts/check_versi
 --tag v<version> --dotnet` checks it, and the Python suite fails when it disagrees with
 the Python client's version. It also names the release a private service is downloaded from
 when none is asked for: `v` and that version.
+
+Nothing publishes the client: its release is the checkout of the core `v<version>` tag. On the
+release branch, `python3 client/dotnet/scripts/dotnet-gates.py promote-api` moves every entry of
+`PublicAPI.Unshipped.txt` into `PublicAPI.Shipped.txt`, and the release workflow refuses a tag
+whose public API is still unshipped (`promote-api --check`) or whose `Version` is not the tag's.
+[Releasing OpenSysML](../../docs/project/releasing.md#releasing-the-net-client-as-the-tags-checkout)
+describes the procedure.
 
 `src/OpenMBEE.OpenSysML/release-digests.json` is a copy of
 [`client/release-digests.json`](../release-digests.json), embedded in the assembly: the digests
