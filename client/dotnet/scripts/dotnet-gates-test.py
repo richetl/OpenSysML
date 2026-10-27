@@ -298,10 +298,10 @@ class GatesTest(unittest.TestCase):
                 gates.sample(IDENTITY, dotnet, binary, environ={})
 
     def test_sample_rejects_another_model_line_or_none(self):
-        for line in ("Demo::Vehicle (partDef): mass = 1200.0", ""):
+        for line in ("Demo::sedan (partUsage): mass = 1500.0", ""):
             dotnet, _ = self.sample_host(model_line=line)
             binary, _ = self.service_binary()
-            with self.assertRaisesRegex(gates.GateError, "Demo::Vehicle \\(partDef\\): mass = 1500.0"):
+            with self.assertRaisesRegex(gates.GateError, "Demo::sedan \\(partUsage\\): mass = 1800.0"):
                 gates.sample(IDENTITY, dotnet, binary, environ={})
 
     def test_sample_rejects_a_service_that_reports_no_address(self):

@@ -22,8 +22,8 @@ There is no percentage threshold.
 when it must print exactly the --expect line; with $OPENSYSML_SERVICE naming a sysml-grpc the
 gate starts on a port the kernel chooses; and with $OPENSYSML_GRPC_BINARY alone naming the
 binary, which the sample starts as its private service. Each of the last two must also print
-the version that binary reports and its capability count, then the vehicle it parsed, looked up
-and evaluated. The binary is --binary or $OPENSYSML_GRPC_BINARY; without one the last two runs
+the version that binary reports and its capability count, then the sedan it parsed, looked up
+and evaluated the redefined mass of. The binary is --binary or $OPENSYSML_GRPC_BINARY; without one the last two runs
 are skipped, unless $OPENSYSML_REQUIRE_SERVICE is set, which makes it a failure.
 
 `conformance-check` holds a run of the .NET conformance runner to the reference runner's run of
@@ -61,7 +61,7 @@ RUNTIME_MAJOR = 10
 HANDWRITTEN_ROOT = "client/dotnet/src/"
 SAMPLE_PROJECT = "client/dotnet/samples/Vehicle"
 SERVICE_VARIABLE = "OPENSYSML_SERVICE"
-SAMPLE_MODEL_LINE = "Demo::Vehicle (partDef): mass = 1500.0"
+SAMPLE_MODEL_LINE = "Demo::sedan (partUsage): mass = 1800.0"
 BINARY_VARIABLE = "OPENSYSML_GRPC_BINARY"
 REQUIRE_VARIABLE = "OPENSYSML_REQUIRE_SERVICE"
 STARTUP_TIMEOUT = 30

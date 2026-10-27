@@ -351,7 +351,7 @@ package OpenSysMLDocument {
             attribute redefines title = "Surfaces over one pipeline";
 
             part intro : Paragraph {
-                :>> text = "The REPL, the language server, the gRPC service, the stdio service, the command line, the MCP server for coding agents, the Jupyter kernel and the JSON-RPC commands a WebAssembly host runs are surfaces over one analysis pipeline. The service speaks gRPC and Connect from one protobuf schema; the Go, Python, Node, Rust and Java clients are hand-written over stubs generated from that schema, the Julia and MATLAB clients speak Connect-JSON over HTTP by the published wire contract, and the Cameo plugin and SysON integration reach the service through the Java client — so a rule fixed in the engine is fixed everywhere at once.";
+                :>> text = "The REPL, the language server, the gRPC service, the stdio service, the command line, the MCP server for coding agents, the Jupyter kernel and the JSON-RPC commands a WebAssembly host runs are surfaces over one analysis pipeline. The service speaks gRPC and Connect from one protobuf schema; the Go, Python, Node, Rust, Java and .NET clients are hand-written over stubs generated from that schema, the Julia and MATLAB clients speak Connect-JSON over HTTP by the published wire contract, and the Cameo plugin and SysON integration reach the service through the Java client — so a rule fixed in the engine is fixed everywhere at once.";
             }
 
             part toolchain : Diagram {

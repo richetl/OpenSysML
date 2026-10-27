@@ -1,0 +1,145 @@
+# .NET
+
+`OpenMBEE.OpenSysML` is the C# client for the service. Choose it when a .NET 10 application
+needs typed, asynchronous access to the whole service surface: models and symbols, execution and
+behavior checks, verification and analysis, conversion and migration, queries and documents,
+source edits, data import and result comparison.
+
+## Install
+
+The client is built from a checkout of this repository and consumed by `ProjectReference`; it is
+not published to NuGet. It targets `net10.0` only, built with the .NET SDK the repository-root
+`global.json` pins. Run `dotnet` from the repository root so that pin applies, and check it with
+`make dotnet-preflight`.
+
+```xml
+<ItemGroup>
+  <ProjectReference Include="path/to/OpenSysML/client/dotnet/src/OpenMBEE.OpenSysML/OpenMBEE.OpenSysML.csproj" />
+</ItemGroup>
+```
+
+Its version is the core version of the checkout, and the release of a version is the checkout of
+the core `v<version>` tag.
+
+## First model
+
+This program is the checkout's
+[`samples/Vehicle`](../../client/dotnet/samples/Vehicle/)
+consumer, which the client's test target runs against a real service. It parses inline notation,
+checks the parse diagnostics, looks the sedan up and evaluates its redefined mass:
+
+```csharp
+using System;
+using OpenMBEE.OpenSysML;
+
+const string Source = """
+    package Demo {
+      part def Vehicle {
+        attribute mass default = 1500.0;
+      }
+      part sedan : Vehicle {
+        attribute :>> mass = 1800.0;
+      }
+    }
+    """;
+
+try
+{
+    await using var connection = await Connection.OpenAsync();
+    Console.WriteLine(connection.ServerInfo);
+
+    var model = await connection.LoadContentAsync(Source);
+    if (model.HasErrors)
+    {
+        foreach (var diagnostic in model.Errors)
+        {
+            Console.Error.WriteLine(diagnostic);
+        }
+        return 1;
+    }
+
+    var sedan = await model.LookupAsync("sedan");
+    var mass = await model.EvalAsync("mass", new EvalOptions { SubjectSymbolId = sedan.Id });
+    Console.WriteLine($"{sedan}: mass = {mass}");
+    return 0;
+}
+catch (OpenSysMLException error)
+{
+    Console.Error.WriteLine(error.Message);
+    return 1;
+}
+```
+
+Build the service and run the sample from the repository root:
+
+```bash
+make build-grpc
+OPENSYSML_GRPC_BINARY="$PWD/bin/sysml-grpc" dotnet run --project client/dotnet/samples/Vehicle -c Release
+```
+
+Keep the binary setting when running the sample: with neither `OPENSYSML_SERVICE` nor
+`OPENSYSML_GRPC_BINARY` set, it prints only the assembly identity and exits without running the
+walkthrough.
+
+```text
+OpenMBEE.OpenSysML <version> (.NETCoreApp,Version=v10.0)
+sysml-grpc <version>, <count> capabilities
+Demo::sedan (partUsage): mass = 1800.0
+```
+
+The first line is the referenced assembly's version, the checkout's, and its target framework; the
+second is the version and capability count the service reports. With nothing named,
+`Connection.OpenAsync` starts a private `sysml-grpc` as a child of the program and stops it when
+the connection is disposed. A source with errors still parses into a `Model`, whose `Errors`
+say what is wrong; `RequireNoErrors` turns them into an exception instead. Every failure the
+client reports derives from `OpenSysMLException`, while a false verdict is an answer, not an
+exception.
+
+## Connections and protocols
+
+`ConnectionOptions.Address`, or else `OPENSYSML_SERVICE`, names a service that is already
+running; the client never starts, stops or downloads a service named that way. Without one, it
+starts a private child, shared by the connections of one copy of the client (one assembly load
+context) that agree on its binary and timeouts; `IsolatedService` gives a connection its own.
+The child exits when its input closes, so it ends with the process however the process ends.
+
+A connection speaks the one protocol it is given, never retries a call and never falls back to
+another protocol:
+
+| `Protocol` | `Encoding` | On the wire |
+| --- | --- | --- |
+| `Grpc` (default) | `Protobuf` (default) | gRPC over HTTP/2 |
+| `Connect` | `Protobuf` | one HTTP/1.1 `POST` per call, `application/proto` |
+| `Connect` | `Json` | the same, `application/json`, for reading the traffic |
+
+## Service source
+
+The private service's binary is `ConnectionOptions.BinaryPath`, else `OPENSYSML_GRPC_BINARY`,
+else the release asked for in the shared cache `~/.opensysml/bin`, downloaded there when the
+cache does not hold it. Only when the release the client was built with cannot be had does it
+fall back to `sysml-grpc` on `PATH`. The cache, its record and its lock are the ones every
+OpenSysML client shares.
+
+A release is downloaded only when the checkout pins the SHA-256 digest of its asset. The client
+does not verify the Sigstore signature of a release's checksum manifest, so a release it pins no
+digest for is refused with `UnpinnedReleaseException` unless `OPENSYSML_ALLOW_UNPINNED_DOWNLOAD`
+grants same-origin trust. A checkout whose own version is not yet released pins nothing for it,
+so from a development checkout set `OPENSYSML_GRPC_BINARY` to a `make build-grpc` binary, as
+above. See the
+[service-binary reference](../reference/clients.md#providing-the-service-binary).
+
+## Limitations
+
+- Distributed as a checkout only: no NuGet package and no packaged `dotnet` tool.
+- `net10.0` only. Native AOT and trimming are not supported, and nothing is claimed for
+  browsers or Blazor: a platform that cannot start a process fails a private start with
+  `UnsupportedPlatformException`.
+- Asynchronous only, with no synchronous mirrors, notebook display or DataFrame integration.
+- No generated typed model classes and no standalone metamodel reader: models are read through
+  `Symbol`, `Instantiation` and `Value`.
+
+## Next steps
+
+- [.NET API reference](../reference/dotnet-api.md)
+- [Client README, testing and conformance runner](../../client/dotnet/README.md)
+- [Shared SysML model examples](../../examples/)

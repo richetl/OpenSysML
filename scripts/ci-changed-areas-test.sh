@@ -70,6 +70,8 @@ case_ dotnet-lock dotnet client/dotnet/src/OpenMBEE.OpenSysML/packages.lock.json
 case_ dotnet-props dotnet,python client/dotnet/Directory.Build.props
 case_ dotnet-sdk-pin dotnet global.json
 case_ dotnet-readme docs,dotnet client/dotnet/README.md
+# The .NET guide's walkthrough is the Vehicle sample's code, which the .NET suite holds together.
+case_ dotnet-guide docs,dotnet docs/clients/dotnet.md
 case_ matlab-only matlab client/matlab/+opensysml/call.m
 case_ vscode-manifest python,vscode editors/vscode/package.json
 case_ vscode-lock python,vscode editors/vscode/package-lock.json
@@ -126,6 +128,7 @@ quick_case_ dotnet-only dotnet client/dotnet/src/OpenMBEE.OpenSysML/Internal/Pri
 quick_case_ dotnet-gates dotnet client/dotnet/scripts/dotnet-gates.py
 quick_case_ dotnet-sdk-pin dotnet global.json
 quick_case_ signed-release-fixture dotnet,python client/python/tests/fixtures/signed_release/SHA256SUMS.txt.bundle
+quick_case_ dotnet-guide docs,dotnet docs/clients/dotnet.md
 quick_case_ conformance go conformance/scenarios/01-server-info.json
 quick_case_ vscode-grammar go,vscode editors/vscode/tools/gengrammar/grammar.go
 

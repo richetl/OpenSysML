@@ -30,6 +30,9 @@ of this repository and consumed by `ProjectReference`. It is not published to Nu
 > [Node](../node/) clients, and like the [Rust](../rust/) one, it does not verify a release's
 > signature, so a release it pins no digest for is refused.
 
+For a task-oriented walkthrough, see the [.NET client guide](../../docs/clients/dotnet.md); the
+[.NET API reference](../../docs/reference/dotnet-api.md) lists the surface by area.
+
 ## Requirements
 
 - The .NET SDK that the repository-root [`global.json`](../../global.json) pins (10.0.402),
@@ -51,17 +54,20 @@ Reference the project from your own:
 </ItemGroup>
 ```
 
-[`samples/Vehicle`](samples/Vehicle/) is such a consumer. It prints the referenced
-assembly's version and target framework and, when `OPENSYSML_SERVICE` names a running
-service or `OPENSYSML_GRPC_BINARY` names a binary to start privately, what that service
-reports, then parses a vehicle model, looks the vehicle up and evaluates its mass:
+[`samples/Vehicle`](samples/Vehicle/) is such a consumer, and the program the
+[.NET client guide](../../docs/clients/dotnet.md) walks through: a test holds the guide's code to
+the sample's walkthrough region and requires its complete run command, including the service-binary
+assignment. It prints the referenced assembly's version and target framework
+and, when `OPENSYSML_SERVICE` names a running service or `OPENSYSML_GRPC_BINARY` names a binary
+to start privately, what that service reports, then parses a vehicle model, checks its
+diagnostics, looks the sedan up and evaluates its redefined mass:
 
 ```bash
 make build-grpc
 OPENSYSML_GRPC_BINARY="$PWD/bin/sysml-grpc" dotnet run --project client/dotnet/samples/Vehicle -c Release
-# OpenMBEE.OpenSysML 0.10.1 (.NETCoreApp,Version=v10.0)
-# sysml-grpc v0.10.1, 72 capabilities
-# Demo::Vehicle (partDef): mass = 1500.0
+# OpenMBEE.OpenSysML <version> (.NETCoreApp,Version=v10.0)
+# sysml-grpc <version>, <count> capabilities
+# Demo::sedan (partUsage): mass = 1800.0
 ```
 
 ## Connecting to a service
@@ -74,7 +80,7 @@ await using var connection = await Connection.OpenAsync(new ConnectionOptions
     Address = "localhost:50051",
     RequireCapabilities = [Capabilities.Query],
 });
-Console.WriteLine(connection.ServerInfo);              // sysml-grpc v0.10.1, 72 capabilities
+Console.WriteLine(connection.ServerInfo);              // sysml-grpc <version>, <count> capabilities
 bool converts = connection.Capabilities.Has(Capabilities.Convert);
 ```
 
