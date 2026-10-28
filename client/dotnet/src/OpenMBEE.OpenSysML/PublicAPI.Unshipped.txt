@@ -205,6 +205,10 @@ OpenMBEE.OpenSysML.FeatureValue.IsMaterialized.get -> bool
 OpenMBEE.OpenSysML.FeatureValue.OrderDependent.get -> int
 OpenMBEE.OpenSysML.FeatureValue.Value.get -> OpenMBEE.OpenSysML.Value?
 OpenMBEE.OpenSysML.FeatureValue.Values.get -> OpenMBEE.OpenSysML.ValueList<OpenMBEE.OpenSysML.Value!>
+OpenMBEE.OpenSysML.FeatureValueException
+OpenMBEE.OpenSysML.FeatureValueException.FeatureName.get -> string!
+OpenMBEE.OpenSysML.FeatureValueException.FeatureValueException(string! featureName, string! reason) -> void
+OpenMBEE.OpenSysML.FeatureValueException.Reason.get -> string!
 OpenMBEE.OpenSysML.Instance
 OpenMBEE.OpenSysML.Instance.<Clone>$() -> OpenMBEE.OpenSysML.Instance!
 OpenMBEE.OpenSysML.Instance.Equals(OpenMBEE.OpenSysML.Instance? other) -> bool
@@ -212,6 +216,10 @@ OpenMBEE.OpenSysML.Instance.FeatureValues.get -> OpenMBEE.OpenSysML.ValueDiction
 OpenMBEE.OpenSysML.Instance.Id.get -> long
 OpenMBEE.OpenSysML.Instance.Instance(long id, string! typeSymbolId, System.Collections.Generic.IEnumerable<System.Collections.Generic.KeyValuePair<string!, OpenMBEE.OpenSysML.FeatureValue!>>! featureValues) -> void
 OpenMBEE.OpenSysML.Instance.TypeSymbolId.get -> string!
+OpenMBEE.OpenSysML.InstanceTypeException
+OpenMBEE.OpenSysML.InstanceTypeException.Actual.get -> string!
+OpenMBEE.OpenSysML.InstanceTypeException.Expected.get -> string!
+OpenMBEE.OpenSysML.InstanceTypeException.InstanceTypeException(string! expected, string! actual) -> void
 OpenMBEE.OpenSysML.Instantiation
 OpenMBEE.OpenSysML.Instantiation.<Clone>$() -> OpenMBEE.OpenSysML.Instantiation!
 OpenMBEE.OpenSysML.Instantiation.Diagnostics.get -> OpenMBEE.OpenSysML.ValueList<OpenMBEE.OpenSysML.Diagnostic!>
@@ -394,6 +402,24 @@ OpenMBEE.OpenSysML.TransportException
 OpenMBEE.OpenSysML.TransportException.Method.get -> string!
 OpenMBEE.OpenSysML.TransportException.StatusCode.get -> OpenMBEE.OpenSysML.StatusCode
 OpenMBEE.OpenSysML.TransportException.TransportException(OpenMBEE.OpenSysML.StatusCode statusCode, string! message, string! method, System.Exception? innerException = null) -> void
+OpenMBEE.OpenSysML.Typed.FeatureDecoder<T>
+OpenMBEE.OpenSysML.Typed.FeatureDecoders
+OpenMBEE.OpenSysML.Typed.ITypedObject
+OpenMBEE.OpenSysML.Typed.ITypedObject.Instance.get -> OpenMBEE.OpenSysML.Instance!
+OpenMBEE.OpenSysML.Typed.ITypedObject.Instantiation.get -> OpenMBEE.OpenSysML.Instantiation?
+OpenMBEE.OpenSysML.Typed.TypedFactory
+OpenMBEE.OpenSysML.Typed.TypedFeatures
+OpenMBEE.OpenSysML.Typed.TypedObject
+OpenMBEE.OpenSysML.Typed.TypedObject.Equals(OpenMBEE.OpenSysML.Typed.TypedObject? other) -> bool
+OpenMBEE.OpenSysML.Typed.TypedObject.Instance.get -> OpenMBEE.OpenSysML.Instance!
+OpenMBEE.OpenSysML.Typed.TypedObject.Instantiation.get -> OpenMBEE.OpenSysML.Instantiation?
+OpenMBEE.OpenSysML.Typed.TypedObject.TypedObject(OpenMBEE.OpenSysML.Instance! instance, OpenMBEE.OpenSysML.Instantiation? instantiation) -> void
+OpenMBEE.OpenSysML.Typed.TypedRegistry
+OpenMBEE.OpenSysML.Typed.TypedRegistry.Decoder<T>(string! definitionId) -> OpenMBEE.OpenSysML.Typed.FeatureDecoder<T!>!
+OpenMBEE.OpenSysML.Typed.TypedRegistry.DefinitionIds.get -> System.Collections.Generic.IReadOnlyCollection<string!>!
+OpenMBEE.OpenSysML.Typed.TypedRegistry.DefinitionOf(string! typeSymbolId) -> string?
+OpenMBEE.OpenSysML.Typed.TypedRegistry.FromInstance<T>(OpenMBEE.OpenSysML.Instance! instance, OpenMBEE.OpenSysML.Instantiation? instantiation, string! definitionId) -> T!
+OpenMBEE.OpenSysML.Typed.TypedRegistry.TypedRegistry(System.Collections.Generic.IEnumerable<System.Collections.Generic.KeyValuePair<string!, OpenMBEE.OpenSysML.Typed.TypedFactory!>>! classes, System.Collections.Generic.IEnumerable<System.Collections.Generic.KeyValuePair<string!, string!>>! usageTypes) -> void
 OpenMBEE.OpenSysML.TypeFacts
 OpenMBEE.OpenSysML.TypeFacts.<Clone>$() -> OpenMBEE.OpenSysML.TypeFacts!
 OpenMBEE.OpenSysML.TypeFacts.Declared.get -> string!
@@ -405,6 +431,11 @@ OpenMBEE.OpenSysML.TypeFacts.ResolvedId.get -> string!
 OpenMBEE.OpenSysML.TypeFacts.ResolvedKind.get -> string!
 OpenMBEE.OpenSysML.TypeFacts.TypeFacts(string! declared, string! resolvedId, string! resolvedKind, string! primitive, string! primitiveSource, bool isQuantity, string! unit) -> void
 OpenMBEE.OpenSysML.TypeFacts.Unit.get -> string!
+OpenMBEE.OpenSysML.TypeMismatchException
+OpenMBEE.OpenSysML.TypeMismatchException.Actual.get -> OpenMBEE.OpenSysML.Value?
+OpenMBEE.OpenSysML.TypeMismatchException.Expected.get -> string!
+OpenMBEE.OpenSysML.TypeMismatchException.FeatureName.get -> string!
+OpenMBEE.OpenSysML.TypeMismatchException.TypeMismatchException(string! featureName, string! expected, OpenMBEE.OpenSysML.Value? actual) -> void
 OpenMBEE.OpenSysML.UnitFactor
 OpenMBEE.OpenSysML.UnitFactor.<Clone>$() -> OpenMBEE.OpenSysML.UnitFactor!
 OpenMBEE.OpenSysML.UnitFactor.Equals(OpenMBEE.OpenSysML.UnitFactor? other) -> bool
@@ -616,6 +647,9 @@ override OpenMBEE.OpenSysML.Specialization.ToString() -> string!
 override OpenMBEE.OpenSysML.Symbol.Equals(object? obj) -> bool
 override OpenMBEE.OpenSysML.Symbol.GetHashCode() -> int
 override OpenMBEE.OpenSysML.Symbol.ToString() -> string!
+override OpenMBEE.OpenSysML.Typed.TypedObject.Equals(object? obj) -> bool
+override OpenMBEE.OpenSysML.Typed.TypedObject.GetHashCode() -> int
+override OpenMBEE.OpenSysML.Typed.TypedObject.ToString() -> string!
 override OpenMBEE.OpenSysML.TypeFacts.Equals(object? obj) -> bool
 override OpenMBEE.OpenSysML.TypeFacts.GetHashCode() -> int
 override OpenMBEE.OpenSysML.TypeFacts.ToString() -> string!
@@ -775,6 +809,19 @@ static OpenMBEE.OpenSysML.Specialization.operator !=(OpenMBEE.OpenSysML.Speciali
 static OpenMBEE.OpenSysML.Specialization.operator ==(OpenMBEE.OpenSysML.Specialization? left, OpenMBEE.OpenSysML.Specialization? right) -> bool
 static OpenMBEE.OpenSysML.Symbol.operator !=(OpenMBEE.OpenSysML.Symbol? left, OpenMBEE.OpenSysML.Symbol? right) -> bool
 static OpenMBEE.OpenSysML.Symbol.operator ==(OpenMBEE.OpenSysML.Symbol? left, OpenMBEE.OpenSysML.Symbol? right) -> bool
+static OpenMBEE.OpenSysML.Typed.FeatureDecoders.AsBoolean(string! featureName, OpenMBEE.OpenSysML.Value! value, OpenMBEE.OpenSysML.Instantiation? instantiation) -> bool
+static OpenMBEE.OpenSysML.Typed.FeatureDecoders.AsComplex(string! featureName, OpenMBEE.OpenSysML.Value! value, OpenMBEE.OpenSysML.Instantiation? instantiation) -> System.Numerics.Complex
+static OpenMBEE.OpenSysML.Typed.FeatureDecoders.AsEnumLiteral(string! featureName, OpenMBEE.OpenSysML.Value! value, OpenMBEE.OpenSysML.Instantiation? instantiation) -> OpenMBEE.OpenSysML.Value.EnumLiteralValue!
+static OpenMBEE.OpenSysML.Typed.FeatureDecoders.AsInteger(string! featureName, OpenMBEE.OpenSysML.Value! value, OpenMBEE.OpenSysML.Instantiation? instantiation) -> System.Numerics.BigInteger
+static OpenMBEE.OpenSysML.Typed.FeatureDecoders.AsQuantity(string! featureName, OpenMBEE.OpenSysML.Value! value, OpenMBEE.OpenSysML.Instantiation? instantiation) -> OpenMBEE.OpenSysML.Quantity!
+static OpenMBEE.OpenSysML.Typed.FeatureDecoders.AsRational(string! featureName, OpenMBEE.OpenSysML.Value! value, OpenMBEE.OpenSysML.Instantiation? instantiation) -> OpenMBEE.OpenSysML.Rational!
+static OpenMBEE.OpenSysML.Typed.FeatureDecoders.AsReal(string! featureName, OpenMBEE.OpenSysML.Value! value, OpenMBEE.OpenSysML.Instantiation? instantiation) -> double
+static OpenMBEE.OpenSysML.Typed.FeatureDecoders.AsString(string! featureName, OpenMBEE.OpenSysML.Value! value, OpenMBEE.OpenSysML.Instantiation? instantiation) -> string!
+static OpenMBEE.OpenSysML.Typed.FeatureDecoders.AsValue(string! featureName, OpenMBEE.OpenSysML.Value! value, OpenMBEE.OpenSysML.Instantiation? instantiation) -> OpenMBEE.OpenSysML.Value!
+static OpenMBEE.OpenSysML.Typed.TypedFeatures.List<T>(OpenMBEE.OpenSysML.Typed.ITypedObject! owner, string! featureName, OpenMBEE.OpenSysML.Typed.FeatureDecoder<T>! decode) -> OpenMBEE.OpenSysML.ValueList<T>
+static OpenMBEE.OpenSysML.Typed.TypedFeatures.Optional<T>(OpenMBEE.OpenSysML.Typed.ITypedObject! owner, string! featureName, OpenMBEE.OpenSysML.Typed.FeatureDecoder<T!>! decode) -> T?
+static OpenMBEE.OpenSysML.Typed.TypedFeatures.OptionalValue<T>(OpenMBEE.OpenSysML.Typed.ITypedObject! owner, string! featureName, OpenMBEE.OpenSysML.Typed.FeatureDecoder<T>! decode) -> T?
+static OpenMBEE.OpenSysML.Typed.TypedFeatures.Required<T>(OpenMBEE.OpenSysML.Typed.ITypedObject! owner, string! featureName, OpenMBEE.OpenSysML.Typed.FeatureDecoder<T>! decode) -> T
 static OpenMBEE.OpenSysML.TypeFacts.operator !=(OpenMBEE.OpenSysML.TypeFacts? left, OpenMBEE.OpenSysML.TypeFacts? right) -> bool
 static OpenMBEE.OpenSysML.TypeFacts.operator ==(OpenMBEE.OpenSysML.TypeFacts? left, OpenMBEE.OpenSysML.TypeFacts? right) -> bool
 static OpenMBEE.OpenSysML.UnitFactor.operator !=(OpenMBEE.OpenSysML.UnitFactor? left, OpenMBEE.OpenSysML.UnitFactor? right) -> bool
@@ -3089,3 +3136,5 @@ static OpenMBEE.OpenSysML.ObservablePair.operator !=(OpenMBEE.OpenSysML.Observab
 static OpenMBEE.OpenSysML.ObservablePair.operator ==(OpenMBEE.OpenSysML.ObservablePair? left, OpenMBEE.OpenSysML.ObservablePair? right) -> bool
 static OpenMBEE.OpenSysML.StatisticDifference.operator !=(OpenMBEE.OpenSysML.StatisticDifference? left, OpenMBEE.OpenSysML.StatisticDifference? right) -> bool
 static OpenMBEE.OpenSysML.StatisticDifference.operator ==(OpenMBEE.OpenSysML.StatisticDifference? left, OpenMBEE.OpenSysML.StatisticDifference? right) -> bool
+virtual OpenMBEE.OpenSysML.Typed.FeatureDecoder<T>.Invoke(string! featureName, OpenMBEE.OpenSysML.Value! value, OpenMBEE.OpenSysML.Instantiation? instantiation) -> T
+virtual OpenMBEE.OpenSysML.Typed.TypedFactory.Invoke(OpenMBEE.OpenSysML.Instance! instance, OpenMBEE.OpenSysML.Instantiation? instantiation) -> OpenMBEE.OpenSysML.Typed.TypedObject!

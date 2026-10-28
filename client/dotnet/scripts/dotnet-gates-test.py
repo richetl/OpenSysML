@@ -824,5 +824,77 @@ class PromoteApiTest(unittest.TestCase):
         self.assertRegex(stdout.getvalue(), r"\AOK \S*Lib: shipped 1 entries, removed 0\nOK \S*Lib: nothing unshipped\n\Z")
 
 
+class GoldensTest(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.calls = os.path.join(self.tmp.name, "calls.json")
+        self.manifest = os.path.join(self.tmp.name, "goldens.json")
+        self.write_manifest([
+            {"sources": ["a.sysml"], "namespace": "A.Model", "output": "out/ATypes.cs"},
+            {"sources": ["lib", "top.sysml"], "namespace": "B", "output": "out/BTypes.cs"},
+        ])
+
+    def write_manifest(self, entries):
+        with open(self.manifest, "w", encoding="utf-8") as f:
+            json.dump(entries, f)
+
+    def host(self, fail_for=None):
+        """A stand-in dotnet recording each command line, failing for an output it is told to."""
+        path = os.path.join(self.tmp.name, "dotnet")
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(textwrap.dedent(f"""\
+                #!{sys.executable}
+                import json, os, sys
+                calls = json.load(open({self.calls!r})) if os.path.exists({self.calls!r}) else []
+                calls.append(sys.argv[1:])
+                json.dump(calls, open({self.calls!r}, "w"))
+                if {fail_for!r} in sys.argv:
+                    print("error: out of date", file=sys.stderr); sys.exit(1)
+                """))
+        os.chmod(path, os.stat(path).st_mode | stat.S_IEXEC)
+        return path
+
+    def recorded(self):
+        with open(self.calls, encoding="utf-8") as f:
+            return json.load(f)
+
+    def test_runs_the_built_generator_with_each_goldens_arguments(self):
+        done = gates.goldens(self.host(), manifest=self.manifest)
+
+        self.assertEqual(done, ["out/ATypes.cs", "out/BTypes.cs"])
+        run = ["run", "--project", gates.GENERATE_PROJECT, "-c", "Release", "--no-build", "--"]
+        self.assertEqual(self.recorded(), [
+            run + ["a.sysml", "-o", "out/ATypes.cs", "--namespace", "A.Model"],
+            run + ["lib", "top.sysml", "-o", "out/BTypes.cs", "--namespace", "B"],
+        ])
+
+    def test_check_asks_the_generator_to_check(self):
+        gates.goldens(self.host(), check=True, manifest=self.manifest)
+
+        self.assertTrue(all(call[-1] == "--check" for call in self.recorded()))
+
+    def test_a_golden_the_generator_refuses_fails_naming_it(self):
+        with self.assertRaisesRegex(gates.GateError, r"exited 1 for out/BTypes.cs:\nerror: out of date"):
+            gates.goldens(self.host(fail_for="out/BTypes.cs"), check=True, manifest=self.manifest)
+
+    def test_a_malformed_manifest_is_refused(self):
+        for entries, message in [
+            ([], "names no golden"),
+            ([{"sources": ["a"], "namespace": "A"}], "exactly sources, namespace and output"),
+            ([{"sources": [], "namespace": "A", "output": "o"}], "sources is not a list of paths"),
+            ([{"sources": ["a"], "namespace": "", "output": "o"}], "names no namespace or output"),
+        ]:
+            self.write_manifest(entries)
+            with self.subTest(message=message), self.assertRaisesRegex(gates.GateError, message):
+                gates.goldens(self.host(), manifest=self.manifest)
+
+    def test_the_committed_manifest_names_goldens_that_exist(self):
+        for sources, _, output in gates.read_goldens():
+            self.assertTrue(os.path.isfile(os.path.join(gates.REPO_ROOT, output)), output)
+            for source in sources:
+                self.assertTrue(os.path.exists(os.path.join(gates.REPO_ROOT, source)), source)
+
+
 if __name__ == "__main__":
     unittest.main()

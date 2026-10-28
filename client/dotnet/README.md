@@ -28,7 +28,9 @@ of this repository and consumed by `ProjectReference`. It is not published to Nu
 > [shared cache](#the-shared-cache) every client uses, under the same lock, and verifies them
 > against the digests this checkout pins; unlike the [Python](../python/), [Java](../java/) and
 > [Node](../node/) clients, and like the [Rust](../rust/) one, it does not verify a release's
-> signature, so a release it pins no digest for is refused.
+> signature, so a release it pins no digest for is refused. Its [generator](#typed-model-classes)
+> writes typed C# interfaces and classes over a model's definitions, which read instances through
+> the library.
 
 For a task-oriented walkthrough, see the [.NET client guide](../../docs/clients/dotnet.md); the
 [.NET API reference](../../docs/reference/dotnet-api.md) lists the surface by area.
@@ -1007,6 +1009,94 @@ scalar. A missing one is a `CapabilityException` naming the first the service wo
 To a service without `rational_values`, a Rational a `double` holds exactly is sent as that
 `double`, which is the same number; any other still needs the capability.
 
+## Typed model classes
+
+[`src/OpenMBEE.OpenSysML.Generate`](src/OpenMBEE.OpenSysML.Generate/) writes one C# file of typed
+interfaces and classes over the definitions of your SysML model, which you commit beside your code
+and read instances through. It is a console project of this checkout, run from the repository root;
+it is not a Roslyn source generator, an MSBuild task or a packaged `dotnet` tool, and nothing starts a
+service while you build.
+
+```bash
+dotnet run --project client/dotnet/src/OpenMBEE.OpenSysML.Generate -- model.sysml -o ModelTypes.cs --namespace Acme.Model
+dotnet run --project client/dotnet/src/OpenMBEE.OpenSysML.Generate -- lib/ top.sysml -o ModelTypes.cs --namespace Acme.Model --check
+make dotnet-generate SOURCES='lib/ top.sysml' OUTPUT=ModelTypes.cs NAMESPACE=Acme.Model [CHECK=1]
+```
+
+The model is one or more `.sysml` or `.kerml` files, parsed as one model in the order given; a
+directory contributes every model file beneath it in path order, hidden directories skipped. The
+service is the default any connection chooses (`$OPENSYSML_SERVICE`, else a private one), or the one
+`--address` names or `--binary` starts. Generation needs the `type_facts` capability and stops with
+`CapabilityException` before parsing anything without it: every property would otherwise be read as
+a `Value`, indistinguishable from an untyped feature. A model with errors is refused with its
+diagnostics. `--check` writes nothing and exits 1 unless the file is what the model generates now;
+misuse and filesystem failures exit 2 with a diagnostic. An output path must name a file, not a
+directory.
+
+```csharp
+using Acme.Model.Demo;
+
+var vehicle = Vehicle.FromInstance(await model.InstantiateAsync("Demo::Vehicle"));
+Console.WriteLine($"{vehicle.Mass} {vehicle.Engine.Power}");   // IVehicle, IEngine
+```
+
+Each definition gets an interface, `IVehicle`, declaring a read-only property per feature it owns,
+and a class, `Vehicle`, implementing it. All declarations of a package across the input documents
+contribute their children, including nested packages. Packages are namespaces under `--namespace`; a definition
+nested in another element is named after its owners, `Vehicle_Wheel`. The interface extends the
+interfaces of every generated definition it specializes, in declared order, and the class inherits
+the class of the first, so diamond ancestry is one interface. Enumerations get no class: a feature
+they type holds a literal. `Vehicle.FromInstance(instance, instantiation)` (or the instantiation
+alone) returns an `IVehicle` of the most specific generated class that describes the instance's
+type, a usage being as the definition it is typed by, so `is ICar` holds of a car; an instance of
+an unrelated generated definition is refused with `InstanceTypeException`, and one no generated
+class describes is viewed as a `Vehicle`. `Vehicle.Unchecked` views any instance.
+
+| Feature type | Property type |
+| --- | --- |
+| `Boolean`, `String` | `bool`, `string` |
+| `Integer`, `Natural` | `System.Numerics.BigInteger`, exactly |
+| `Rational` | `Rational`, exactly |
+| `Real`, `Complex` | `double`, `System.Numerics.Complex` |
+| a quantity whose value names a unit | `Quantity` |
+| an enumeration | `Value.EnumLiteralValue` |
+| a generated definition | its interface, resolved through the instantiation |
+| anything else (`Number`, an untyped feature, a library type with no class) | `Value`, its documentation saying why |
+
+Multiplicity `1` (or none stated) reads one value, `0..1` a nullable one, and more a
+`ValueList<T>`. An upper bound the service cannot determine statically also produces a list, never
+an assumption that only one value is possible. With an upper bound of one, an unknown lower bound
+produces a nullable property. Inherited facts are followed without a depth limit: when several
+features are redefined, their ranges are intersected and their most specific compatible type is
+used; incompatible facts are refused naming their providers.
+A feature's identity is its qualified name, never its property's name: an inherited
+property is read, in each class, from the feature that redefines it there, under whatever name, and
+a redefinition narrowing its type under the same name hides the inherited property with `new`.
+What cannot be generated soundly is refused, every problem named by the SysML elements behind it:
+two features of one definition that neither redefines the other under one property name (`mass` and
+`Mass` too), two redefinitions of one feature meeting in a specialization, a redefinition the
+redefined property cannot read (`Real` as `String`, one value as many), two elements that would
+generate one C# name, a name that would hide a member every view has (`Instance`, `ToString`, …),
+a definition specializing itself, and a reference the documents do not resolve. C# keywords,
+including contextual type names such as `record` and `required`, are written with `@`. Unicode
+formatting characters, which C# ignores in identifiers, are removed before naming and collision
+checks; equivalent names are refused rather than silently colliding in the compiler. Nothing is
+renamed with a suffix.
+
+Properties read through `OpenMBEE.OpenSysML.Typed`: `TypedFeatures` reads a feature by name for
+each multiplicity, `FeatureDecoders` decodes a value, and the file's `SysmlTypes.Registry`, a
+`TypedRegistry`, creates views. A value of another type or number is a `TypeMismatchException`, and
+a feature whose evaluation failed or that was never materialized a `FeatureValueException`.
+A required property rejects both null and `Unset`, including a property whose type is `Value`.
+
+The file is deterministic: declarations in ordinal order of qualified names, nothing of the machine,
+the time or the service. `SysmlTypes.GeneratorVersion` is the emission schema, which a change to the
+output for an unchanged model (or to what the standard library contributes) bumps, and
+`SysmlTypes.ModelHash` stamps the documents: a SHA-256 digest of each document's name (a file's
+name, or a directory's name and the path within it) and exact bytes, length-delimited and in ordinal
+order of the names, so a converted line ending changes it. A model is generated from its documents
+alone: a reference outside them and the standard library is refused rather than stamped.
+
 ## Coverage
 
 Every RPC of the service and the public methods that call it, as the
@@ -1085,6 +1175,17 @@ which it starts privately, under the same rule:
 ```bash
 OPENSYSML_GRPC_BINARY="$PWD/bin/sysml-grpc" OPENSYSML_REQUIRE_SERVICE=1 make dotnet-test
 ```
+
+The generator's tests, in [`test/OpenMBEE.OpenSysML.Generate.Tests`](test/OpenMBEE.OpenSysML.Generate.Tests/),
+plan and emit synthetic models and compile what they emit against the library with warnings and
+missing documentation as errors; against the service they run the command, regenerate every
+committed golden over each protocol, and require `--check` to fail on a changed document inside a
+named directory without writing. The goldens, generated from the shared Vehicle model, the Python
+client's multi-file model and [`test/testdata/generate/cases`](test/testdata/generate/cases/) as
+[`goldens.json`](test/testdata/generate/goldens.json) records, are compiled by
+[`test/OpenMBEE.OpenSysML.Generate.Consumer`](test/OpenMBEE.OpenSysML.Generate.Consumer/), which
+references the library alone under its build policy and reads live instances through them. `make
+dotnet-generate-goldens` regenerates them and `make dotnet-generate-check` checks them.
 
 Unit tests drive every way a private service starts and stops against
 [`test/FakeService`](test/FakeService/), a stand-in the solution builds and the tests copy,

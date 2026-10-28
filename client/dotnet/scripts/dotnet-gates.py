@@ -7,6 +7,7 @@
     python3 client/dotnet/scripts/dotnet-gates.py conformance-check --report R --log L --junit J \
         --reference-report RR --reference-log RL --expected-skips E
     python3 client/dotnet/scripts/dotnet-gates.py promote-api [--check]
+    python3 client/dotnet/scripts/dotnet-gates.py goldens [--check] [--dotnet DOTNET]
 
 `preflight` fails unless `dotnet`, invoked from the repository root, is exactly the
 SDK root global.json pins and a .NET 10 runtime is installed beside it: global.json's
@@ -41,6 +42,12 @@ service's capabilities are compared as a set, since the client holds them as one
 it, as a release does: entries are added, `*REMOVED*` entries delete what they name, and the
 shipped baseline is written in ordinal order. With --check it changes nothing and fails while
 anything is unshipped, which the release workflow runs at the tag.
+
+`goldens` regenerates each committed golden file of the typed-code generator from the documents
+client/dotnet/test/testdata/generate/goldens.json names, by running the built generator with the
+arguments the manifest records, as a user would. With --check it writes nothing and fails unless
+every golden is what its documents generate. The service is the generator's default: the one
+$OPENSYSML_SERVICE names, else a private one from $OPENSYSML_GRPC_BINARY.
 """
 
 import argparse
@@ -72,6 +79,8 @@ API_SHIPPED = "PublicAPI.Shipped.txt"
 API_UNSHIPPED = "PublicAPI.Unshipped.txt"
 API_REMOVED = "*REMOVED*"
 API_NULLABLE = "#nullable enable"
+GOLDENS_MANIFEST = os.path.join(REPO_ROOT, "client", "dotnet", "test", "testdata", "generate", "goldens.json")
+GENERATE_PROJECT = "client/dotnet/src/OpenMBEE.OpenSysML.Generate"
 
 
 class GateError(Exception):
@@ -771,6 +780,51 @@ def promote_api(root=None, check=False):
     return [(project, added, removed) for project, _, _, _, _, added, removed in plans]
 
 
+def read_goldens(manifest=GOLDENS_MANIFEST):
+    """The goldens a manifest names: each its sources, namespace and output, repository-relative."""
+    try:
+        with open(manifest, encoding="utf-8") as f:
+            entries = json.load(f)
+    except (OSError, ValueError) as e:
+        raise GateError(f"cannot read {manifest}: {e}") from e
+    if not isinstance(entries, list) or not entries:
+        raise GateError(f"{manifest} names no golden")
+    goldens_read = []
+    for i, entry in enumerate(entries):
+        where = f"{manifest}[{i}]"
+        if not isinstance(entry, dict) or set(entry) != {"sources", "namespace", "output"}:
+            raise GateError(f"{where} is not an object of exactly sources, namespace and output")
+        sources, namespace, output = entry["sources"], entry["namespace"], entry["output"]
+        if not isinstance(sources, list) or not sources or not all(isinstance(s, str) and s for s in sources):
+            raise GateError(f"{where}.sources is not a list of paths")
+        if not isinstance(namespace, str) or not namespace or not isinstance(output, str) or not output:
+            raise GateError(f"{where} names no namespace or output")
+        goldens_read.append((sources, namespace, output))
+    return goldens_read
+
+
+def goldens(dotnet="dotnet", check=False, manifest=GOLDENS_MANIFEST, environ=None):
+    """Regenerates, or checks, every golden the manifest names with the built generator."""
+    done = []
+    for sources, namespace, output in read_goldens(manifest):
+        command = [dotnet, "run", "--project", GENERATE_PROJECT, "-c", "Release", "--no-build", "--",
+                   *sources, "-o", output, "--namespace", namespace]
+        if check:
+            command.append("--check")
+        try:
+            result = subprocess.run(
+                command, cwd=REPO_ROOT, env=environ, capture_output=True, text=True, timeout=RUN_TIMEOUT, check=False
+            )
+        except (OSError, subprocess.TimeoutExpired) as e:
+            raise GateError(f"cannot run the generator for {output}: {e}") from e
+        if result.returncode != 0:
+            raise GateError(
+                f"the generator exited {result.returncode} for {output}:\n{(result.stdout + result.stderr).strip()}"
+            )
+        done.append(output)
+    return done
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     commands = parser.add_subparsers(dest="command", required=True)
@@ -792,6 +846,9 @@ def main(argv=None):
     chk.add_argument("--expected-skips", required=True, help="the .NET client's expected-skips.json")
     api = commands.add_parser("promote-api", help="move the unshipped public API into the shipped baseline")
     api.add_argument("--check", action="store_true", help="fail if anything is unshipped instead of promoting it")
+    gld = commands.add_parser("goldens", help="regenerate, or check, the typed-code generator's committed goldens")
+    gld.add_argument("--check", action="store_true", help="write nothing; fail unless every golden is current")
+    gld.add_argument("--dotnet", default="dotnet", help="the dotnet host (default: dotnet on PATH)")
     args = parser.parse_args(argv)
 
     try:
@@ -805,6 +862,9 @@ def main(argv=None):
             served = sample(args.expect, args.dotnet, args.binary)
             print(f"OK {args.expect}")
             print(f"OK {served}" if served else f"- no sysml-grpc configured (${BINARY_VARIABLE}); skipped the service run")
+        elif args.command == "goldens":
+            for output in goldens(args.dotnet, args.check):
+                print(f"OK {output} {'is current' if args.check else 'regenerated'}")
         elif args.command == "conformance-check":
             agreed, excluded = conformance_check(
                 args.report, args.log, args.junit, args.reference_report, args.reference_log, args.expected_skips

@@ -1,4 +1,4 @@
-.PHONY: all build docker extension-libraries-check extension-libraries-sync build-sysml build-re build-wasm-re build-lsp build-grpc build-mcp build-engine build-core build-syntax build-sysml-wasm build-release-wasm build-wasm build-wasm-wasip1 build-wasm-js wasm-check static-check windows-versioninfo-check man man-check install-tree pgo-profile conformance conformance-pkg conformance-mcp conformance-rust conformance-julia conformance-matlab conformance-dotnet conformance-dotnet-check test test-shard coverage coverage-shard coverage-merge lint clean install help ontology-table ontology-table-check metaclass-graph metaclass-graph-check python-metamodel python-metamodel-check fuml-expected python-test python-coverage scripts-coverage node-coverage vscode-coverage jupyterlab-coverage mcp-npm-coverage dotnet-preflight dotnet-build dotnet-test dotnet-coverage python-install jupyter-kernel-install jupyter-kernel-test proto proto-buf python-proto proto-ts proto-rust proto-csharp proto-lint proto-breaking jupyterlab-build jupyterlab-test jupyterlab-install vscode-grammar vscode-build vscode-package docs docs-install docs-serve docs-engine-assets docs-landing-assets docs-counts diagnostics-catalogue diagnostics-check docs-check changelog-check changelog-render self-model mcp-registry-check
+.PHONY: all build docker extension-libraries-check extension-libraries-sync build-sysml build-re build-wasm-re build-lsp build-grpc build-mcp build-engine build-core build-syntax build-sysml-wasm build-release-wasm build-wasm build-wasm-wasip1 build-wasm-js wasm-check static-check windows-versioninfo-check man man-check install-tree pgo-profile conformance conformance-pkg conformance-mcp conformance-rust conformance-julia conformance-matlab conformance-dotnet conformance-dotnet-check test test-shard coverage coverage-shard coverage-merge lint clean install help ontology-table ontology-table-check metaclass-graph metaclass-graph-check python-metamodel python-metamodel-check fuml-expected python-test python-coverage scripts-coverage node-coverage vscode-coverage jupyterlab-coverage mcp-npm-coverage dotnet-preflight dotnet-build dotnet-test dotnet-coverage dotnet-generate dotnet-generate-goldens dotnet-generate-check python-install jupyter-kernel-install jupyter-kernel-test proto proto-buf python-proto proto-ts proto-rust proto-csharp proto-lint proto-breaking jupyterlab-build jupyterlab-test jupyterlab-install vscode-grammar vscode-build vscode-package docs docs-install docs-serve docs-engine-assets docs-landing-assets docs-counts diagnostics-catalogue diagnostics-check docs-check changelog-check changelog-render self-model mcp-registry-check
 
 # Version information
 # Only release tags describe a build; the moving `nightly` tag is not a version.
@@ -70,8 +70,10 @@ DOTNET ?= dotnet
 DOTNET_DIR := client/dotnet
 DOTNET_SLN := $(DOTNET_DIR)/OpenSysML.slnx
 DOTNET_REPORTS := $(BIN_DIR)/dotnet
-DOTNET_MIN_TESTS := 2880
+DOTNET_MIN_TESTS := 3093
 DOTNET_CLIENT_VERSION = $(shell sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' $(DOTNET_DIR)/Directory.Build.props)
+# The typed-code generator, run from its Release build with the arguments a user gives it.
+DOTNET_GENERATE = $(DOTNET) run --project $(DOTNET_DIR)/src/OpenMBEE.OpenSysML.Generate -c Release --no-build --
 # The committed buf output, excluded from coverage by path and refused by its check.
 DOTNET_GENERATED := src/OpenMBEE.OpenSysML/Wire/Sysml.cs src/OpenMBEE.OpenSysML/Wire/SysmlGrpc.cs
 # The .NET conformance runner, run from its Release build, and the service it tests, which
@@ -663,6 +665,19 @@ dotnet-test: dotnet-build ## Check formatting, run the .NET client tests and its
 	$(PYTHON) $(DOTNET_DIR)/scripts/dotnet-gates-test.py
 	$(PYTHON) scripts/sync-release-digests.py --check
 	@echo "✓ .NET client tests passed"
+
+# The generator's own command line, run from the repository root: SOURCES are the model's files and
+# directories, in order; OUTPUT is the .cs file (standard output without one); CHECK=1 writes nothing and
+# fails unless OUTPUT is current. The service is the command's default, as for any .NET client.
+dotnet-generate: dotnet-build ## Generate typed C# classes from a model: SOURCES='model.sysml ...' NAMESPACE=Acme.Model [OUTPUT=ModelTypes.cs] [CHECK=1]
+	@test -n "$(SOURCES)" && test -n "$(NAMESPACE)" || { echo "usage: make dotnet-generate SOURCES='model.sysml ...' NAMESPACE=Acme.Model [OUTPUT=ModelTypes.cs] [CHECK=1]" >&2; exit 2; }
+	$(DOTNET_GENERATE) $(SOURCES) $(if $(OUTPUT),-o $(OUTPUT)) --namespace $(NAMESPACE) $(if $(CHECK),--check)
+
+dotnet-generate-goldens: dotnet-build ## Regenerate the .NET generator's committed goldens from the documents client/dotnet/test/testdata/generate/goldens.json names
+	$(PYTHON) $(DOTNET_DIR)/scripts/dotnet-gates.py goldens --dotnet "$(DOTNET)"
+
+dotnet-generate-check: dotnet-build ## Fail unless every committed golden of the .NET generator is what its documents generate
+	$(PYTHON) $(DOTNET_DIR)/scripts/dotnet-gates.py goldens --check --dotnet "$(DOTNET)"
 
 dotnet-coverage: dotnet-build ## Run the .NET client tests under coverlet; write Cobertura and JUnit under bin/dotnet/coverage
 	@echo "Running .NET client tests with coverage..."

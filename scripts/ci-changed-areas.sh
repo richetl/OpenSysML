@@ -75,7 +75,7 @@ emit java "$( { [[ "$fanout" = true ]] || matches "$java_pattern"; } && echo tru
 emit rust "$( { [[ "$fanout" = true ]] || matches "$rust_pattern"; } && echo true || echo false)"
 # The .NET suite serves the Python client's signed-release fixtures as a release
 # it must refuse, so a change to them runs it too.
-emit dotnet "$( { [[ "$fanout" = true ]] || matches "$dotnet_pattern" || matches '^client/python/tests/fixtures/signed_release/' || matches '^docs/clients/dotnet\.md$'; } && echo true || echo false)"
+emit dotnet "$( { [[ "$fanout" = true ]] || matches "$dotnet_pattern" || matches '^client/python/tests/fixtures/signed_release/' || matches '^client/python/tests/fixtures/multifile/' || matches '^docs/clients/dotnet\.md$'; } && echo true || echo false)"
 emit julia "$( { [[ "$fanout" = true ]] || matches "$julia_pattern"; } && echo true || echo false)"
 emit matlab "$( { [[ "$fanout" = true ]] || matches "$matlab_pattern"; } && echo true || echo false)"
 emit vscode "$( { [[ "$fanout" = true ]] || matches "$vscode_pattern"; } && echo true || echo false)"

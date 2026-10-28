@@ -127,6 +127,89 @@ so `IntegerValue(1)` is not `RealValue(1.0)`. `ToString` writes a value as a rea
 culture: `1800.0`, `1/3`, `5.4 [km/h]`, `{1, 2}`, `*`. Collections are `ValueList<T>` and
 `ValueDictionary<TValue>`, compared by content.
 
+## Typed model classes
+
+`src/OpenMBEE.OpenSysML.Generate` is a console project of the checkout, run from the repository
+root, that writes one C# file of typed views over a model's definitions:
+
+```bash
+dotnet run --project client/dotnet/src/OpenMBEE.OpenSysML.Generate -- SOURCE... --namespace NAMESPACE [-o OUTPUT] [--check] [--address ADDRESS | --binary PATH]
+make dotnet-generate SOURCES='SOURCE ...' NAMESPACE=NAMESPACE [OUTPUT=OUTPUT] [CHECK=1]
+```
+
+A `SOURCE` is a `.sysml` or `.kerml` file, or a directory whose model files are read in path order,
+hidden directories skipped; together they are parsed as one model. Without `-o` the file goes to
+standard output. `--check` writes nothing and exits 1 unless `OUTPUT` is what the model generates;
+a model with errors, one that cannot be generated soundly and a service without `type_facts` exit 1
+too, before anything is written; misuse, filesystem failures, non-UTF-8 input and an invalid namespace
+exit 2 with a diagnostic. An output path naming a directory is refused. The service is a connection's
+default unless `--address` or `--binary` names one. Package children include declarations from every
+input document declaring that package, including nested packages.
+
+| Model | Generated |
+| --- | --- |
+| package `P` | namespace `NAMESPACE.P`; a C# keyword with `@` |
+| definition `D` (not an enumeration) | `public interface ID` and `public class D : ID` |
+| definition nested in `D` or a usage `u` | `D_Inner`, `u_Inner`, in the package's namespace |
+| specialization of generated `A`, `B` | `ID : IA, IB`; `class D : A, ID` (the first base's class) |
+| owned feature `top speed` | `TopSpeed { get; }`, PascalCase of the name's letters and digits |
+| `Boolean`, `String`, `Integer`/`Natural`, `Rational`, `Real`, `Complex` | `bool`, `string`, `BigInteger`, `Rational`, `double`, `Complex` |
+| a quantity whose value names a unit | `Quantity` |
+| an enumeration | `Value.EnumLiteralValue` |
+| a generated definition | its interface |
+| anything else | `Value`, the property's remarks saying why |
+| multiplicity `1` or none, `0..1`, more or an unknown upper bound | `T`, `T?`, `ValueList<T>` |
+
+With an upper bound of one and an unknown lower bound, a property is nullable. Inherited type and
+multiplicity facts have no fixed depth limit. Several redefined features contribute intersected
+ranges and the most specific type that every inherited property can read; incompatible types or
+disjoint ranges are refused with the providers' names.
+
+Every property is an explicit interface implementation. A class implements its own interface and
+every inherited property whose value it reads from another feature than its base class does: an
+inherited property is read from the most specific feature redefining it in that class, whatever its
+name, with the inherited property's decoder; a redefinition of the same name declares the narrower
+property with `new`. Each class has `const string SysmlId`, `FromInstance(Instance, Instantiation?)`,
+`FromInstance(Instantiation)` and `Unchecked(Instance, Instantiation?)`, returning its interface.
+`FromInstance` views an instance as the generated class of its type (a usage as the definition it is
+typed by), which a specialization's class implements too; refuses one of an unrelated generated
+definition with `InstanceTypeException`; and views one no generated class describes as its own class.
+
+Generation is refused, with every problem naming the SysML elements behind it, for: two features of
+a definition, own or inherited, that neither redefines the other under one property name; two
+redefinitions of a feature meeting in a specialization, neither redefining the other; a
+redefinition whose type or multiplicity the redefined property cannot read (a narrower numeric type,
+a specialization's interface or fewer values can be read); two elements generating one C# type or
+namespace name, or a type and a namespace of one name; a property named `Instance`, `Instantiation`,
+`Equals`, `GetHashCode`, `GetType`, `ToString`, `MemberwiseClone`, `Finalize`, `ReferenceEquals` or
+its interface's name; a class named `SysmlId`, `FromInstance`, `Unchecked` or, in the root
+namespace, `SysmlTypes`; a definition specializing itself; an unnamed definition or a feature name
+holding no letter or digit; and a reference the documents and the standard library do not resolve.
+An unnamed feature has no property, and the interface's remarks count it. Contextual type keywords
+(`record`, `required`, `file`, `scoped`) and compiler-intrinsic keywords are escaped with `@`.
+Unicode formatting characters are removed before identifier generation and collision checks, so
+names the C# compiler considers equal cannot silently produce duplicate declarations.
+
+The root namespace's `SysmlTypes` holds `GeneratorVersion`, the emission schema, bumped whenever the
+file generated from an unchanged model changes; `ModelHash`, `sha256:` and the SHA-256 digest of the
+document count, then for each document in ordinal order of its name the name's length and UTF-8
+bytes and the content's length and exact bytes, each length a big-endian 64-bit integer (a file
+argument is named by its file name, a directory's files by the directory's name and their path
+within it); and `Registry`, the `TypedRegistry` every view is created through. The file has no
+timestamp, path or service version.
+
+Generated code reads through `OpenMBEE.OpenSysML.Typed`:
+
+| Type | Role |
+| --- | --- |
+| `ITypedObject`, `TypedObject` | a view: `Instance` and the `Instantiation` nested objects resolve through; equal over equal instances of one class |
+| `TypedFeatures` | `Required`, `Optional`, `OptionalValue` and `List`, reading a feature by name |
+| `FeatureDecoders` | `AsBoolean`, `AsString`, `AsInteger`, `AsRational`, `AsReal`, `AsComplex`, `AsQuantity`, `AsEnumLiteral`, `AsValue`; a number widens without loss (an Integer to a Real, a finite Real to its exact Rational) |
+| `TypedRegistry` | definitions to classes and usages to definitions; `FromInstance<T>` and `Decoder<T>` |
+
+A feature the instance does not have, or holding null or `Unset`, reads as null or an empty list,
+and fails a required property; a sequence reads as several values.
+
 ## Exceptions
 
 Every failure derives from `OpenSysMLException`, except cancellation and use after disposal:
@@ -152,7 +235,10 @@ OpenSysMLException
 │       └── AnalysisException, RunsException, RecordException, CompareException
 ├── TransportException             no well-formed answer was read; StatusCode, Method
 ├── UnsupportedValueException      a value of a kind this client does not know
-└── UnwritableException            a destination that cannot be written safely
+├── UnwritableException            a destination that cannot be written safely
+├── FeatureValueException          a typed property's feature failed or was never materialized; FeatureName, Reason
+├── TypeMismatchException          a typed property's feature holds another type or number; FeatureName, Expected, Actual
+└── InstanceTypeException          a typed view of an instance of an unrelated definition; Expected, Actual
 ```
 
 A `ServiceException` is only ever a status the service itself sent. A status the transport made
@@ -194,7 +280,8 @@ never retried.
 - It is not on NuGet, and has no packaged `dotnet` tool, symbol package or SourceLink.
 - It targets `net10.0` only, and makes no Native AOT, trimming, browser or Blazor claim.
 - It has no synchronous API, no notebook display hooks and no DataFrame integration.
-- It has no generated typed model classes and no standalone metamodel reader.
+- It has no standalone metamodel reader, and its typed-class generator is a checkout console, not
+  a Roslyn source generator, MSBuild task or packaged `dotnet` tool.
 - It never retries a call, falls back to another protocol, or bypasses TLS validation.
 - It starts no service implicitly from the compiler or MSBuild.
 

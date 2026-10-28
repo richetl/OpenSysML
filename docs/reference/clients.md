@@ -108,8 +108,9 @@ Each client's conformance report names, per scenario, why a skipped scenario is 
 shrinking surface cannot pass quietly.
 
 Only the generated model-ergonomics types differ: the Node client generates typed modules with
-`opensysml-generate`, and the Go, Java, Rust and .NET APIs read models through `Symbol`, `Instance` and
-`Value` instead.
+`opensysml-generate` and the .NET client typed interfaces and classes with its checkout's
+`OpenMBEE.OpenSysML.Generate`, and the Go, Java and Rust APIs read models through `Symbol`, `Instance`
+and `Value` instead.
 
 ## Two lifecycle modes, and one guarantee
 

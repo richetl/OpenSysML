@@ -128,6 +128,34 @@ so from a development checkout set `OPENSYSML_GRPC_BINARY` to a `make build-grpc
 above. See the
 [service-binary reference](../reference/clients.md#providing-the-service-binary).
 
+## Typed model classes
+
+The checkout's generator writes typed C# interfaces and classes over your model's definitions,
+which you commit and read instances through. Run it from the repository root against a service
+that reports static type facts (the same default service as any connection, or `--address`):
+
+```bash
+dotnet run --project client/dotnet/src/OpenMBEE.OpenSysML.Generate -- model.sysml -o ModelTypes.cs --namespace Acme.Model
+```
+
+Each definition gets an interface, `IVehicle`, with a read-only property per feature, typed from the
+model (`double`, `BigInteger`, `Rational`, `Quantity`, a generated interface, or `Value` where no C#
+type is sound), and a class implementing it. Packages become namespaces under `--namespace`.
+
+```csharp
+using Acme.Model.Demo;
+
+var vehicle = Vehicle.FromInstance(await model.InstantiateAsync("Demo::Vehicle"));
+Console.WriteLine(vehicle.Engine.Power);
+```
+
+`FromInstance` returns the most specific generated class for the instance, so an instantiated
+`car : Car` is an `ICar`. Generation refuses, naming the SysML elements, any model it cannot type
+soundly: two unrelated features meeting under one property name, a redefinition the redefined
+property cannot read, two elements generating one C# name, a reference outside the documents.
+Commit the file and gate it with `--check`, which exits 1 when the model has changed. The
+[.NET API reference](../reference/dotnet-api.md#typed-model-classes) lists every rule.
+
 ## Limitations
 
 - Distributed as a checkout only: no NuGet package and no packaged `dotnet` tool.
@@ -135,8 +163,9 @@ above. See the
   browsers or Blazor: a platform that cannot start a process fails a private start with
   `UnsupportedPlatformException`.
 - Asynchronous only, with no synchronous mirrors, notebook display or DataFrame integration.
-- No generated typed model classes and no standalone metamodel reader: models are read through
-  `Symbol`, `Instantiation` and `Value`.
+- Typed model classes come from a checkout console, not a Roslyn source generator, MSBuild task
+  or packaged `dotnet` tool, and no build starts a service.
+- No standalone metamodel reader: the API's JSON form is read through `Symbol` and `Value`.
 
 ## Next steps
 

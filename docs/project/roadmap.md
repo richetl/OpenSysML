@@ -2528,9 +2528,11 @@ their process under the shared cache's cross-client lock, downloads releases its
 the conformance suite through its public API on all three protocols and with capabilities withheld,
 compared scenario by scenario with the reference runner (`make conformance-dotnet`,
 `make conformance-dotnet-check`). The [.NET client guide](../clients/dotnet.md) is the runnable
-sample the client's tests execute. Out of scope, and stated as such: NuGet publication, Native AOT
-and trimming, browser hosts, synchronous mirrors, and the generated typed model classes and
-standalone metamodel reader the Python client has, which are separate deliverables not yet started.
+sample the client's tests execute. Its checkout's generator (`OpenMBEE.OpenSysML.Generate`, `make
+dotnet-generate`) writes typed C# interfaces and classes over a model's definitions, refusing what
+it cannot type soundly. Out of scope, and stated as such: NuGet publication, Native AOT and
+trimming, browser hosts, synchronous mirrors, and the standalone metamodel reader the Python client
+has, a separate deliverable not yet started.
 
 # Track B — bindings from modeled elements to external data and services
 
