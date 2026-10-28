@@ -210,6 +210,50 @@ Generated code reads through `OpenMBEE.OpenSysML.Typed`:
 A feature the instance does not have, or holding null or `Unset`, reads as null or an empty list,
 and fails a required property; a sequence reads as several values.
 
+## Metamodel types
+
+The `OpenMBEE.OpenSysML.Metamodel` assembly is the SysML v2 metamodel as C# types, standalone: it
+references neither `OpenMBEE.OpenSysML` nor any package at run time, and is consumed by its own
+`ProjectReference`:
+
+```xml
+<ProjectReference Include="path/to/OpenSysML/client/dotnet/src/OpenMBEE.OpenSysML.Metamodel/OpenMBEE.OpenSysML.Metamodel.csproj" />
+```
+
+`tools/gen/csmetamodel` generates its types from the repository's metamodel table (`make
+dotnet-metamodel`; `make dotnet-metamodel-check` fails when they are stale):
+
+| Generated | For | Shape |
+| --- | --- | --- |
+| `IPartUsage` and one interface per metaclass | every metaclass | extends its superclasses' interfaces, so `is` and `OfType<T>()` select by metamodel ancestry; declares the metaclass's own properties, read-only and PascalCased |
+| `Elements.PartUsage` and one sealed class per concrete metaclass | concrete metaclasses | derives from `MetamodelElement` and implements every inherited property explicitly; created only by a reader |
+| `FeatureDirectionKind` and one enum per enumeration | every enumeration | members are the literals PascalCased, valued by position |
+| `Metaclasses.PartUsage` and one `MetaclassInfo` per metaclass | every metaclass | `MetamodelVersion`, `SourceTag` and `SourceCommit` record the metamodel release |
+
+A single-valued property reads as a nullable (`string?`, `bool?`, `int?`, `double?`, an enum or a
+metaclass interface), a many-valued one as an `IReadOnlyList<T>`. A redefinition that keeps its
+property's name narrows the type in the subclass's interface, and every interface of the chain reads
+the most specific value.
+
+| Type | Role |
+| --- | --- |
+| `IMetamodelElement` | what every element has: `Id` (`@id`), `JsonType` (`@type` as written), `MetaclassInfo`; no property may take these names |
+| `MetamodelElement` | base of the element classes; `ToString` is the metaclass and `@id` |
+| `Metaclasses` | `All`, `Enumerations`, `TryGet` by name or generated type, `Of<T>()`, `TryGetEnumeration` |
+| `MetaclassInfo` | `Name`, `IsAbstract`, `InterfaceType`, `ElementType`, `Parents`, `Ancestors` (linearized, nearest first), `DeclaredProperties`, `Properties`, `ConformsTo`, `TryGetProperty` by JSON key, `TryGetPropertyByName` |
+| `MetaProperty` | `JsonKey`, `Name`, `QualifiedName`, `Iri`, `DeclaringMetaclass`, `RangeKind`, `RangeMetaclass`, `RangeEnumeration`, `ValueType`, `IsMany`, `IsOrdered`, `IsUnique`, `IsDerived`, `LowerBound`, `DefaultLiteral`, `Redefines`, `Subsets`, `Opposite` |
+| `PropertyRangeKind` | `Metaclass`, `Enumeration` or `Primitive` |
+| `EnumerationInfo` | `Name`, `EnumType`, `Literals`, `TryParse`, `GetLiteral`, `Of<TEnum>()` |
+
+Metadata collections are immutable snapshots: registry lists, parents and ancestors, property lists
+and association links, and enumeration literals expose no writable backing arrays. The generator
+rejects names that hide runtime or framework types or inherited registry members, and property kinds
+that do not match their primitive, enumeration or metaclass ranges.
+
+A property the document does not supply throws `NotSuppliedException`, never a default the
+metamodel states; one supplied as null reads as null, or as empty when many-valued. The reader that
+loads exported JSON into these types is not yet in this tree, so no public API creates an element.
+
 ## Exceptions
 
 Every failure derives from `OpenSysMLException`, except cancellation and use after disposal:
@@ -239,6 +283,14 @@ OpenSysMLException
 ├── FeatureValueException          a typed property's feature failed or was never materialized; FeatureName, Reason
 ├── TypeMismatchException          a typed property's feature holds another type or number; FeatureName, Expected, Actual
 └── InstanceTypeException          a typed view of an instance of an unrelated definition; Expected, Actual
+```
+
+The metamodel assembly's failures derive from `Exception` directly, since it does not depend on the
+client library:
+
+```text
+MetamodelException
+└── NotSuppliedException           a property the document does not supply; Property, ElementId, IsDerived
 ```
 
 A `ServiceException` is only ever a status the service itself sent. A status the transport made
@@ -280,8 +332,8 @@ never retried.
 - It is not on NuGet, and has no packaged `dotnet` tool, symbol package or SourceLink.
 - It targets `net10.0` only, and makes no Native AOT, trimming, browser or Blazor claim.
 - It has no synchronous API, no notebook display hooks and no DataFrame integration.
-- It has no standalone metamodel reader, and its typed-class generator is a checkout console, not
-  a Roslyn source generator, MSBuild task or packaged `dotnet` tool.
+- Its standalone metamodel types have no JSON reader yet, and its typed-class generator is a
+  checkout console, not a Roslyn source generator, MSBuild task or packaged `dotnet` tool.
 - It never retries a call, falls back to another protocol, or bypasses TLS validation.
 - It starts no service implicitly from the compiler or MSBuild.
 

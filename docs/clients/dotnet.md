@@ -165,7 +165,9 @@ Commit the file and gate it with `--check`, which exits 1 when the model has cha
 - Asynchronous only, with no synchronous mirrors, notebook display or DataFrame integration.
 - Typed model classes come from a checkout console, not a Roslyn source generator, MSBuild task
   or packaged `dotnet` tool, and no build starts a service.
-- No standalone metamodel reader: the API's JSON form is read through `Symbol` and `Value`.
+- No standalone metamodel reader yet: the API's JSON form is read through `Symbol` and `Value`. The
+  metamodel's metaclasses, properties and enumerations exist as standalone C# types, described in
+  the [API reference](../reference/dotnet-api.md#metamodel-types).
 
 ## Next steps
 

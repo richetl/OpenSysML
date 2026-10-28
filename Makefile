@@ -1,4 +1,4 @@
-.PHONY: all build docker extension-libraries-check extension-libraries-sync build-sysml build-re build-wasm-re build-lsp build-grpc build-mcp build-engine build-core build-syntax build-sysml-wasm build-release-wasm build-wasm build-wasm-wasip1 build-wasm-js wasm-check static-check windows-versioninfo-check man man-check install-tree pgo-profile conformance conformance-pkg conformance-mcp conformance-rust conformance-julia conformance-matlab conformance-dotnet conformance-dotnet-check test test-shard coverage coverage-shard coverage-merge lint clean install help ontology-table ontology-table-check metaclass-graph metaclass-graph-check python-metamodel python-metamodel-check fuml-expected python-test python-coverage scripts-coverage node-coverage vscode-coverage jupyterlab-coverage mcp-npm-coverage dotnet-preflight dotnet-build dotnet-test dotnet-coverage dotnet-generate dotnet-generate-goldens dotnet-generate-check python-install jupyter-kernel-install jupyter-kernel-test proto proto-buf python-proto proto-ts proto-rust proto-csharp proto-lint proto-breaking jupyterlab-build jupyterlab-test jupyterlab-install vscode-grammar vscode-build vscode-package docs docs-install docs-serve docs-engine-assets docs-landing-assets docs-counts diagnostics-catalogue diagnostics-check docs-check changelog-check changelog-render self-model mcp-registry-check
+.PHONY: all build docker extension-libraries-check extension-libraries-sync build-sysml build-re build-wasm-re build-lsp build-grpc build-mcp build-engine build-core build-syntax build-sysml-wasm build-release-wasm build-wasm build-wasm-wasip1 build-wasm-js wasm-check static-check windows-versioninfo-check man man-check install-tree pgo-profile conformance conformance-pkg conformance-mcp conformance-rust conformance-julia conformance-matlab conformance-dotnet conformance-dotnet-check test test-shard coverage coverage-shard coverage-merge lint clean install help ontology-table ontology-table-check metaclass-graph metaclass-graph-check python-metamodel python-metamodel-check dotnet-metamodel dotnet-metamodel-check fuml-expected python-test python-coverage scripts-coverage node-coverage vscode-coverage jupyterlab-coverage mcp-npm-coverage dotnet-preflight dotnet-build dotnet-test dotnet-coverage dotnet-generate dotnet-generate-goldens dotnet-generate-check python-install jupyter-kernel-install jupyter-kernel-test proto proto-buf python-proto proto-ts proto-rust proto-csharp proto-lint proto-breaking jupyterlab-build jupyterlab-test jupyterlab-install vscode-grammar vscode-build vscode-package docs docs-install docs-serve docs-engine-assets docs-landing-assets docs-counts diagnostics-catalogue diagnostics-check docs-check changelog-check changelog-render self-model mcp-registry-check
 
 # Version information
 # Only release tags describe a build; the moving `nightly` tag is not a version.
@@ -70,12 +70,12 @@ DOTNET ?= dotnet
 DOTNET_DIR := client/dotnet
 DOTNET_SLN := $(DOTNET_DIR)/OpenSysML.slnx
 DOTNET_REPORTS := $(BIN_DIR)/dotnet
-DOTNET_MIN_TESTS := 3093
+DOTNET_MIN_TESTS := 3121
 DOTNET_CLIENT_VERSION = $(shell sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' $(DOTNET_DIR)/Directory.Build.props)
 # The typed-code generator, run from its Release build with the arguments a user gives it.
 DOTNET_GENERATE = $(DOTNET) run --project $(DOTNET_DIR)/src/OpenMBEE.OpenSysML.Generate -c Release --no-build --
-# The committed buf output, excluded from coverage by path and refused by its check.
-DOTNET_GENERATED := src/OpenMBEE.OpenSysML/Wire/Sysml.cs src/OpenMBEE.OpenSysML/Wire/SysmlGrpc.cs
+# The committed generated code, the buf output and the metamodel types, excluded from coverage by path and refused by its check.
+DOTNET_GENERATED := src/OpenMBEE.OpenSysML/Wire/Sysml.cs src/OpenMBEE.OpenSysML/Wire/SysmlGrpc.cs src/OpenMBEE.OpenSysML.Metamodel/Generated.cs
 # The .NET conformance runner, run from its Release build, and the service it tests, which
 # neither conformance target builds: CI hands them the build job's binary.
 DOTNET_CONFORMANCE = $(DOTNET) run --project $(DOTNET_DIR)/src/OpenMBEE.OpenSysML.Conformance -c Release --no-build --
@@ -489,6 +489,14 @@ python-metamodel: ## Regenerate Python metaclass classes from the ontology table
 python-metamodel-check: ## Verify generated Python metaclass classes are current
 	go run -C $(TOOLS_DIR) ./gen/pymetamodel -check
 	@echo "✓ Python metamodel is current"
+
+dotnet-metamodel: ## Regenerate the .NET client's metamodel interfaces, classes and enums from the ontology table
+	go run -C $(TOOLS_DIR) ./gen/csmetamodel
+	@echo "✓ .NET metamodel generated"
+
+dotnet-metamodel-check: ## Verify the .NET client's generated metamodel types are current
+	go run -C $(TOOLS_DIR) ./gen/csmetamodel -check
+	@echo "✓ .NET metamodel is current"
 
 fuml-expected: ## Regenerate docs/project/fuml-referee-expected.json from the pinned fUML reference implementation (needs a JDK)
 	./scripts/fuml-expected.sh

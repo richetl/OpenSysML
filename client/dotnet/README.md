@@ -30,7 +30,8 @@ of this repository and consumed by `ProjectReference`. It is not published to Nu
 > [Node](../node/) clients, and like the [Rust](../rust/) one, it does not verify a release's
 > signature, so a release it pins no digest for is refused. Its [generator](#typed-model-classes)
 > writes typed C# interfaces and classes over a model's definitions, which read instances through
-> the library.
+> the library. A separate, standalone assembly holds [the SysML metamodel as C#
+> types](#metamodel-types); the reader that loads exported JSON into them is not yet in this tree.
 
 For a task-oriented walkthrough, see the [.NET client guide](../../docs/clients/dotnet.md); the
 [.NET API reference](../../docs/reference/dotnet-api.md) lists the surface by area.
@@ -1097,6 +1098,57 @@ name, or a directory's name and the path within it) and exact bytes, length-deli
 order of the names, so a converted line ending changes it. A model is generated from its documents
 alone: a reference outside them and the standard library is refused rather than stamped.
 
+## Metamodel types
+
+[`src/OpenMBEE.OpenSysML.Metamodel`](src/OpenMBEE.OpenSysML.Metamodel/) is the SysML v2 metamodel
+as C# types, an assembly of its own: it references neither this library nor any package at run
+time, so a project that reads exported model JSON needs a `ProjectReference` to it alone.
+
+- One interface per metaclass, `IPartUsage` for `PartUsage`, extending the interfaces of the
+  metaclass's superclasses, so `element is IFeature` and `elements.OfType<IPartUsage>()` select
+  exactly the elements whose metaclass specializes `Feature` or `PartUsage`. Each declares its
+  metaclass's own properties, read-only and PascalCased (`ownedFeature` is `OwnedFeature`): a
+  single value as a nullable (`string?`, `bool?`, `int?`, `double?`, an enum or another
+  metaclass's interface), a many-valued one as an `IReadOnlyList<T>`.
+- One sealed class per concrete metaclass, in `OpenMBEE.OpenSysML.Metamodel.Elements`, implementing
+  every property it inherits explicitly; abstract metaclasses such as `Element` have none. Only a
+  reader creates them, so a project reads elements through the interfaces.
+- One enum per enumeration, its members the literals PascalCased (`inout` is
+  `FeatureDirectionKind.Inout`); `EnumerationInfo` maps members and literals both ways.
+- `Metaclasses` describes them: a `MetaclassInfo` per metaclass (`Metaclasses.PartUsage`, or by
+  name or generated type), with its parents, linearized ancestors and declared and inherited
+  `MetaProperty`s, each found by JSON key or C# name and carrying its range, multiplicity,
+  derivation, default literal, redefinitions, subsets and opposite; and `MetamodelVersion`,
+  `SourceTag` and `SourceCommit`, the metamodel release the types were generated from.
+
+All metadata collections are immutable snapshots, including the registry lists, ancestry,
+properties, association links and enumeration literals; none exposes a writable backing array.
+
+A property the document does not supply throws `NotSuppliedException`, a `MetamodelException`,
+rather than reading as a default the metamodel states; `IsDerived` tells a derived property, which an
+export of owned properties omits, from an owned one. A property supplied as null reads as null, or
+as empty when many-valued. `MetamodelException` derives from `Exception`, not
+`OpenSysMLException`: the assembly does not depend on the client library.
+
+`Generated.cs` is written by [`tools/gen/csmetamodel`](../../tools/gen/csmetamodel/) from the
+metamodel table [`internal/translate/rdf/ontology`](../../internal/translate/rdf/ontology/) holds,
+the same table the Python client's metamodel classes are generated from:
+
+```bash
+make dotnet-metamodel          # regenerate after the table changes
+make dotnet-metamodel-check    # fail when the committed file is stale, as CI does
+```
+
+The generator refuses a table the C# types could not carry soundly, naming the properties or
+metaclasses behind each problem: a property a subclass redeclares without redefining it, or redefines
+with a wider range or another multiplicity; one inherited from unrelated metaclasses; two keys with
+one C# name; a name every element already has (`Id`, `JsonType`, `MetaclassInfo`, `ToString`, …);
+and type names that would collide with the runtime or its framework types. Metaclass names cannot
+hide inherited registry members, and primitive and enumeration ranges require datatype properties,
+while metaclass ranges require object properties. A redefinition that keeps a property's name narrows
+its type in the subclass's interface (`new`), and every interface of the chain reads the most specific value.
+The output is deterministic: declarations in ordinal order, nothing of the machine or the time.
+
 ## Coverage
 
 Every RPC of the service and the public methods that call it, as the
@@ -1187,6 +1239,19 @@ client's multi-file model and [`test/testdata/generate/cases`](test/testdata/gen
 references the library alone under its build policy and reads live instances through them. `make
 dotnet-generate-goldens` regenerates them and `make dotnet-generate-check` checks them.
 
+The metamodel's tests, in [`test/OpenMBEE.OpenSysML.Metamodel.Tests`](test/OpenMBEE.OpenSysML.Metamodel.Tests/),
+reference the metamodel project alone. They hold every interface's ancestry against the committed
+metaclass hierarchy (`sysml-metaclasses.ttl`), select one element of every concrete metaclass by
+every interface, read every inherited property of every element class through the interface
+declaring it, and prove that no client, protobuf, gRPC, logging or Sigstore assembly or package
+enters the metamodel's dependency graph. The generator's output for a synthetic table holding what
+the metamodel itself lacks, same-named redefinitions and a diamond under a property-declaring
+ancestor, is committed as [`test/testdata/metamodel/synthetic.golden.cs`](test/testdata/metamodel/synthetic.golden.cs);
+the generator's Go tests keep it current, and these tests compile it with the runtime, warnings and
+missing documentation as errors, and read it.
+They also prove that public metadata lists refuse mutation and copy the arrays used to initialize
+them, keeping enumeration round trips and property and ancestry lookups consistent.
+
 Unit tests drive every way a private service starts and stops against
 [`test/FakeService`](test/FakeService/), a stand-in the solution builds and the tests copy,
 under the binary's name, into a directory of their own with a script beside it: it reports,
@@ -1273,8 +1338,9 @@ to the runtime packages `Directory.Packages.props` pins: `protocolbuffers/csharp
 Google.Protobuf 3.36.2 and `grpc/csharp` v1.84.0, client stub only, for Grpc.Net.Client
 2.84.0. The generated types are public and mutable protocol code, not the client's API:
 they are left out of the public API baseline and of coverage by their exact paths, in
-[`.editorconfig`](.editorconfig) and the Makefile's `DOTNET_GENERATED`, and a test fails
-when either names anything else. Handwritten code refers to them as `Wire.X` rather than
+[`.editorconfig`](.editorconfig) and the Makefile's `DOTNET_GENERATED`, as the
+[metamodel types](#metamodel-types)' `Generated.cs` is, and a test fails when either names
+anything else. Handwritten code refers to them as `Wire.X` rather than
 importing the namespace, whose `Array` would otherwise shadow `System.Array`.
 
 ## Parity inventory
@@ -1464,8 +1530,9 @@ set, which is how the client holds them.
 [`Directory.Build.props`](Directory.Build.props) holds the policy every project shares:
 nullable reference types, deterministic builds, warnings as errors, the recommended .NET
 analyzers, and generated XML documentation, with a public member that has no XML comment
-failing the build. The library tracks its public API in `PublicAPI.Shipped.txt` and
-`PublicAPI.Unshipped.txt`; a public symbol missing from them fails the build.
+failing the build. The library and the metamodel each track their handwritten public API in
+`PublicAPI.Shipped.txt` and `PublicAPI.Unshipped.txt`; a public symbol missing from them fails the
+build.
 
 Package versions are pinned once, in [`Directory.Packages.props`](Directory.Packages.props),
 and each project's `packages.lock.json` records the resolved graph: a locked restore

@@ -57,6 +57,13 @@ test declares `Category` `Unit`, `Integration` or `Interop`; focus with
   No test reaches the network; a real GitHub download is a manual check.
 - **Linux `ETXTBSY`.** In a Linux container, three Linux-only tests prove the busy-binary retry; on
   macOS they skip by name. Run Linux in the pinned SDK image with `--init`.
+- **Metamodel types.** `make dotnet-metamodel-check` and `go test -C tools ./gen/csmetamodel ./gen/hierarchy`
+  guard `src/OpenMBEE.OpenSysML.Metamodel/Generated.cs`; `test/OpenMBEE.OpenSysML.Metamodel.Tests`
+  (Unit only, no service) holds it against `internal/translate/rdf/ontology/sysml-metaclasses.ttl`
+  and compiles `test/testdata/metamodel/synthetic.golden.cs`, which
+  `go test -C tools ./gen/csmetamodel -run TestSyntheticGolden -update` rewrites after a generator
+  change. Changing a property in `table.go` must fail both checks; changing an edge in the `.ttl` must
+  fail `HierarchyTests`. Restore both by digest afterwards.
 
 ## Conformance
 

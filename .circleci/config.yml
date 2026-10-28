@@ -664,6 +664,10 @@ jobs:
           name: Check generated Python metaclasses are current
           command: make python-metamodel-check
 
+      - run:
+          name: Check generated .NET metamodel types are current
+          command: make dotnet-metamodel-check
+
       # The corpora gate alone, so its per-root verdict lines are legible in the
       # log and a skip cannot hide behind a green suite.
       - run:
