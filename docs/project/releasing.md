@@ -56,9 +56,19 @@ gofmt -l .            # must print nothing
 go build ./...
 go vet ./...
 make lint             # staticcheck + gosec, as CircleCI runs
+make sca-tools audit  # govulncheck, npm audit, pip-audit, cargo audit, osv-scanner, as CircleCI runs
 go test -race -count=1 ./...
 go test -run TestStdlibConformance ./internal/workspace/libs
 ```
+
+`make audit` must report no finding: every advisory it prints is fixed by moving the
+dependency before the tag, since the same audits run in the release workflow's jobs and fail
+it. A finding no release of the dependency fixes yet is looked up in the
+[CISA Known Exploited Vulnerabilities catalogue](https://www.cisa.gov/known-exploited-vulnerabilities-catalog):
+a listed vulnerability blocks the release until the dependency is replaced or the code stops
+using it; for an unlisted one, record the advisory, the catalogue check and why the release
+proceeds in the release pull request, and open an issue to track the fix. The audit level and
+the ignore list are not changed to make a release pass.
 
 Run the Python client the way CircleCI's `python-test` job does, since a release
 gates on the same suite:
@@ -158,10 +168,19 @@ Day-to-day work merges into `develop`; `main` carries releases only (see
 [CONTRIBUTING.md § Branches](../../CONTRIBUTING.md#branches)). A release is a
 branch that moves the integration state onto `main`:
 
-1. Cut `release/x.y.z` from `develop`:
+1. Audit the dependencies of `develop` before cutting the branch, so the release branch
+   starts without a known vulnerability, and treat each finding as
+   [Before tagging](#before-tagging) describes (fix, or check the CISA KEV catalogue and
+   record the decision in the release pull request):
 
    ```bash
    git checkout develop && git pull
+   make sca-tools audit
+   ```
+
+   Then cut `release/x.y.z`:
+
+   ```bash
    git checkout -b release/0.0.5
    ```
 
@@ -240,15 +259,23 @@ branch that moves the integration state onto `main`:
 4. Tag `main` as [Tagging](#tagging) describes.
 
 5. Merge the `chore/pin-vx.y.z` pull request the tag's pipeline opens against
-   `develop` (see [Pinned release digests](#pinned-release-digests)). Its
-   lockfiles do not yet name the platform packages the tag just published —
-   `npm install --package-lock-only` in `client/node` could not lock them before
-   they existed, so every install skips them as unresolvable optional
-   dependencies instead of installing the release's binary — so run that on
-   the pin branch (and in `packaging/npm/sysml-mcp`, whose lockfile pins the
-   runner's platform packages the same way) and commit both lockfiles first. Then merge
+   `develop`, and the `hotfix/pin-vx.y.z` one it opens against `main` (see
+   [Pinned release digests](#pinned-release-digests)); without the latter,
+   `main`'s next `build-test` run — and so its SonarCloud scan — fails the
+   hygiene suite until the next release. The `main` one needs a commit
+   before it is green: `main`'s lockfiles do not yet name the platform
+   packages the tag just published — `npm install --package-lock-only` in
+   `client/node` could not lock them before they existed, so every install
+   skips them as unresolvable optional dependencies instead of installing the
+   release's binary, and the pull request's Node job fails on the lockfile
+   that `npm install` then rewrites — so run that on the `hotfix/pin-vx.y.z`
+   branch (and in `packaging/npm/sysml-mcp`, whose lockfile pins the runner's
+   platform packages the same way) once the packages answer on npm, and
+   commit both lockfiles. The `develop` one is cut from a tree that still
+   declares the previous version, so there is nothing to lock there. Then merge
    `main` back into `develop` — a plain merge, no rebase — so the folded
-   changelog, and any hotfix that landed on `main` in the meantime, flow down.
+   changelog, the pin and the lockfiles, and any hotfix that landed on `main`
+   in the meantime, flow down.
    When the release was a `hotfix/` branch, `develop`'s lockfile still locks
    the platform packages of the previous release: run the same
    `npm install --package-lock-only` on the back-merge branch so they lock the
@@ -273,11 +300,36 @@ The tag is the version: CircleCI passes `CIRCLE_TAG` to the build as
 `VERSION`, so `sysml --version` reports it. Rehearse first — see
 [Rehearsing the release](#rehearsing-the-release).
 
+Audit the dependencies once more on the commit being tagged — advisories published since
+the branch was cut count — and tag only when `make audit` is clean or every remaining
+finding has its CISA KEV check recorded in the release pull request, as
+[Before tagging](#before-tagging) describes:
+
 ```bash
 git checkout main && git pull
+make sca-tools audit
 git tag -a v0.0.5 -m "v0.0.5"
 git push origin v0.0.5
 ```
+
+Then write the release notes, before CircleCI publishes the assets, so that
+`ghr -replace` finds a published release to add them to (it does not see a
+draft, see [What CircleCI publishes](#what-circleci-publishes)):
+
+```bash
+python3 scripts/changelog.py release-notes 0.0.5 > notes.md
+gh release create v0.0.5 --title v0.0.5 --notes-file notes.md --verify-tag
+```
+
+`release-notes` renders the version's `CHANGELOG.md` section — one line per
+entry with a link to the full text at the tag when the section is longer than
+GitHub's 125,000-character release body holds, as 0.11.0's is — and ends it
+with the support period as `SECURITY.md` states it (the text between its
+`support-statement` markers, so the two never disagree) and a link to
+[Verifying a release](../guide/security.md#verifying-a-release) on the site;
+the nightly workflow appends the same footer to its notes. Add the
+platform caveats of steps 7–9 under [After the release](#after-the-release)
+above the footer, by hand.
 
 The tag belongs on `Open-MBEE/OpenSysML`, the repository the releases live on
 and where development happens: every release from v0.0.1 on is tagged on its
@@ -321,7 +373,7 @@ so that `dist/` holds:
   registers the kernelspec, and its platform wheels bundle it;
 - `wasm/sysml-wasm.wasm`, `wasm/sysml-prod.wasm.gz` and `wasm/wasm_exec.js`, the
   combined WebAssembly module, the gzip-compressed browser build of the `sysml` REPL
-  (`-tags sysml_prod`, what the site's REPL page runs) and the matching Go runtime,
+  (`-tags sysml_re`, what the site's REPL page runs) and the matching Go runtime,
   each with a `.sha256` sidecar;
 - the Python client's distribution, `opensysml-<x.y.z>-py3-none-any.whl` and
   `opensysml-<x.y.z>.tar.gz`, built by `build-python-package` from those
@@ -332,8 +384,17 @@ so that `dist/` holds:
   by `build-jupyter-kernel-package` from the `sysml-jupyter-kernel` binaries and their
   digests (see
   [Releasing jupyter-opensysml-kernel to PyPI](#releasing-jupyter-opensysml-kernel-to-pypi));
+- the npm tarballs `openmbee-opensysml-<x.y.z>.tgz`, `openmbee-sysml-mcp-<x.y.z>.tgz`
+  and `openmbee-opensysml-mcp-<x.y.z>.tgz`, packed by `build-npm-package` from the
+  tree stamped with the `sysml-grpc` digests, the same bytes `publish-npm` publishes
+  (see [Releasing @openmbee/opensysml to npm](#releasing-openmbeeopensysml-to-npm));
+- one SPDX 2.3 JSON software bill of materials per archive, wheel, sdist, `sysml-grpc`
+  and `sysml-jupyter-kernel` binary, WebAssembly module and npm tarball, named
+  `<asset>.spdx.json` after the asset it describes (see
+  [The software bills of materials](#the-software-bills-of-materials));
 - `SHA256SUMS.txt` over every archive, every wheel and sdist, every `sysml-grpc` and
-  `sysml-jupyter-kernel` binary and all three WebAssembly assets,
+  `sysml-jupyter-kernel` binary, all three WebAssembly assets, the three npm tarballs
+  and every SBOM,
   with its cosign signature `SHA256SUMS.txt.bundle` (see
   [The signed checksum manifest](#the-signed-checksum-manifest));
 - `provenance.intoto.json`, the SLSA provenance statement naming every artifact
@@ -357,7 +418,8 @@ windows/amd64.
 The two jobs share one workspace: `build-release-binaries` persists the whole
 `dist/` tree, the binaries' `.sha256` sidecars included, and `build-release`
 persists only what it added to it — the manifest, its signature and provenance
-bundles, the WebAssembly sidecars and the Python distributions. Workspace layers are additive, and a path persisted by two
+bundles, the SBOMs, the WebAssembly sidecars and the Python distributions;
+`build-npm-package` persists `dist/npm`, the tarballs it packed. Workspace layers are additive, and a path persisted by two
 upstream jobs fails the attach in every job downstream of both, which is every
 publish job.
 
@@ -478,6 +540,16 @@ one alongside it).
      --certificate-identity-regexp '^https://circleci\.com/api/v2/projects/eeb0dddd-237f-4f02-9e51-8e24caef589d/pipeline-definitions/[0-9a-f-]+$'
    ```
 
+   And the archive's SBOM is a line of the manifest just verified, so its digest
+   is checked against it; what it names must match the binary:
+
+   ```bash
+   curl -fLO https://github.com/Open-MBEE/OpenSysML/releases/download/v0.0.5/opensysml-linux-amd64.tar.gz.spdx.json
+   sha256sum -c SHA256SUMS.txt --ignore-missing
+   jq -r '.packages[] | select(.name == "stdlib") | .versionInfo' opensysml-linux-amd64.tar.gz.spdx.json
+   go version -m sysml | head -1
+   ```
+
    Then install the Python client the release published, from the index rather
    than the source tree, and run it against the release's own `sysml-grpc` — the
    pairing a user who pins one version gets (see
@@ -547,14 +619,14 @@ one alongside it).
 5. **Verify the pin pull request landed.** `pin-release-digests`, the last job
    of the tag's workflow, stamps the release into `client/release-digests.json`
    from the manifest, syncs every client copy, and opens
-   `chore/pin-vx.y.z` against `develop`. Merge it (step 5 of
-   [The release branch](#the-release-branch) does so before the back-merge). A
-   missing pull request means the job failed — read its log; the token is the
+   `chore/pin-vx.y.z` against `develop` and `hotfix/pin-vx.y.z` against `main`.
+   Merge both (step 5 of [The release branch](#the-release-branch) does so
+   before the back-merge). A missing pull request means the job failed — read its log; the token is the
    usual cause, see [Pinned release digests](#pinned-release-digests) — and
    until the pin lands, `tests/hygiene` fails the next release branch rather
    than this one. `main` sits on the tagged commit, which cannot hold its own
-   pin, so the test exempts it there; the pin reaches `main` with the next
-   release.
+   pin, so the test exempts that commit; the `hotfix/pin-vx.y.z` pull request
+   is what lets every later commit on `main` pass it.
 
 6. **Let the Homebrew tap pick the release up.** The tap repository
    `Open-MBEE/homebrew-tap` updates itself: a scheduled workflow there resolves
@@ -675,7 +747,8 @@ attestation against three published artifacts (a bundle archive, a `sysml-grpc`
 binary and the wheel) under the identity the clients pin, and checks that the
 subjects are the manifest's lines, no more and no fewer, before anything is
 stored; `publish-github-release` uploads the statement and the bundle beside
-`SHA256SUMS.txt`.
+`SHA256SUMS.txt`. Two of the SBOMs are checked the same way, so the subjects
+cover them too.
 
 What this is, and is not. The statement is produced by the build that produced
 the artifacts, on CircleCI's hosted runners, and signed with an identity only
@@ -696,6 +769,101 @@ authoritative statement is the bundle's payload:
 ```bash
 jq -r '.dsseEnvelope.payload' provenance.intoto.json.bundle | base64 -d | jq .
 ```
+
+### The software bills of materials
+
+Before `build-release` writes the manifest, `scripts/release-sbom.py` writes one
+[SPDX 2.3](https://spdx.github.io/spdx-spec/v2.3/) JSON document per asset into
+`dist/sbom/`, named after the asset it describes: `sysml-linux-amd64.tar.gz.spdx.json`
+for the archive, `sysml-grpc-linux-amd64.spdx.json` for the raw binary,
+`opensysml-<x.y.z>-py3-none-any.whl.spdx.json` for the wheel, and so on for every
+archive, wheel, sdist, `sysml-grpc` and `sysml-jupyter-kernel` binary. The manifest
+step then lists them in `SHA256SUMS.txt` like any other asset, so the cosign
+signature over the manifest and the provenance statement's subjects cover them
+without a second signing step, and `publish-github-release` uploads them beside the
+assets. SPDX rather than CycloneDX because it is the ISO standard (ISO/IEC 5962)
+and the format the US federal guidance names first; a consumer who needs
+CycloneDX converts with `syft convert`.
+
+The documents are written by [syft](https://github.com/anchore/syft), installed
+in the job from a pinned release whose SHA-256 is checked, like every other tool
+the pipeline downloads. For a Go executable syft reads the module list the Go
+toolchain embeds in the binary, so an SBOM names the module versions that were
+actually linked — the same list `go version -m <binary>` prints — and the
+toolchain itself as the `stdlib` package. The script then refuses the document
+unless that holds: it runs `go version -m` over every Go executable the asset
+holds (raw, or unpacked from the archive or wheel) and fails the release if any
+module, at its built version, or the toolchain is missing from the SBOM, if the
+SBOM names no component at all, or if it mentions a path of the builder. It also
+replaces syft's random document namespace with the URL the SBOM is published at,
+`https://github.com/Open-MBEE/OpenSysML/releases/download/<tag>/<asset>.spdx.json`,
+so two builds of one tag produce SBOMs that differ only in `creationInfo.created`.
+
+A wheel's SBOM names the Python distribution; the kernel's platform wheels also
+carry their bundled `sysml-jupyter-kernel`, so those name its Go modules too. A
+consumer verifies an SBOM exactly as any asset — the manifest's signature first,
+then the digest:
+
+```bash
+curl -fLO https://github.com/Open-MBEE/OpenSysML/releases/download/v0.12.0/SHA256SUMS.txt
+curl -fLO https://github.com/Open-MBEE/OpenSysML/releases/download/v0.12.0/SHA256SUMS.txt.bundle
+curl -fLO https://github.com/Open-MBEE/OpenSysML/releases/download/v0.12.0/opensysml-linux-amd64.tar.gz.spdx.json
+cosign verify-blob SHA256SUMS.txt --bundle SHA256SUMS.txt.bundle \
+  --certificate-oidc-issuer https://oidc.circleci.com/org/1169df8b-0b59-400f-82d2-c9d8e98bdb62 \
+  --certificate-identity-regexp '^https://circleci\.com/api/v2/projects/eeb0dddd-237f-4f02-9e51-8e24caef589d/pipeline-definitions/[0-9a-f-]+$'
+sha256sum -c SHA256SUMS.txt --ignore-missing
+```
+
+Three classes of asset need another route to the same document, and get it:
+
+- **The WebAssembly modules** (`sysml-wasm.wasm`, `sysml-prod.wasm.gz`). Go embeds
+  the same module information in a wasm module as in any executable, but neither
+  `debug/buildinfo` (so `go version -m`) nor syft reads this file format — `go
+  version -m sysml-wasm.wasm` answers `unrecognized file format`, and syft writes
+  a document naming nothing. The script therefore reads the module list between
+  the markers Go's linker brackets it with and the toolchain string the runtime
+  carries (refusing a module that holds none, or more than one), and writes the
+  SPDX document itself with the same packages syft would record: the main module
+  and every dependency at its built version, and the toolchain as `stdlib`. The
+  same `go version -m`-style check applies to it. `wasm_exec.js` is the
+  toolchain's own file and has no SBOM of its own; the module's `stdlib` package
+  names its version.
+- **The npm tarballs.** `build-npm-package` packs them before the manifest is
+  written (see [What the job does, in order](#what-the-job-does-in-order-1)), so
+  both the tarballs and their SBOMs are lines of `SHA256SUMS.txt`. Each SBOM
+  describes the packed manifest — `package/package.json` as `npm pack` wrote it,
+  at the exact version packed, with the tarball's own digest — and resolves its
+  dependencies through the lockfile: syft catalogues `client/node/package-lock.json`
+  for `@openmbee/opensysml` and `packaging/npm/sysml-mcp/package-lock.json` for
+  `@openmbee/sysml-mcp` and for `@openmbee/opensysml-mcp`, the runner under its
+  other name, whose generated tree has no lockfile of its own and pins the same
+  five platform packages. Development dependencies are not catalogued; peer
+  dependencies are the installer's choice and are not listed. The platform
+  packages a release publishes beside the tarball are pinned exactly but cannot
+  be in the lockfile before they exist (see [Tagging](#tagging)), so one the
+  lockfile lacks — an `@openmbee/` optional dependency pinned at the tarball's
+  own version, nothing else — is recorded from the manifest's pin, with a
+  `sourceInfo` saying so and no digest. The script refuses a tarball whose file
+  name is not the one npm gives its manifest, any other dependency the lockfile
+  does not resolve, or a pin the lockfile resolves to another version.
+- **The Windows installer.** The MSI is built on a Windows runner by
+  `release-windows.yml`, outside this manifest, and bundles the Z3 solver, which
+  syft cannot see inside an MSI. Its SBOM is **derived from the installer's
+  inputs**, not read from the installer: the workflow's `build` job writes it
+  from the four Go executables it built (syft over the staging directory, checked
+  with `go version -m` as above) plus a declared `z3` package from
+  `packaging/msi/z3.pin` — the exact version, the release zip's URL and the
+  SHA-256 the pin verifies, and the five files the installer takes from the zip
+  with their own SHA-256 digests — and the `msi` job lists it beside the
+  installer in `SHA256SUMS-windows-msi.txt`, under the installer's name
+  (`opensysml-<x.y.z>-windows-amd64.msi.spdx.json`). The signed installer's
+  document is written the same way by the `sign` job from the executables
+  SignPath returned — their bytes, so their file digests, differ from the
+  unsigned ones — and listed in `SHA256SUMS-windows-signed.txt`. See
+  [The Windows installer](#the-windows-installer).
+
+The container image carries its own SBOM and provenance, attached by `docker
+buildx` (see [Releasing the container image to Docker Hub](#releasing-the-container-image-to-docker-hub)).
 
 The Python and Node clients keep reading the signed manifest, not the
 provenance; nothing in them changes.
@@ -860,6 +1028,25 @@ not hash it. The unsigned MSI has its own `SHA256SUMS-windows-msi.txt`; for the
 signed one the verifiable statement is its Authenticode signature. Nothing the
 clients download or pin changes.
 
+**The installer's SBOM is derived from its inputs.** syft cannot catalogue an
+MSI, so `scripts/release-sbom.py --msi-inputs` writes
+`opensysml-<x.y.z>-windows-amd64.msi.spdx.json` in the workflow's Linux `build`
+job, from what the MSI is then built from: the four executables that job built
+(their Go module information, checked with `go version -m`) and the Z3 release
+`packaging/msi/z3.pin` names, declared as a `z3` package with the pinned version,
+the zip's URL and SHA-256 (the job downloads the zip and refuses a digest other
+than the pin's, as `build-msi.sh` does) and the five files the installer takes
+from it, each with its digest. The `msi` job downloads that document as a
+workflow artifact, requires it to be named after the MSI it just built, and
+lists both in `SHA256SUMS-windows-msi.txt`. The `sign` job writes
+`opensysml-<x.y.z>-windows-amd64-signed.msi.spdx.json` the same way
+(`--msi-inputs dist/signed --msi-signed`) from the executables SignPath
+returned, whose bytes — so whose file digests — differ from the unsigned ones
+while the module information is the same, and `publish-signed` lists it in
+`SHA256SUMS-windows-signed.txt`. The syft both jobs install is the release the
+CircleCI `build-release` job pins, at the same digest (`tests/hygiene` holds
+the two files to one pin).
+
 **SignPath and the MSI.** Add a second artifact configuration to the SignPath
 project: a single `.msi` file, Authenticode-signed, and put its slug in the
 `SIGNPATH_MSI_ARTIFACT_CONFIGURATION_SLUG` variable. The MSI's executables are
@@ -934,17 +1121,22 @@ assert the table they load pins the tag `$OPENSYSML_EXPECT_PINNED_RELEASE`
 names, which only those two jobs set, after stamping.
 
 The committed table is brought up to date by the release itself. After
-`publish-github-release`, the `pin-release-digests` job checks out `develop`,
-runs `pin_release_checksums.py --from-manifest dist/SHA256SUMS.txt` against the
-default table — the shared `client/release-digests.json`, so every client copy
-is synced in the same stamp — confirms `sync-release-digests.py --check`, and
-opens `chore/pin-vX.Y.Z` against `develop`. A client *built from the next
+`publish-github-release`, the `pin-release-digests` job checks out `develop`
+and then `main`, on each runs `pin_release_checksums.py --from-manifest
+dist/SHA256SUMS.txt` against the default table — the shared
+`client/release-digests.json`, so every client copy is synced in the same
+stamp — confirms `sync-release-digests.py --check`, and opens
+`chore/pin-vX.Y.Z` against `develop` and `hotfix/pin-vX.Y.Z` against `main`
+(only `hotfix/` branches target `main`). A client *built from the next
 revision* — a checkout, or a package of a later release asked for this one —
-then pins it too rather than reaching for the signed manifest. The job is
-idempotent: when `develop` already pins the tag it ends with nothing to open,
-the branch is rebuilt from `develop` on every run (a run repeated after a
-failure replaces the earlier branch), and an open pull request for the branch
-is reused rather than duplicated. A pin already on `develop` that disagrees with
+then pins it too rather than reaching for the signed manifest; and `main`,
+whose head is the tagged commit and so cannot carry its own pin, pins it from
+the hotfix on, which keeps its `build-test` runs — the only ones that scan
+`main` with SonarCloud — green between releases. The job is idempotent: when a
+base already pins the tag it ends with nothing to open against it, each branch
+is rebuilt from its base on every run (a run repeated after a failure replaces
+the earlier branch), and an open pull request for a branch is reused rather
+than duplicated. A pin already on `develop` that disagrees with
 the manifest fails the job, as the script refuses to replace a pin.
 
 The job pushes and opens the pull request with the token
@@ -1559,6 +1751,19 @@ Everything below is already in place; it is recorded so it can be re-created.
 
 ### What the job does, in order
 
+`build-npm-package` runs beside `build-python-package`, after
+`build-release-binaries` and before `build-release`: it checks the tag against
+`client/node/package.json`, stamps the five `sysml-grpc-*` digests of `dist/grpc`
+into `client/node/release-digests.json` exactly as step 2 below does, builds the
+client from its lockfile (`npm install --ignore-scripts`, the lockfile unchanged),
+packs it into `dist/npm/` and opens the tarball to assert its table pins all five
+service assets for the tag, then packs `@openmbee/sysml-mcp` and, through the
+generator (`npm run platform-packages -- --mcp ../../dist/mcp`), its alias
+`@openmbee/opensysml-mcp`, and persists `dist/npm`. `build-release` writes an
+SBOM per tarball and lists tarballs and SBOMs in the manifest it signs, and
+`publish-github-release` uploads the tarballs with the other assets. Nothing is
+packed again afterwards.
+
 `publish-npm` runs after `publish-github-release`, beside `publish-pypi`:
 
 1. Resolves the version: fails if the tag is not `v<version>` matching
@@ -1582,23 +1787,26 @@ Everything below is already in place; it is recorded so it can be re-created.
    platform packages from `dist/mcp` and the WASM package from `dist/wasm`,
    checking every asset against its `.sha256` sidecar, and generates
    `@openmbee/opensysml-mcp` from `packaging/npm/sysml-mcp` beside them.
-7. Packs the client into `dist/npm/` with `npm pack` and opens the tarball:
-   its `release-digests.json` must pin all five service assets for the tag,
-   with the digests of the binaries in `dist/grpc`, or the job fails. Then
-   packs `@openmbee/sysml-mcp` beside it: the tarball must be the tag's
-   version with no dependencies and its five platform packages pinned at it,
-   and `scripts/npm-mcp-test.sh` installs that tarball with the linux-x64
-   platform package from step 6 into a throwaway project and speaks
-   `initialize` and `tools/list` to the installed command, then does the same
-   with the generated `@openmbee/opensysml-mcp` through both of its commands,
-   or the job fails. Then packs `@openmbee/opensysml-mcp`: the tarball must be
-   the tag's version, pin the runner's five platform packages at it, declare
-   `sysml-mcp` and `opensysml-mcp` and no `mcpName`.
+7. Takes the three tarballs from `dist/npm/`, where `build-npm-package` packed
+   them before the manifest was written, and checks each against the signed
+   `SHA256SUMS.txt` with `sha256sum --check --strict`. The client's tarball was
+   opened there: its `release-digests.json` must pin all five service assets
+   for the tag, with the digests of the binaries in `dist/grpc`, or that job
+   fails. Here `@openmbee/sysml-mcp`'s tarball must be the tag's version with
+   no dependencies and its five platform packages pinned at it, and
+   `scripts/npm-mcp-test.sh` packs the same tree with the linux-x64 platform
+   package from step 6 into a throwaway project and speaks `initialize` and
+   `tools/list` to the installed command, then does the same with the
+   generated `@openmbee/opensysml-mcp` through both of its commands, or the job
+   fails. Then `@openmbee/opensysml-mcp`'s tarball must be the tag's version,
+   pin the runner's five platform packages at it, declare `sysml-mcp` and
+   `opensysml-mcp` and no `mcpName`.
 8. Authenticates to npm and runs `npm whoami`, so an expired token fails before
    the first publish.
 9. Publishes the WASM and ten platform packages, then the client,
    `@openmbee/sysml-mcp` and last `@openmbee/opensysml-mcp` — the tarballs
-   verified in step 7, not fresh packs — on the resolved dist-tag.
+   verified in step 7, the bytes the signed manifest lists, not fresh packs —
+   on the resolved dist-tag.
 
 ### If a publish goes wrong
 

@@ -208,8 +208,9 @@ function buildMCPAlias(args) {
 
   // The runner's README under the alias's name; the platform package names
   // (@openmbee/sysml-mcp-<os>-<cpu>) and links to the runner's own page stay.
+  const sourceName = source.name.replaceAll("/", String.raw`\/`);
   const readme = readFileSync(join(mcpRoot, "README.md"), "utf8")
-    .replaceAll(new RegExp(`${source.name.replaceAll("/", "\\/")}(?![-\\w])`, "g"), MCP_ALIAS)
+    .replaceAll(new RegExp(String.raw`${sourceName}(?![-\w])`, "g"), MCP_ALIAS)
     .replace(
       "\n\n```sh\n",
       `\n\nThis is [\`${source.name}\`](https://www.npmjs.com/package/${source.name}) under the name the other OpenSysML npm packages share: the same command, published from the same release at the same version, with \`opensysml-mcp\` as a second name for it.\n\n\`\`\`sh\n`,
@@ -259,7 +260,7 @@ function buildWasmPackage(args) {
       "The combined `sysml-wasm` WebAssembly module and its matching Go runtime. " +
       `Install this package alongside [\`${args.pkg.name}\`](https://www.npmjs.com/package/${args.pkg.name}); ` +
       "Node's `connectWasm()` discovers it automatically when no module is supplied.\n\n" +
-      "`sysml-prod.wasm.gz` is the browser build of the `sysml` REPL (`-tags sysml_prod`), " +
+      "`sysml-prod.wasm.gz` is the browser build of the `sysml` REPL (`-tags sysml_re`), " +
       "gzip-compressed; a page inflates it with `DecompressionStream` and runs it under `wasm_exec.js` " +
       "with an emulated file system and stdin, the way the OpenSysML site's REPL page does.\n\n" +
       `SHA-256 of \`sysml-wasm.wasm\`: \`${digests["sysml-wasm.wasm"]}\`\n\n` +
@@ -318,7 +319,8 @@ function main() {
     `${JSON.stringify({ version: args.version, packages: built }, null, 2)}\n`,
   );
   for (const entry of built) {
-    process.stdout.write(`${entry.name}@${args.version}  ${entry.digest ?? `alias of ${entry.alias}`}\n`);
+    const provenance = entry.digest ?? `alias of ${entry.alias}`;
+    process.stdout.write(`${entry.name}@${args.version}  ${provenance}\n`);
   }
   process.stdout.write(`\n${built.length} packages in ${args.out}; nothing was published.\n`);
 }

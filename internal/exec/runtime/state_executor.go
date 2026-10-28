@@ -44,6 +44,9 @@ type StateExecutor struct {
 	// acceptsAlong memoizes, per leaf state, the accept-triggered transitions out of it
 	// and its enclosing states, in the order a message is tried against them.
 	acceptsAlong map[*ast.StateNode][]*lower.Transition
+	// parentChains memoizes, per state, the state and its ancestors innermost first;
+	// the chains are shared, so callers read them and never modify them.
+	parentChains map[*ast.StateNode][]*ast.StateNode
 	// pending memoizes the machine's last poll of the bus for a message it takes.
 	pending pendingMemo
 
@@ -861,6 +864,9 @@ func StateVertexName(node ast.Node) string {
 // getParentChain returns all ancestor states from child to root (inclusive).
 // Result is ordered: [child, parent, grandparent, ...]
 func (e *StateExecutor) getParentChain(state *ast.StateNode) []*ast.StateNode {
+	if chain, ok := e.parentChains[state]; ok {
+		return chain
+	}
 	chain := []*ast.StateNode{state}
 	current := state
 	for {
@@ -871,6 +877,10 @@ func (e *StateExecutor) getParentChain(state *ast.StateNode) []*ast.StateNode {
 		chain = append(chain, parent)
 		current = parent
 	}
+	if e.parentChains == nil {
+		e.parentChains = make(map[*ast.StateNode][]*ast.StateNode)
+	}
+	e.parentChains[state] = chain
 	return chain
 }
 
@@ -878,21 +888,13 @@ func (e *StateExecutor) getParentChain(state *ast.StateNode) []*ast.StateNode {
 // Returns nil if states are in different hierarchies.
 func (e *StateExecutor) getLCA(state1, state2 *ast.StateNode) *ast.StateNode {
 	chain1 := e.getParentChain(state1)
-	chain2 := e.getParentChain(state2)
-
-	// Build set from chain1
-	chain1Set := make(map[*ast.StateNode]bool)
-	for _, s := range chain1 {
-		chain1Set[s] = true
-	}
-
-	// Find first common ancestor in chain2
-	for _, s := range chain2 {
-		if chain1Set[s] {
-			return s
+	for _, s := range e.getParentChain(state2) {
+		for _, candidate := range chain1 {
+			if candidate == s {
+				return s
+			}
 		}
 	}
-
 	return nil // No common ancestor
 }
 
@@ -1144,6 +1146,7 @@ func (e *StateExecutor) nextEvent() (Event, error) {
 		choice.Alternatives[i] = e.eventLabel(tied[i])
 		fps[i] = e.eventFootprint(tied[i])
 	}
+	choice.alike = e.ctx.heldAlike
 	classifyChoice(&choice, fps, nil)
 	scheduling := e.ctx.scheduling()
 	choice.Taken = scheduling.choose(choice, nil)
@@ -1705,6 +1708,7 @@ func (e *StateExecutor) regionOrderChoice(where string, states []*ast.StateNode,
 	for i, state := range states {
 		fps[i] = footprint(state)
 	}
+	choice.alike = e.ctx.heldAlike
 	classifyChoice(&choice, fps, nil)
 	choice.Taken = e.ctx.scheduling().choose(choice, nil)
 	choice.Span = states[choice.Taken].Span()
@@ -4295,6 +4299,7 @@ func (e *StateExecutor) stepOrderChoice(due []*doAction, dispatch string) Choice
 	for _, act := range due {
 		steps = unionFootprints(steps, doStepFootprint(e, act.state))
 	}
+	choice.alike = e.ctx.heldAlike
 	classifyChoice(&choice, []lower.Footprint{steps, dispatchFootprint(e)}, nil)
 	return choice
 }

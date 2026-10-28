@@ -15,7 +15,7 @@ executors:
       # The -node variant of the same image: the WebAssembly gate runs the wasm
       # binaries under Node, and an absent runtime would make it skip.
       # It carries Node LTS, 24 or later, which the gate needs.
-      - image: cimg/go:1.25-node
+      - image: cimg/go:1.27-node
     resource_class: medium
 
   python-executor:
@@ -120,6 +120,67 @@ commands:
 
   # The solver is an external process: without one on PATH the
   # solver-dependent tests would skip rather than run.
+  # Go for the client executors that ship none. The orb streams the tarball
+  # straight into tar, so one dropped connection fails the job (curl: (92)
+  # HTTP/2 stream INTERNAL_ERROR on Rust client tests); this downloads to a
+  # file, checks the published SHA-256, and retries both.
+  install-go:
+    parameters:
+      version:
+        type: string
+        default: "1.27.3"
+      sha256:
+        type: string
+        description: SHA-256 of go<version>.linux-amd64.tar.gz, from https://go.dev/dl/?mode=json&include=all
+        default: "65efbc80fdc1fa2cd2631cad5b481777a68e8725f34e89f50fc6ac714e379b40"
+    steps:
+      # The cache is restored as the container's user, so the directory is
+      # theirs before it is restored into.
+      - run:
+          name: Prepare /usr/local/go
+          command: |
+            sudo=""; [ "$(id -u)" -eq 0 ] || sudo=sudo
+            $sudo mkdir -p /usr/local/go
+            $sudo chown -R "$(id -un)": /usr/local/go
+      - restore_cache:
+          keys:
+            - go-toolchain-v1-<< parameters.version >>-<< parameters.sha256 >>-{{ arch }}
+      - run:
+          name: Install Go << parameters.version >>
+          environment:
+            GO_VERSION: << parameters.version >>
+            GO_SHA256: << parameters.sha256 >>
+          command: |
+            set -eu
+            if /usr/local/go/bin/go version 2>/dev/null | grep -q "go${GO_VERSION} "; then
+              echo "Go ${GO_VERSION} is already under /usr/local/go (restored from the cache)."
+            else
+              tarball="go${GO_VERSION}.linux-amd64.tar.gz"
+              url="https://dl.google.com/go/${tarball}"
+              for attempt in 1 2 3; do
+                rm -f "/tmp/${tarball}"
+                if curl --fail --location --silent --show-error --output "/tmp/${tarball}" "$url" \
+                  && echo "${GO_SHA256}  /tmp/${tarball}" | sha256sum --check --strict; then
+                  break
+                fi
+                if [ "$attempt" -eq 3 ]; then
+                  echo "error: downloading and verifying ${url} failed 3 times" >&2
+                  exit 1
+                fi
+                echo "download or checksum of ${tarball} failed (attempt ${attempt} of 3); retrying in $((attempt * 15))s" >&2
+                sleep $((attempt * 15))
+              done
+              rm -rf /usr/local/go/*
+              tar --no-same-owner --strip-components=1 -xzf "/tmp/${tarball}" -C /usr/local/go
+              rm -f "/tmp/${tarball}"
+            fi
+            echo 'export PATH=$PATH:/usr/local/go/bin' >> "$BASH_ENV"
+            /usr/local/go/bin/go version
+      - save_cache:
+          key: go-toolchain-v1-<< parameters.version >>-<< parameters.sha256 >>-{{ arch }}
+          paths:
+            - /usr/local/go
+
   install-solvers:
     steps:
       - run:
@@ -315,6 +376,102 @@ commands:
 jobs:
   # Formatting, vet, static analysis, the documentation gates and the protobuf
   # schema checks: everything that needs neither a solver nor the corpora.
+  # CircleCI auto-cancels redundant runs only off the default branch, so every
+  # merge into develop queued behind the pipelines it superseded. This cancels
+  # the branch's older build-test workflows. The Go jobs require it so that it
+  # runs before they take containers, which is why it never fails: without a
+  # token, or with one the API rejects, it says so and the pipeline goes on.
+  # CIRCLE_TOKEN is taken (the release jobs read it as a GitHub token).
+  cancel-superseded:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - run:
+          name: Cancel superseded pipelines on this branch
+          environment:
+            PIPELINE_NUMBER: << pipeline.number >>
+          command: |
+            if [ -n "${CIRCLE_TAG:-}" ]; then
+              echo "Tag ${CIRCLE_TAG}: nothing to cancel."
+              exit 0
+            fi
+            case "${CIRCLE_BRANCH:-}" in
+              main|develop) ;;
+              *) echo "Branch ${CIRCLE_BRANCH:-?} is not an integration branch: nothing to cancel."; exit 0 ;;
+            esac
+            if [ -z "${CIRCLECI_API_TOKEN:-}" ]; then
+              echo "CIRCLECI_API_TOKEN is not set, so older pipelines on ${CIRCLE_BRANCH} keep running."
+              echo "A maintainer enables cancellation by adding a CircleCI personal API token as the"
+              echo "project environment variable CIRCLECI_API_TOKEN (Project Settings > Environment Variables)."
+              exit 0
+            fi
+            python3 - \<<'PY'
+            import datetime, json, os, sys, time, urllib.error, urllib.request
+
+            branch = os.environ["CIRCLE_BRANCH"]
+            current = int(os.environ["PIPELINE_NUMBER"])
+            slug = "gh/" + os.environ["CIRCLE_PROJECT_USERNAME"] + "/" + os.environ["CIRCLE_PROJECT_REPONAME"]
+            api = "https://circleci.com/api/v2"
+
+            def call(path, method="GET"):
+                request = urllib.request.Request(api + path, method=method, headers={
+                    "Circle-Token": os.environ["CIRCLECI_API_TOKEN"], "Accept": "application/json"})
+                for attempt in range(1, 4):
+                    try:
+                        with urllib.request.urlopen(request, timeout=30) as response:
+                            return json.load(response)
+                    except urllib.error.HTTPError as err:
+                        if err.code in (401, 403):
+                            print(f"error: the CircleCI API rejected CIRCLECI_API_TOKEN ({err.code}); older pipelines keep running")
+                            print("The project variable needs a valid CircleCI personal API token.")
+                            sys.exit(0)
+                        failure = f"HTTP {err.code}"
+                    except (urllib.error.URLError, TimeoutError) as err:
+                        failure = str(err)
+                    if attempt < 3:
+                        time.sleep(5 * attempt)
+                print(f"warning: {method} {path} failed three times ({failure}); older pipelines keep running")
+                sys.exit(0)
+
+            def branch_of(pipeline):
+                vcs = pipeline.get("vcs") or {}
+                app = (pipeline.get("trigger_parameters") or {}).get("github_app") or {}
+                if vcs.get("tag") or app.get("full_ref", "").startswith("refs/tags/"):
+                    return None
+                return vcs.get("branch") or app.get("branch")
+
+            cancelled = 0
+            examined = 0
+            token = None
+            # Newest first; stop at pipelines created over a day ago, far past the
+            # longest a build-test can queue and run, so none is pushed off the end.
+            horizon = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=24)
+            done = False
+            for _ in range(20):
+                page = call(f"/project/{slug}/pipeline?branch={branch}" + (f"&page-token={token}" if token else ""))
+                for pipeline in page.get("items", []):
+                    if pipeline["number"] >= current:
+                        continue
+                    created = datetime.datetime.fromisoformat(pipeline["created_at"].replace("Z", "+00:00"))
+                    if created < horizon:
+                        done = True
+                        break
+                    examined += 1
+                    if branch_of(pipeline) != branch:
+                        continue
+                    for workflow in call(f"/pipeline/{pipeline['id']}/workflow").get("items", []):
+                        if workflow["name"] != "build-test" or workflow["status"] not in ("running", "on_hold"):
+                            continue
+                        call(f"/workflow/{workflow['id']}/cancel", method="POST")
+                        print(f"cancelled pipeline {pipeline['number']} ({workflow['status']} build-test, superseded by {current})")
+                        cancelled += 1
+                token = page.get("next_page_token")
+                if done or not token:
+                    break
+            print(f"{cancelled} superseded pipeline(s) cancelled on {branch}; {examined} pipeline(s) from the last 24 hours examined.")
+            PY
+
   go-static:
     executor: go-executor
     steps:
@@ -403,6 +560,10 @@ jobs:
           command: python3 scripts/release-provenance-test.py
 
       - run:
+          name: Check the release SBOM writer
+          command: python3 scripts/release-sbom-test.py
+
+      - run:
           name: Check the release announcer
           command: python3 scripts/release-announce-test.py
 
@@ -428,6 +589,10 @@ jobs:
           name: Run static analysis (staticcheck + gosec)
           command: make lint
           no_output_timeout: 30m
+
+      - run:
+          name: Check Go dependencies for known vulnerabilities
+          command: make vulncheck
 
       - run:
           name: Check grpc-go stays out of production code
@@ -627,9 +792,47 @@ jobs:
             # The scan job reads this profile; without it Sonar shows no coverage.
             - coverage.txt
 
+  # The host binaries the client jobs test against, built on their own so those
+  # jobs start minutes into the pipeline rather than after the gates.
+  go-build:
+    executor: go-executor
+    resource_class: large
+    steps:
+      - checkout
+      - rehearsal-checkout-tag
+      - go/load-cache
+      - go/mod-download
+      - go/save-cache
+
+      - run:
+          name: Build binaries
+          command: |
+            VERSION=${CIRCLE_TAG:-dev}
+            COMMIT=${CIRCLE_SHA1:-unknown}
+            BUILD_TIME=$(date -u '+%Y-%m-%d_%H:%M:%S')
+            GO_VERSION=$(go version | awk '{print $3}')
+
+            make build VERSION="$VERSION" COMMIT="$COMMIT" BUILD_TIME="$BUILD_TIME" GO_VERSION="$GO_VERSION"
+
+      - run:
+          name: Verify binaries
+          command: |
+            ./bin/sysml --version
+            ./bin/sysml-lsp --version
+            ls -lh bin/
+
+      # The client jobs test against this binary.
+      - persist_to_workspace:
+          root: .
+          paths:
+            - bin/sysml-grpc
+
+      - store_artifacts:
+          path: bin/
+          destination: binaries
+
   # The gates that re-run part of the suite on their own so their verdicts are
-  # legible in the log, the conformance suite over every transport, and the
-  # host binaries the client jobs test against.
+  # legible in the log, and the conformance suite over every transport.
   go-gates:
     executor: go-executor
     steps:
@@ -945,36 +1148,10 @@ jobs:
           path: bin/conformance-mcp-report.xml
           when: always
 
-      - run:
-          name: Build binaries
-          command: |
-            VERSION=${CIRCLE_TAG:-dev}
-            COMMIT=${CIRCLE_SHA1:-unknown}
-            BUILD_TIME=$(date -u '+%Y-%m-%d_%H:%M:%S')
-            GO_VERSION=$(go version | awk '{print $3}')
-
-            make build VERSION="$VERSION" COMMIT="$COMMIT" BUILD_TIME="$BUILD_TIME" GO_VERSION="$GO_VERSION"
-
-      - run:
-          name: Verify binaries
-          command: |
-            ./bin/sysml --version
-            ./bin/sysml-lsp --version
-            ls -lh bin/
-
-      # The client jobs test against this binary.
-      - persist_to_workspace:
-          root: .
-          paths:
-            - bin/sysml-grpc
-
-      - store_artifacts:
-          path: bin/
-          destination: binaries
   # SonarCloud analysis. The `SonarCloud` context supplies SONAR_TOKEN.
   scan:
     docker:
-      - image: cimg/go:1.25
+      - image: cimg/go:1.27
     # The Go sensor holds a whole directory's parse in memory; internal/exec/runtime
     # (168 files) overflows the default heap. The 8 GB container, the largest
     # class in the plan, carries: 4.8 GB analysis heap + Node capped at 1 GB
@@ -1195,8 +1372,7 @@ jobs:
           at: .
 
       # make scripts-coverage runs the test-suite figures test, which renders the figures with go run.
-      - go/install:
-          version: "1.25.0"
+      - install-go
 
       - run:
           name: Verify Go version
@@ -1226,6 +1402,12 @@ jobs:
             # its wheels with python -m build.
             pip install --only-binary :all: jupyter_client==8.10.0 build==1.6.1
             make jupyter-kernel-install
+
+      - run:
+          name: Audit the Python packages' dependencies
+          command: |
+            scripts/download-sca-tools.sh pip-audit
+            make audit-python
 
       # The integration tests connect to a service on the standard port with
       # auto_start=False, which is the explicit opt-in to one the client does not
@@ -1318,8 +1500,7 @@ jobs:
             rustc --version
             cargo --version
 
-      - go/install:
-          version: "1.25.0"
+      - install-go
 
       - run:
           name: Verify Go version
@@ -1337,6 +1518,12 @@ jobs:
       - run:
           name: Run Rust clippy
           command: cd client/rust && cargo clippy --all-targets -- -D warnings
+
+      - run:
+          name: Audit the Rust client's dependencies
+          command: |
+            scripts/download-sca-tools.sh cargo-audit
+            make audit-rust
 
       - run:
           name: Run Rust tests
@@ -1463,8 +1650,7 @@ jobs:
             apt-get install -y --no-install-recommends make
             make --version | head -1
 
-      - go/install:
-          version: "1.25.0"
+      - install-go
 
       - run:
           name: Build sysml-grpc
@@ -1495,8 +1681,7 @@ jobs:
     steps:
       - checkout
 
-      - go/install:
-          version: "1.25.0"
+      - install-go
 
       - run:
           name: Install GNU Octave
@@ -1568,6 +1753,12 @@ jobs:
           paths:
             - ~/.m2/repository
 
+      - run:
+          name: Audit the Java client's dependencies
+          command: |
+            scripts/download-sca-tools.sh osv-scanner
+            make audit-java JAVA_PROJECT_DIRS=client/java
+
       # opensysml.requireService turns "no binary, so skip" into a failure: the
       # workspace carries one, so its absence is the bug, not a pass. `install`
       # rather than `test`, so the sources and javadoc jars a release needs are
@@ -1637,6 +1828,12 @@ jobs:
             cd client/node
             npm install --ignore-scripts --no-audit --no-fund
             git diff --exit-code package-lock.json
+
+      # Every npm lockfile, the editors' included: this job runs on tags too, where
+      # editors-node-test does not, and the audit needs only the lockfiles.
+      - run:
+          name: Audit every npm lockfile's dependencies
+          command: make audit-npm
 
       - run:
           name: Build the package
@@ -1764,6 +1961,12 @@ jobs:
           name: Test and install the SysON backend
           command: mvn -B -f editors/syson/pom.xml install -Dopensysml.requireService=true
 
+      - run:
+          name: Audit the backend's dependencies
+          command: |
+            scripts/download-sca-tools.sh osv-scanner
+            make audit-java JAVA_PROJECT_DIRS=editors/syson
+
       - save_cache:
           key: maven-syson-v1-{{ checksum "client/java/pom.xml" }}-{{ checksum "client/java/opensysml-client/pom.xml" }}-{{ checksum "editors/syson/pom.xml" }}-{{ checksum "editors/syson/backend/pom.xml" }}
           paths:
@@ -1777,7 +1980,7 @@ jobs:
       - store_test_results:
           path: editors/syson/backend/target/surefire-reports
 
-  # The MDK for Cameo plugin's gate (editors/mdk): the tests of its three
+  # The Magic MDK plugin's gate (editors/mdk): the tests of its three
   # tested modules, with the JaCoCo report of each for the scan. The stub
   # modules have no tests and are not instrumented.
   mdk-test:
@@ -1804,6 +2007,12 @@ jobs:
       - run:
           name: Build and test the plugin
           command: mvn -B -f editors/mdk/pom.xml verify -Dopensysml.requireService=true
+
+      - run:
+          name: Audit the plugin's dependencies
+          command: |
+            scripts/download-sca-tools.sh osv-scanner
+            make audit-java JAVA_PROJECT_DIRS=editors/mdk
 
       - save_cache:
           key: maven-mdk-v1-{{ checksum "client/java/pom.xml" }}-{{ checksum "client/java/opensysml-client/pom.xml" }}-{{ checksum "editors/mdk/pom.xml" }}-{{ checksum "editors/mdk/plugin/pom.xml" }}
@@ -2849,6 +3058,17 @@ jobs:
       - go/mod-download
       - go/save-cache
 
+      # syft writes the SBOMs; pinned and checked like every other tool here.
+      - run:
+          name: Install syft
+          command: |
+            curl -fsSL -o /tmp/syft.tar.gz \
+              https://github.com/anchore/syft/releases/download/v1.55.0/syft_1.55.0_linux_amd64.tar.gz
+            echo "bb65249542db5fedeeb4d3f9b018b75e7264dbfbbb10486f044581a92f90490d  /tmp/syft.tar.gz" | sha256sum --check --strict
+            tar -xzf /tmp/syft.tar.gz -C /tmp syft
+            sudo install -m 0755 /tmp/syft /usr/local/bin/syft
+            syft version
+
       - run:
           name: Assemble the release and write its checksum manifest
           command: |
@@ -2859,6 +3079,22 @@ jobs:
             cp ../client/python/dist/opensysml-*.whl ../client/python/dist/opensysml-*.tar.gz .
             cp ../client/jupyter-kernel/dist/jupyter_opensysml_kernel-*.whl \
                ../client/jupyter-kernel/dist/jupyter_opensysml_kernel-*.tar.gz .
+
+            # One SPDX SBOM per published archive, wheel, sdist and raw binary,
+            # checked against the Go build info of what it describes; the
+            # manifest lists them below, so the signature and provenance cover them.
+            python3 ../scripts/release-sbom.py --version "${CIRCLE_TAG}" --out sbom ./*.tar.gz ./*.zip ./*.whl
+            find grpc jupyter -type f ! -name '*.sha256' -exec \
+              python3 ../scripts/release-sbom.py --version "${CIRCLE_TAG}" --out sbom {} +
+            # The WebAssembly modules, from the module information Go embeds in them.
+            python3 ../scripts/release-sbom.py --version "${CIRCLE_TAG}" --out sbom wasm/sysml-wasm.wasm wasm/sysml-prod.wasm.gz
+            # The npm tarballs build-npm-package packed: each SBOM describes the
+            # packed manifest and resolves its dependencies through the lockfile,
+            # the client's own and the runner's for the runner and its alias.
+            python3 ../scripts/release-sbom.py --version "${CIRCLE_TAG}" --out sbom \
+              --npm-lock ../client/node/package-lock.json npm/openmbee-opensysml-[0-9]*.tgz
+            python3 ../scripts/release-sbom.py --version "${CIRCLE_TAG}" --out sbom \
+              --npm-lock ../packaging/npm/sysml-mcp/package-lock.json npm/openmbee-sysml-mcp-[0-9]*.tgz npm/openmbee-opensysml-mcp-[0-9]*.tgz
 
             # Checksums over every published archive, so a Homebrew formula
             # (or a careful user) can verify a download.
@@ -2873,6 +3109,10 @@ jobs:
             (cd mcp && sha256sum --check --strict sysml-mcp-*.sha256)
             (cd wasm && sha256sum sysml-wasm.wasm sysml-prod.wasm.gz wasm_exec.js >> ../SHA256SUMS.txt)
             (cd wasm && for f in sysml-wasm.wasm sysml-prod.wasm.gz wasm_exec.js; do sha256sum "$f" > "$f.sha256"; done)
+            # The npm tarballs, so publish-npm publishes bytes the signed manifest lists.
+            (cd npm && sha256sum ./*.tgz | sed 's|\./||' >> ../SHA256SUMS.txt)
+            # And the SBOMs, so each is signed with the manifest and is a provenance subject.
+            (cd sbom && sha256sum ./*.spdx.json | sed 's|\./||' >> ../SHA256SUMS.txt)
             cat SHA256SUMS.txt
 
       # The distribution was stamped from the binaries before the manifest
@@ -2887,13 +3127,13 @@ jobs:
             import zipfile
 
             tag, manifest_path, wheel_path = sys.argv[1:]
+            # The five binaries by exact name: the manifest also lists their sidecars and SBOMs.
+            assets = {f"sysml-grpc-{p}" for p in ("darwin-amd64", "darwin-arm64", "linux-amd64", "linux-arm64", "windows-amd64.exe")}
             listed = {}
             with open(manifest_path, encoding="utf-8") as manifest:
                 for line in manifest:
                     fields = line.split()
-                    if len(fields) != 2 or not fields[1].startswith("sysml-grpc-"):
-                        continue
-                    if not fields[1].endswith(".sha256"):
+                    if len(fields) == 2 and fields[1] in assets:
                         listed[fields[1]] = fields[0]
             with zipfile.ZipFile(wheel_path) as wheel:
                 with wheel.open("opensysml/release-digests.json") as member:
@@ -2920,13 +3160,12 @@ jobs:
             tag, manifest_path, *wheel_paths = sys.argv[1:]
             if len(wheel_paths) != 5:
                 raise SystemExit(f"Error: expected five kernel wheels, got {wheel_paths}; nothing was signed.")
+            assets = {f"sysml-jupyter-kernel-{p}" for p in ("darwin-amd64", "darwin-arm64", "linux-amd64", "linux-arm64", "windows-amd64.exe")}
             listed = {}
             with open(manifest_path, encoding="utf-8") as manifest:
                 for line in manifest:
                     fields = line.split()
-                    if len(fields) != 2 or not fields[1].startswith("sysml-jupyter-kernel-"):
-                        continue
-                    if not fields[1].endswith(".sha256"):
+                    if len(fields) == 2 and fields[1] in assets:
                         listed[fields[1]] = fields[0]
             for wheel_path in wheel_paths:
                 with zipfile.ZipFile(wheel_path) as wheel:
@@ -3007,7 +3246,7 @@ jobs:
                 command: |
                   export PATH="$(go env GOPATH)/bin:$PATH"
                   cd dist
-                  for artifact in opensysml-linux-amd64.tar.gz grpc/sysml-grpc-linux-amd64 jupyter/sysml-jupyter-kernel-linux-amd64 wasm/sysml-wasm.wasm opensysml-*-py3-none-any.whl jupyter_opensysml_kernel-*-py3-none-*.whl; do
+                  for artifact in opensysml-linux-amd64.tar.gz grpc/sysml-grpc-linux-amd64 jupyter/sysml-jupyter-kernel-linux-amd64 wasm/sysml-wasm.wasm opensysml-*-py3-none-any.whl jupyter_opensysml_kernel-*-py3-none-*.whl npm/openmbee-opensysml-[0-9]*.tgz sbom/opensysml-linux-amd64.tar.gz.spdx.json sbom/opensysml-*-py3-none-any.whl.spdx.json sbom/sysml-wasm.wasm.spdx.json; do
                     cosign verify-blob-attestation "$artifact" \
                       --bundle provenance.intoto.json.bundle \
                       --type slsaprovenance1 \
@@ -3074,6 +3313,7 @@ jobs:
           root: .
           paths:
             - dist/SHA256SUMS.txt
+            - dist/sbom
             - dist/wasm/*.sha256
             - dist/opensysml-*-py3-none-any.whl
             - dist/opensysml-[0-9]*.tar.gz
@@ -3088,6 +3328,144 @@ jobs:
                   - dist/SHA256SUMS.txt.bundle
                   - dist/provenance.intoto.json
                   - dist/provenance.intoto.json.bundle
+
+  # Packs the npm tarballs the release publishes before build-release writes
+  # the manifest, so SHA256SUMS.txt lists them and their SBOMs: the client,
+  # stamped with this release's service digests like the wheel, the
+  # @openmbee/sysml-mcp runner, and its alias @openmbee/opensysml-mcp, which
+  # the generator derives from the runner beside the sysml-mcp platform
+  # packages. publish-npm publishes exactly these bytes after checking them
+  # against the signed manifest; nothing is packed again there.
+  build-npm-package:
+    executor: node-executor
+    steps:
+      - checkout
+      - rehearsal-tag
+      # dist/grpc and dist/mcp from build-release-binaries: the service
+      # binaries whose digests the client ships, and the sysml-mcp binaries the
+      # generator derives the alias beside.
+      - attach_workspace:
+          at: .
+
+      - run:
+          name: Resolve the version from the tag
+          command: |
+            if [ -z "${CIRCLE_TAG}" ]; then
+              echo "Error: CIRCLE_TAG is empty; this job only runs on a core v* tag."
+              exit 1
+            fi
+            version=$(node -p "require('./client/node/package.json').version")
+            if [ "${CIRCLE_TAG}" != "v${version}" ]; then
+              echo "Error: tag ${CIRCLE_TAG} does not match client/node/package.json"
+              echo "version ${version}; the tag for it is v${version}. Nothing was packed."
+              exit 1
+            fi
+            echo "export NPM_VERSION=${version}" >> "$BASH_ENV"
+            ls -l dist/grpc/sysml-grpc-* dist/mcp/sysml-mcp-*
+
+      # The same stamp publish-npm makes before the suite asserts it: the
+      # package's own copy of the table is the only pin the published client
+      # carries, so the tarball must be packed from the stamped tree.
+      - run:
+          name: Stamp this release's service digests into the package
+          command: |
+            if ! command -v python3 >/dev/null; then
+              sudo apt-get update -q && sudo apt-get install -yq python3
+            fi
+            python3 client/python/scripts/pin_release_checksums.py \
+              --version "${CIRCLE_TAG}" \
+              --from-binaries dist/grpc \
+              --table client/node/release-digests.json
+            git diff --stat
+
+      - run:
+          name: Build the client
+          command: |
+            cd client/node
+            npm install --ignore-scripts --no-audit --no-fund
+            git diff --exit-code package-lock.json
+            npm run build
+
+      - run:
+          name: Pack the client and verify its pins
+          command: |
+            # The tarball packed here is the one published below, so what is
+            # verified is what ships. Its table must pin this tag for every
+            # service asset, with the digests of the binaries in dist/grpc.
+            rm -rf dist/npm && mkdir -p dist/npm
+            (cd client/node && npm pack --pack-destination ../../dist/npm)
+            tarballs=$(ls dist/npm/openmbee-opensysml-*.tgz)
+            if [ "$(echo "$tarballs" | wc -l)" -ne 1 ]; then
+              echo "Error: expected exactly one client tarball in dist/npm:"
+              echo "$tarballs"
+              exit 1
+            fi
+            echo "export NPM_TARBALL=$(pwd)/${tarballs}" >> "$BASH_ENV"
+            python3 - "${tarballs}" "${CIRCLE_TAG}" dist/grpc \<<'PY'
+            import hashlib
+            import json
+            import os
+            import sys
+            import tarfile
+
+            tarball_path, tag, binaries = sys.argv[1:]
+            required = {
+                "sysml-grpc-darwin-amd64",
+                "sysml-grpc-darwin-arm64",
+                "sysml-grpc-linux-amd64",
+                "sysml-grpc-linux-arm64",
+                "sysml-grpc-windows-amd64.exe",
+            }
+            with tarfile.open(tarball_path, "r:gz") as tarball:
+                try:
+                    member = tarball.extractfile("package/release-digests.json")
+                except KeyError:
+                    member = None
+                if member is None:
+                    raise SystemExit("Error: packed tarball has no release-digests.json.")
+                with member:
+                    table = json.load(member)
+
+            digests = table.get("Open-MBEE/OpenSysML", {}).get(tag, {})
+            missing = sorted(required - digests.keys())
+            if missing:
+                raise SystemExit(
+                    f"Error: packed tarball has no complete digest pin for {tag}: "
+                    f"{', '.join(missing)}"
+                )
+            for asset in sorted(required):
+                with open(os.path.join(binaries, asset), "rb") as binary:
+                    actual = hashlib.sha256(binary.read()).hexdigest()
+                if digests[asset] != actual:
+                    raise SystemExit(
+                        f"Error: packed tarball pins {digests[asset]} for {asset} of {tag}, "
+                        f"but the release binary is {actual}"
+                    )
+            print(f"Verified the packed tarball embeds all five service digests for {tag}.")
+            PY
+
+      - run:
+          name: Pack @openmbee/sysml-mcp and its alias @openmbee/opensysml-mcp
+          command: |
+            (cd packaging/npm/sysml-mcp && npm pack --pack-destination ../../../dist/npm)
+            # The alias has no tree of its own: the generator writes it from the
+            # runner when it builds the sysml-mcp platform packages, checking
+            # each binary against its .sha256 sidecar.
+            (cd client/node && npm run platform-packages -- --mcp ../../dist/mcp)
+            (cd client/node/packages/opensysml-mcp && npm pack --pack-destination ../../../../dist/npm)
+            for tarball in "openmbee-sysml-mcp-${NPM_VERSION}.tgz" "openmbee-opensysml-mcp-${NPM_VERSION}.tgz"; do
+              if [ ! -f "dist/npm/${tarball}" ]; then
+                echo "Error: ${tarball} was not packed into dist/npm:"
+                ls -l dist/npm
+                exit 1
+              fi
+            done
+            ls -l dist/npm
+
+      - persist_to_workspace:
+          root: .
+          paths:
+            - dist/npm
 
   # Publishes @openmbee/opensysml and its five per-platform packages from the
   # core `v<version>` tag, carrying the sysml-grpc binaries build-release
@@ -3241,75 +3619,32 @@ jobs:
             cd client/node
             npm run platform-packages -- --binaries ../../dist/grpc --mcp ../../dist/mcp --wasm ../../dist/wasm
 
+      # The tarballs published below are the ones build-npm-package packed and
+      # build-release listed in the manifest it signed; the client's pins were
+      # asserted there. What is verified here is what ships.
       - run:
-          name: Pack the client and verify its pins
+          name: Verify the npm tarballs against the signed manifest
           command: |
-            # The tarball packed here is the one published below, so what is
-            # verified is what ships. Its table must pin this tag for every
-            # service asset, with the digests of the binaries in dist/grpc.
-            rm -rf dist/npm && mkdir -p dist/npm
-            (cd client/node && npm pack --pack-destination ../../dist/npm)
-            tarballs=$(ls dist/npm/openmbee-opensysml-*.tgz)
+            (cd dist/npm && grep -E ' openmbee-[^ ]*\.tgz$' ../SHA256SUMS.txt | sha256sum --check --strict)
+            tarballs=$(ls dist/npm/openmbee-opensysml-[0-9]*.tgz)
             if [ "$(echo "$tarballs" | wc -l)" -ne 1 ]; then
               echo "Error: expected exactly one client tarball in dist/npm:"
               echo "$tarballs"
               exit 1
             fi
             echo "export NPM_TARBALL=$(pwd)/${tarballs}" >> "$BASH_ENV"
-            python3 - "${tarballs}" "${CIRCLE_TAG}" dist/grpc \<<'PY'
-            import hashlib
-            import json
-            import os
-            import sys
-            import tarfile
-
-            tarball_path, tag, binaries = sys.argv[1:]
-            required = {
-                "sysml-grpc-darwin-amd64",
-                "sysml-grpc-darwin-arm64",
-                "sysml-grpc-linux-amd64",
-                "sysml-grpc-linux-arm64",
-                "sysml-grpc-windows-amd64.exe",
-            }
-            with tarfile.open(tarball_path, "r:gz") as tarball:
-                try:
-                    member = tarball.extractfile("package/release-digests.json")
-                except KeyError:
-                    member = None
-                if member is None:
-                    raise SystemExit("Error: packed tarball has no release-digests.json.")
-                with member:
-                    table = json.load(member)
-
-            digests = table.get("Open-MBEE/OpenSysML", {}).get(tag, {})
-            missing = sorted(required - digests.keys())
-            if missing:
-                raise SystemExit(
-                    f"Error: packed tarball has no complete digest pin for {tag}: "
-                    f"{', '.join(missing)}"
-                )
-            for asset in sorted(required):
-                with open(os.path.join(binaries, asset), "rb") as binary:
-                    actual = hashlib.sha256(binary.read()).hexdigest()
-                if digests[asset] != actual:
-                    raise SystemExit(
-                        f"Error: packed tarball pins {digests[asset]} for {asset} of {tag}, "
-                        f"but the release binary is {actual}"
-                    )
-            print(f"Verified the packed tarball embeds all five service digests for {tag}.")
-            PY
 
       - run:
           name: Pack @openmbee/sysml-mcp and prove it serves the protocol
           command: |
-            # The shim tarball packed here is the one published below. It must
-            # be this tag's version and pin its five platform packages at it;
-            # then the packed shim, installed beside this platform's package
-            # from the generator's tree, must answer initialize and tools/list.
-            (cd packaging/npm/sysml-mcp && npm pack --pack-destination ../../../dist/npm)
+            # The shim tarball build-npm-package packed is the one published
+            # below. It must be this tag's version and pin its five platform
+            # packages at it; then the shim, packed from the same tree and
+            # installed beside this platform's package from the generator's
+            # tree, must answer initialize and tools/list.
             tarball="dist/npm/openmbee-sysml-mcp-${NPM_VERSION}.tgz"
             if [ ! -f "$tarball" ]; then
-              echo "Error: packaging/npm/sysml-mcp did not pack as ${tarball}:"
+              echo "Error: build-npm-package did not pack packaging/npm/sysml-mcp as ${tarball}:"
               ls -l dist/npm
               exit 1
             fi
@@ -3335,14 +3670,14 @@ jobs:
           name: Pack @openmbee/opensysml-mcp and prove it is the runner under its other name
           command: |
             # The alias the generator derived from packaging/npm/sysml-mcp: the
-            # tarball packed here is the one published below. It must be this
-            # tag's version, pin the same five platform packages at it, declare
-            # both commands and no registry name; npm-mcp-test.sh above already
-            # installed it beside this platform's package and ran both commands.
-            (cd client/node/packages/opensysml-mcp && npm pack --pack-destination ../../../../dist/npm)
+            # tarball build-npm-package packed is the one published below. It
+            # must be this tag's version, pin the same five platform packages at
+            # it, declare both commands and no registry name; npm-mcp-test.sh
+            # above already installed the generator's alias beside this
+            # platform's package and ran both commands.
             alias_tarball="dist/npm/openmbee-opensysml-mcp-${NPM_VERSION}.tgz"
             if [ ! -f "$alias_tarball" ]; then
-              echo "Error: client/node/packages/opensysml-mcp did not pack as ${alias_tarball}:"
+              echo "Error: build-npm-package did not pack the alias as ${alias_tarball}:"
               ls -l dist/npm
               exit 1
             fi
@@ -3400,7 +3735,7 @@ jobs:
             - run:
                 name: "REHEARSAL: pack every package"
                 command: |
-                  # The client, @openmbee/sysml-mcp and @openmbee/opensysml-mcp were packed and verified above.
+                  # The client, @openmbee/sysml-mcp and @openmbee/opensysml-mcp were packed by build-npm-package and verified above.
                   npm pack client/node/packages/sysml-wasm --dry-run
                   for directory in client/node/packages/sysml-grpc-* client/node/packages/sysml-mcp-*; do
                     npm pack "$directory" --dry-run
@@ -4003,6 +4338,9 @@ jobs:
                   mv dist/grpc/* dist/release/
                   mv dist/jupyter/* dist/release/
                   mv dist/wasm/* dist/release/
+                  # The npm tarballs publish-npm publishes, listed in the manifest.
+                  mv dist/npm/*.tgz dist/release/
+                  mv dist/sbom/* dist/release/
                   mv dist/SHA256SUMS.txt dist/release/
                   # The signature over that manifest, which the Python client verifies
                   # before it trusts a digest from it.
@@ -4039,6 +4377,11 @@ jobs:
                 command: |
                   ls dist/SHA256SUMS.txt > /dev/null
                   ls dist/wasm/sysml-wasm.wasm dist/wasm/sysml-prod.wasm.gz dist/wasm/wasm_exec.js > /dev/null
+                  set -- dist/npm/openmbee-*.tgz
+                  if [ $# -ne 3 ]; then
+                    echo "Error: expected the three npm tarballs dist/npm/openmbee-*.tgz"
+                    exit 1
+                  fi
                   set -- dist/opensysml-*-py3-none-any.whl
                   if [ ! -f "$1" ] || [ $# -ne 1 ]; then
                     echo "Error: expected exactly one dist/opensysml-*-py3-none-any.whl"
@@ -4103,10 +4446,11 @@ jobs:
 
   # After the GitHub release exists, brings the committed shared table up to
   # date with it: stamps the release from the manifest build-release wrote,
-  # syncs every client copy, and opens a pull request against develop with the
-  # result. The packages published beside it already carry their own pins; this
-  # is for a checkout, and for a later release's packages asked for this one,
-  # and it is what the hygiene suite holds the next release branch to.
+  # syncs every client copy, and opens a pull request against develop and
+  # another against main with the result. The packages published beside it
+  # already carry their own pins; this is for a checkout, and for a later
+  # release's packages asked for this one, and it is what the hygiene suite
+  # holds the next release branch — and main, once it moves past the tag — to.
   pin-release-digests:
     executor: python-executor
     steps:
@@ -4125,35 +4469,51 @@ jobs:
             fi
             ls -l dist/SHA256SUMS.txt
             echo "export PIN_BRANCH=chore/pin-${CIRCLE_TAG}" >> "$BASH_ENV"
+            echo "export PIN_MAIN_BRANCH=hotfix/pin-${CIRCLE_TAG}" >> "$BASH_ENV"
 
       - run:
-          name: Stamp the release into the shared table on a branch from develop
+          name: Stamp the release into the shared table on branches from develop and main
           command: |
-            # The pull request targets develop, so the stamp is made on develop's
-            # tree, not the tag's: what develop already pins stays as it is.
-            git fetch --no-tags origin develop
-            git checkout -B "${PIN_BRANCH}" origin/develop
-            # The shared table is the target, so the script syncs every client
-            # copy from it. A different pin already there for this tag is a
-            # republished release, and the script refuses it.
-            python3 client/python/scripts/pin_release_checksums.py \
-              --version "${CIRCLE_TAG}" \
-              --from-manifest dist/SHA256SUMS.txt
-            python3 scripts/sync-release-digests.py --check
-            git add client
-            git diff --cached --stat
-            if git diff --cached --quiet; then
-              echo "develop already pins ${CIRCLE_TAG}; there is nothing to open."
-              echo "export PIN_NOTHING_TO_DO=1" >> "$BASH_ENV"
-            fi
+            # Each pull request targets its base, so the stamp is made on that
+            # base's tree, not the tag's: what the base already pins stays as it
+            # is. The tagged commit is main's head, so main never pins its own
+            # release until this lands there; a hotfix/ branch is what main takes.
+            git fetch --no-tags origin develop main
+            git config user.name "OpenSysML release"
+            git config user.email "opensysml-release@users.noreply.github.com"
+            : > /tmp/pin-branches.txt
+            stamp() {
+              base=$1
+              branch=$2
+              git checkout -q -B "${branch}" "origin/${base}"
+              # The shared table is the target, so the script syncs every client
+              # copy from it. A different pin already there for this tag is a
+              # republished release, and the script refuses it.
+              python3 client/python/scripts/pin_release_checksums.py \
+                --version "${CIRCLE_TAG}" \
+                --from-manifest dist/SHA256SUMS.txt
+              python3 scripts/sync-release-digests.py --check
+              git add client
+              git diff --cached --stat
+              if git diff --cached --quiet; then
+                echo "${base} already pins ${CIRCLE_TAG}; there is nothing to open against it."
+                return 0
+              fi
+              git commit -q \
+                -m "chore(release): pin ${CIRCLE_TAG} in the shared digest table" \
+                -m "Stamped from the release's SHA256SUMS.txt by the tag's pipeline and synced into every client copy."
+              echo "${base} ${branch}" >> /tmp/pin-branches.txt
+            }
+            stamp develop "${PIN_BRANCH}"
+            stamp main "${PIN_MAIN_BRANCH}"
 
       - unless:
           condition: << pipeline.parameters.release_rehearsal >>
           steps:
             - run:
-                name: Push the branch and open the pull request against develop
+                name: Push the branches and open the pull requests against develop and main
                 command: |
-                  if [ -n "${PIN_NOTHING_TO_DO:-}" ]; then
+                  if [ ! -s /tmp/pin-branches.txt ]; then
                     echo "Nothing to push."
                     exit 0
                   fi
@@ -4166,19 +4526,15 @@ jobs:
                     exit 1
                   fi
                   repo="${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}"
-                  git config user.name "OpenSysML release"
-                  git config user.email "opensysml-release@users.noreply.github.com"
-                  git commit -q \
-                    -m "chore(release): pin ${CIRCLE_TAG} in the shared digest table" \
-                    -m "Stamped from the release's SHA256SUMS.txt by the tag's pipeline and synced into every client copy."
                   # The token travels in a header, never in a URL git would echo.
-                  # The branch is rebuilt from develop on every run, so a run
+                  # Each branch is rebuilt from its base on every run, so a run
                   # repeated after a failure replaces an earlier branch rather
                   # than failing on it.
                   auth=$(printf 'x-access-token:%s' "$TOKEN" | base64 | tr -d '\n')
-                  git -c "http.https://github.com/.extraheader=Authorization: Basic ${auth}" \
-                    push --force "https://github.com/${repo}.git" "HEAD:refs/heads/${PIN_BRANCH}"
-                  PIN_TOKEN="$TOKEN" python3 - "$repo" "$PIN_BRANCH" "$CIRCLE_TAG" \<<'PY'
+                  while read -r base branch; do
+                    git -c "http.https://github.com/.extraheader=Authorization: Basic ${auth}" \
+                      push --force "https://github.com/${repo}.git" "refs/heads/${branch}:refs/heads/${branch}"
+                    PIN_TOKEN="$TOKEN" python3 - "$repo" "$base" "$branch" "$CIRCLE_TAG" \<<'PY'
                   import json
                   import os
                   import sys
@@ -4186,7 +4542,7 @@ jobs:
                   import urllib.parse
                   import urllib.request
 
-                  repo, branch, tag = sys.argv[1:]
+                  repo, base, branch, tag = sys.argv[1:]
                   api = f"https://api.github.com/repos/{repo}"
                   headers = {
                       "Authorization": f"Bearer {os.environ['PIN_TOKEN']}",
@@ -4204,23 +4560,34 @@ jobs:
                           return error.code, json.load(error) if error.fp else {}
 
                   owner = repo.split("/")[0]
-                  query = urllib.parse.urlencode({"head": f"{owner}:{branch}", "base": "develop", "state": "open"})
+                  query = urllib.parse.urlencode({"head": f"{owner}:{branch}", "base": base, "state": "open"})
                   status, open_prs = call("GET", f"{api}/pulls?{query}")
                   if status != 200:
                       raise SystemExit(f"Error: could not list pull requests (HTTP {status}): {open_prs.get('message')}")
                   if open_prs:
                       print(f"The pull request already exists and now carries the branch: {open_prs[0]['html_url']}")
                       raise SystemExit(0)
+                  why = {
+                      "develop": "a checkout and the packages of later releases install it on a pin",
+                      "main": "main, whose head is the tagged commit, pins its own release and its build-test runs stay green until the next release",
+                  }[base]
+                  body = (
+                      f"Pins the five `sysml-grpc` assets of {tag} in `client/release-digests.json` and every "
+                      f"client copy, from the release's `SHA256SUMS.txt`, so {why}. "
+                      "Opened by the tag's release pipeline; see docs/project/releasing.md § Pinned release digests."
+                  )
+                  if base == "main":
+                      body += (
+                          "\n\nBefore merging, lock the platform packages the tag published: "
+                          "`npm install --package-lock-only --ignore-scripts` in `client/node` and `packaging/npm/sysml-mcp` "
+                          "once they answer on npm, and commit both lockfiles; the Node job fails on the unlocked tree. "
+                          "See docs/project/releasing.md § The release branch, step 5."
+                      )
                   status, created = call("POST", f"{api}/pulls", {
                       "title": f"chore(release): pin {tag} in the shared digest table",
                       "head": branch,
-                      "base": "develop",
-                      "body": (
-                          f"Pins the five `sysml-grpc` assets of {tag} in `client/release-digests.json` and every "
-                          f"client copy, from the release's `SHA256SUMS.txt`, so a checkout and the packages of "
-                          f"later releases install {tag} on a pin. Opened by the tag's release pipeline; see "
-                          "docs/project/releasing.md § Pinned release digests."
-                      ),
+                      "base": base,
+                      "body": body,
                   })
                   if status != 201:
                       print(f"Error: could not open the pull request (HTTP {status}): {created.get('message')}")
@@ -4231,48 +4598,63 @@ jobs:
                       raise SystemExit(1)
                   print(f"Opened {created['html_url']}")
                   PY
+                  done < /tmp/pin-branches.txt
       - rehearsal-skip:
-          what: "pushing the pin branch and opening its pull request"
+          what: "pushing the pin branches and opening their pull requests"
 
 workflows:
   version: 2
 
   # Build and test every merge into main or develop; pull requests run .github/workflows/pr.yml instead.
-  # The race run gates the workflow but not the client tests or the scan, which
-  # need only the coverage profile and the binaries.
+  # The race run and the gates verdict the workflow but gate neither the client
+  # tests, which need only the binaries, nor the scan, which reads the coverage
+  # profile and the clients' reports.
   build-test:
     jobs:
-      - go-static:
-          name: Go static checks
+      - cancel-superseded:
+          name: Cancel superseded pipelines
           filters: &integration-branches
             branches:
               only: [main, develop]
             tags:
               ignore: /.*/
+      - go-static:
+          name: Go static checks
+          requires: &after-cancellation
+            - Cancel superseded pipelines
+          filters: *integration-branches
       - go-race-test:
           name: Go race tests
+          requires: *after-cancellation
           filters: *integration-branches
       - go-coverage:
           name: Go coverage shards
+          requires: *after-cancellation
           filters: *integration-branches
       - go-coverage-merge:
           name: Go coverage profile
           requires:
             - Go coverage shards
           filters: *integration-branches
+      - go-build:
+          name: Go binaries
+          requires: *after-cancellation
+          filters: *integration-branches
       - go-gates:
-          name: Go gates and binaries
+          name: Go gates
+          requires: *after-cancellation
           filters: *integration-branches
       - python-test:
           name: Python client tests
-          requires: &scan-inputs
+          requires:
+            - Go binaries
+            # Persists docs/assets/landing, which make scripts-coverage reads.
             - Go static checks
-            - Go coverage profile
-            - Go gates and binaries
           filters: *integration-branches
       - rust-test:
           name: Rust client tests
-          requires: *scan-inputs
+          requires: &client-inputs
+            - Go binaries
           filters: *integration-branches
       - dotnet-test:
           name: .NET client tests
@@ -4280,31 +4662,31 @@ workflows:
           filters: *integration-branches
       - julia-client:
           name: Julia client tests
-          requires: *scan-inputs
+          requires: *client-inputs
           filters: *integration-branches
       - matlab-client:
           name: MATLAB client tests
-          requires: *scan-inputs
+          requires: *client-inputs
           filters: *integration-branches
       - java-test:
           name: Java client tests
-          requires: *scan-inputs
+          requires: *client-inputs
           filters: *integration-branches
       - node-test:
           name: Node client tests
-          requires: *scan-inputs
+          requires: *client-inputs
           filters: *integration-branches
       - syson-test:
           name: SysON backend tests
-          requires: *scan-inputs
+          requires: *client-inputs
           filters: *integration-branches
       - mdk-test:
           name: MDK plugin tests
-          requires: *scan-inputs
+          requires: *client-inputs
           filters: *integration-branches
       - editors-node-test:
           name: Editor and npm package tests
-          requires: *scan-inputs
+          requires: *client-inputs
           filters: *integration-branches
       - scan:
           name: SonarCloud scan
@@ -4315,7 +4697,6 @@ workflows:
             - Go static checks
             # Persists coverage.txt, the Go report the scan reads.
             - Go coverage profile
-            - Go gates and binaries
             # Each contributes a coverage report; without them the scan sees
             # only Go coverage and grades every other language at zero.
             - Python client tests
@@ -4354,8 +4735,11 @@ workflows:
           requires:
             - Go coverage shards
           filters: *release-tags
+      - go-build:
+          name: Go binaries
+          filters: *release-tags
       - go-gates:
-          name: Go gates and binaries
+          name: Go gates
           filters: *release-tags
 
       - python-test:
@@ -4364,7 +4748,8 @@ workflows:
             - Go static checks
             - Go race tests
             - Go coverage profile
-            - Go gates and binaries
+            - Go binaries
+            - Go gates
           filters: *release-tags
 
       - node-test:
@@ -4403,6 +4788,14 @@ workflows:
             - Build release binaries
           filters: *release-tags
 
+      # And the npm tarballs, stamped from the service binaries, so the
+      # manifest lists them and publish-npm publishes signed bytes.
+      - build-npm-package:
+          name: Build npm packages
+          requires:
+            - Build release binaries
+          filters: *release-tags
+
       # Writes and signs the one manifest over the binaries and the distributions.
       - build-release:
           name: Build release artifacts
@@ -4410,6 +4803,7 @@ workflows:
             - Build release binaries
             - Build Python distribution
             - Build Jupyter kernel distribution
+            - Build npm packages
           filters: *release-tags
 
       - publish-github-release:
@@ -4560,8 +4954,11 @@ workflows:
           requires:
             - Go coverage shards
           filters: *pysysml-tags
+      - go-build:
+          name: Go binaries
+          filters: *pysysml-tags
       - go-gates:
-          name: Go gates and binaries
+          name: Go gates
           filters: *pysysml-tags
 
       - python-test:

@@ -289,6 +289,29 @@ elements), so a conformant reader would declare `datatype Real;` anew. A
 library element the element form references is a bare `{"@id": …}` of its
 normative id, which the reader resolves against the bundled library.
 
+For clients that need to display those names without bundling the library,
+`ConvertResponse.library_references` carries a separate table of `id`, `qualified_name`
+and `type` (metaclass), advertised as `convert_library_references`. The
+[compact API JSON document](api-json-compact.md) carries the same information in the
+optional top-level `libraryReferences` table, with literal `@id`, `qualifiedName` and
+`@type` keys. Only library elements referenced by the written output are included,
+sorted by ID; no library declarations are added to the default element array.
+
+The CLI writes that table as a JSON side file, without changing the model output:
+
+```sh
+sysml model.sysml -convert api-json -o model.json -library-references library-names.json
+```
+
+`-include-library-stubs` (or `ConvertRequest.include_library_stubs`, advertised as
+`convert_library_stubs`) is a default-off compatibility option for legacy clients.
+It restores the ownerless library stubs written before 0.11.0, with `@id`, `@type`,
+`declaredName`, `elementId`, `isLibraryElement: true` and `qualifiedName`.
+An OMG API reader treats these as roots, so prefer the separate table for new clients.
+Both CLI options require `-convert api-json` (or its `json` alias); the side file must
+not name an input or the output, including through a symlink or hard link.
+For a graph source, the table can name only references whose library metadata the graph carries.
+
 Reading a graph back, such an element is a reference into the bundled library,
 not a declaration, and it is not written. A qualified name other than the one
 the library gives its id is refused rather than trusted. If the id is not in
@@ -2329,6 +2352,7 @@ as an RDF vocabulary graph a store loads beside its models:
 ```bash
 sysml -metaclass-graph                          # Turtle to stdout; no model is read
 sysml -metaclass-graph -o sysml-metaclasses.ttl
+sysml -metamodel-table -o metamodel.json         # the whole table as JSON: classes, properties, enumerations
 ```
 
 The graph is written from the metamodel table of
@@ -2381,7 +2405,7 @@ exactly, which a converted model never contains.
 | `internal/translate/convert` | The `Convert` entry point: format names, notation parsing, the SysML v1 migration |
 | `tests/corpus/roundtrip_test.go` | The per-file round-trip ratchets over every model under `examples/`, with their baselines in `testdata/corpus_roundtrip_expected.txt` (Turtle) and `testdata/api_json_roundtrip_expected.txt` (the API element form) ([rdf-corpus-roundtrip.md](../project/rdf-corpus-roundtrip.md)) |
 | `internal/frontend/repl` | `%save` |
-| `cmd/sysml` | `-convert`, `-from`, `-o`, `-metaclass-graph` |
+| `cmd/sysml` | `-convert`, `-from`, `-o`, `-metaclass-graph`, `-metamodel-table` |
 
 The RDF layer is hand-written against the Turtle grammar rather than pulled in
 as a dependency: the subset needed here is small, and the parser rejects what it

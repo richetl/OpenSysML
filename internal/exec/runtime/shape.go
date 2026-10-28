@@ -126,7 +126,7 @@ func (ctx *Context) effectiveFeature(name string, memberSym, typeSym *symbols.Sy
 	if defaultVal == nil {
 		defaultVal, defaultDecl = ctx.roleRedefiningDefault(memberSym, typeSym)
 	}
-	mult, defaulted := ctx.featureRange(memberSym, typeSym)
+	mult, _, defaulted := ctx.featureRange(memberSym, typeSym)
 	return EffectiveFeature{
 		Name:                  name,
 		Symbol:                memberSym,
@@ -389,25 +389,24 @@ func (ctx *Context) extractDefaultValue(featureSym *symbols.Symbol) ast.Node {
 // effective range (§7.6.3), else as stated, else as inherited from what it
 // redefines or subsets, else the representative range.
 func (ctx *Context) featureMultiplicity(sym, owner *symbols.Symbol) semantics.Range {
-	mult, _ := ctx.featureRange(sym, owner)
+	mult, _, _ := ctx.featureRange(sym, owner)
 	return mult
 }
 
-// featureRange is featureMultiplicity reporting whether the range is defaulted: no
-// declaration, inheritance, parameter rule or implicit [1..1] (SysML v2 §7.6.3,
-// end features) states it, so the usual default 0..* judges no count against it.
-func (ctx *Context) featureRange(sym, owner *symbols.Symbol) (mult semantics.Range, defaulted bool) {
+// featureRange is featureMultiplicity reporting whether a declaration, inheritance or the parameter
+// rule states the range, and whether it is defaulted: neither those nor the implicit [1..1] state it.
+func (ctx *Context) featureRange(sym, owner *symbols.Symbol) (mult semantics.Range, stated, defaulted bool) {
 	if semantics.IsParameter(sym) {
-		return ctx.model.semantics.EffectiveParameterRange(sym), false
+		return ctx.model.semantics.EffectiveParameterRange(sym), true, false
 	}
-	mult, stated := ctx.extractMultiplicity(sym)
+	mult, stated = ctx.extractMultiplicity(sym)
 	if stated {
-		return mult, false
+		return mult, true, false
 	}
 	if unstated, unstatedStated, ok := ctx.unstatedMultiplicity(sym, owner, map[*symbols.Symbol]bool{sym: true}, false); ok {
 		mult, stated = unstated, unstatedStated
 	}
-	return mult, !stated && !ctx.model.semantics.ImplicitlyDeclaresOne(sym)
+	return mult, stated, !stated && !ctx.model.semantics.ImplicitlyDeclaresOne(sym)
 }
 
 // unstatedMultiplicity is the multiplicity of a feature declaring none: inherited from what it
@@ -563,7 +562,7 @@ func (ctx *Context) roleRedefiningDefault(sym, typeSym *symbols.Symbol) (ast.Nod
 // inherits any redefined feature's (KerML 1.0 §7.3.4.5), though no object carries them.
 func (ctx *Context) redefinedNamespaceUsages(sym *symbols.Symbol) []*symbols.Symbol {
 	var usages []*symbols.Symbol
-	for _, rel := range relationshipsOfKind(sym, ast.RelRedefines) {
+	for _, rel := range ctx.relationshipsOfKind(sym, ast.RelRedefines) {
 		resolved := ctx.model.semantics.RelationshipTarget(sym, rel)
 		if resolved == nil || resolved == sym {
 			continue

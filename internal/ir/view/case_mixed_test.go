@@ -355,8 +355,9 @@ func TestMixedInheritedRoleOccurrencesKeepTypingEdges(t *testing.T) {
 	}
 
 	mermaid := rendering.Mermaid()
-	if got := mermaidEdges(mermaid); got != len(rendering.Edges) {
-		t.Errorf("Mermaid declares %d edges, want %d:\n%s", got, len(rendering.Edges), mermaid)
+	nested := rendering.nestedInSubgraphs(rendering.usedPorts(rendering.portView(PortsMinimal)))
+	if got, want := mermaidEdges(mermaid), len(rendering.Edges)-len(nested); got != want {
+		t.Errorf("Mermaid declares %d edges, want %d (the rendering's less the memberships its subgraphs nest):\n%s", got, want, mermaid)
 	}
 	for _, edge := range rendering.Edges {
 		if edge.Kind == EdgeTyping && !strings.Contains(mermaid, edge.From+" -->|\"typing\"| "+edge.To) {
@@ -617,8 +618,9 @@ func TestMixedInheritedReferencesFollowQualifiedCases(t *testing.T) {
 	}
 
 	mermaid := rendering.Mermaid()
-	if got := mermaidEdges(mermaid); got != len(rendering.Edges) {
-		t.Errorf("Mermaid declares %d edges, want %d:\n%s", got, len(rendering.Edges), mermaid)
+	nested := rendering.nestedInSubgraphs(rendering.usedPorts(rendering.portView(PortsMinimal)))
+	if got, want := mermaidEdges(mermaid), len(rendering.Edges)-len(nested); got != want {
+		t.Errorf("Mermaid declares %d edges, want %d (the rendering's less the memberships its subgraphs nest):\n%s", got, want, mermaid)
 	}
 	for _, edge := range rendering.Edges {
 		if (edge.Kind == EdgePerform || edge.Kind == EdgeExhibit) && !strings.Contains(mermaid, edge.From+" -->|\""+mermaidText(edge.Label)+"\"| "+edge.To) {
@@ -709,14 +711,23 @@ func TestCaseAndMixedLayoutRoutesReachDrawnElements(t *testing.T) {
 	if got := findNode(t, mixedRendering.Roots, "Inspection").Geometry; got == nil || got.X != 50 || got.Y != 30 {
 		t.Errorf("mixed case geometry = %+v, want (50, 30)", got)
 	}
-	var typingRoute []Point
+	// A Route about the usage steers its membership edge from the owner, as in
+	// a tree; its typing from the usage to its definition carries none.
+	pump := findNode(t, mixedRendering.Roots, "pump")
+	var membershipRoute, typingRoute []Point
 	for _, edge := range mixedRendering.Edges {
-		if edge.Kind == EdgeTyping && edge.From == findNode(t, mixedRendering.Roots, "pump").ID {
+		switch {
+		case edge.Kind == EdgeComposition && edge.To == pump.ID:
+			membershipRoute = edge.Route
+		case edge.Kind == EdgeTyping && edge.From == pump.ID:
 			typingRoute = edge.Route
 		}
 	}
-	if !reflect.DeepEqual(typingRoute, []Point{{100, 40}, {140, 80}}) {
-		t.Errorf("mixed typing route = %+v, want (100, 40) to (140, 80)", typingRoute)
+	if !reflect.DeepEqual(membershipRoute, []Point{{100, 40}, {140, 80}}) {
+		t.Errorf("mixed membership route = %+v, want (100, 40) to (140, 80)", membershipRoute)
+	}
+	if typingRoute != nil {
+		t.Errorf("mixed typing route = %+v, want none: the Route about pump steers its membership edge", typingRoute)
 	}
 }
 
@@ -1189,4 +1200,17 @@ func mapNodeNames(nodes map[string][]*Node) []string {
 	}
 	sort.Strings(names)
 	return names
+}
+
+// TestEdgeKindNamesEveryKind checks every edge kind has a name of its own, so a
+// kind added without one cannot render as a bare "edge".
+func TestEdgeKindNamesEveryKind(t *testing.T) {
+	for kind := EdgeConnection; kind < edgeKindCount; kind++ {
+		if got := kind.String(); got == "edge" || got == "" {
+			t.Errorf("EdgeKind(%d).String() = %q, want a name of its own", int(kind), got)
+		}
+	}
+	if got := EdgeKind(edgeKindCount).String(); got != "edge" {
+		t.Errorf("EdgeKind(edgeKindCount).String() = %q, want %q", got, "edge")
+	}
 }

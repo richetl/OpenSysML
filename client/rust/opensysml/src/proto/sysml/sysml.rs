@@ -84,6 +84,29 @@ pub struct Verdict {
     /// for an undecided answer. Reported as the "verification_questions" capability.
     #[prost(message, repeated, tag="17")]
     pub witness: ::prost::alloc::vec::Vec<WitnessAssignment>,
+    /// What the answer rests on, as the REPL's solver reports print it: the
+    /// features the question reads as one value or object while only the default
+    /// `0..*` multiplicity governs them, and the object-holding features whose own
+    /// assertions it does not state. In report order; never set by an evaluation.
+    /// Reported as the "verdict_notes" capability.
+    #[prost(message, repeated, tag="18")]
+    pub notes: ::prost::alloc::vec::Vec<VerdictNote>,
+}
+/// VerdictNote is one assumption or omission behind a Verdict, worded once for
+/// every surface.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct VerdictNote {
+    /// "assumed_one" (a feature read as holding one value or object while only the
+    /// default `0..*` governs it) or "uncovered" (an object-holding feature whose
+    /// own assertions the question does not state).
+    #[prost(string, tag="1")]
+    pub kind: ::prost::alloc::string::String,
+    /// The feature the note is about, as the report names it.
+    #[prost(string, tag="2")]
+    pub subject: ::prost::alloc::string::String,
+    /// The note as a sentence.
+    #[prost(string, tag="3")]
+    pub text: ::prost::alloc::string::String,
 }
 /// WitnessAssignment is one free variable's value in a witnessed assignment:
 /// the assignment the solver found, replayed by the evaluator.
@@ -1460,6 +1483,10 @@ pub struct ConvertRequest {
     /// capability.
     #[prost(bool, tag="12")]
     pub include_check_diagnostics: bool,
+    /// For api-json, restore the ownerless library stubs written before 0.11.0.
+    /// Default false: library elements remain bare references, not roots.
+    #[prost(bool, tag="13")]
+    pub include_library_stubs: bool,
     #[prost(oneof="convert_request::Source", tags="1, 2, 6")]
     pub source: ::core::option::Option<convert_request::Source>,
 }
@@ -1505,6 +1532,21 @@ pub struct ConvertResponse {
     /// reports it in. Empty when experimental is false.
     #[prost(string, tag="7")]
     pub experimental_notice: ::prost::alloc::string::String,
+    /// Referenced standard-library names, outside the element array. Populated
+    /// for successful api-json conversions, including compact output.
+    #[prost(message, repeated, tag="8")]
+    pub library_references: ::prost::alloc::vec::Vec<LibraryReference>,
+}
+/// LibraryReference names a referenced standard-library element, not a model root.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct LibraryReference {
+    #[prost(string, tag="1")]
+    pub id: ::prost::alloc::string::String,
+    #[prost(string, tag="2")]
+    pub qualified_name: ::prost::alloc::string::String,
+    /// Metaclass, as API JSON's @type spells it.
+    #[prost(string, tag="3")]
+    pub r#type: ::prost::alloc::string::String,
 }
 /// MigrateRequest asks for a SysML v1 model migrated to v2. The source is a
 /// file_path the service reads, or the document carried inline as content —
@@ -3633,6 +3675,85 @@ pub struct RunDocumentQueryResponse {
     #[prost(message, repeated, tag="2")]
     pub rows: ::prost::alloc::vec::Vec<DocumentQueryRow>,
 }
+/// QueryOutcome is the record behind a document query that could not be run, an error
+/// detail of the failed call: a pathError or modelError at its step, as -json's checks\[\].outcome.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct QueryOutcome {
+    /// "pathError" or "modelError"
+    #[prost(string, tag="1")]
+    pub kind: ::prost::alloc::string::String,
+    /// the step the outcome is reported at, as "Named(Observatory::x)"
+    #[prost(string, tag="2")]
+    pub step: ::prost::alloc::string::String,
+    /// a pathError's failures, one per failing element
+    #[prost(message, repeated, tag="3")]
+    pub failures: ::prost::alloc::vec::Vec<QueryFailure>,
+    /// a modelError's findings
+    #[prost(message, repeated, tag="4")]
+    pub findings: ::prost::alloc::vec::Vec<QueryFinding>,
+    /// a modelError's path failures from the same fan-out
+    #[prost(message, repeated, tag="5")]
+    pub path_failures: ::prost::alloc::vec::Vec<QueryFailure>,
+}
+/// QueryFailure is one failure of one step on one element: what the step
+/// expected, and what the model holds where the path stopped resolving.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct QueryFailure {
+    #[prost(string, tag="1")]
+    pub step: ::prost::alloc::string::String,
+    #[prost(string, tag="2")]
+    pub expected: ::prost::alloc::string::String,
+    #[prost(message, optional, tag="3")]
+    pub frontier: ::core::option::Option<QueryFrontier>,
+}
+/// QueryFrontier is what the model holds where the path stopped: the last
+/// element that resolved and what it offers in place of what was asked.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct QueryFrontier {
+    /// empty when nothing on the path resolved
+    #[prost(string, tag="1")]
+    pub at: ::prost::alloc::string::String,
+    /// its members, when a name was expected
+    #[prost(message, repeated, tag="2")]
+    pub members: ::prost::alloc::vec::Vec<QueryFrontierMember>,
+    /// its features, when a feature was expected
+    #[prost(message, repeated, tag="3")]
+    pub features: ::prost::alloc::vec::Vec<QueryFrontierFeature>,
+    /// the relationship kinds there are, when a kind was expected
+    #[prost(string, repeated, tag="4")]
+    pub kinds: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+    /// the closest spelling, when a name was expected
+    #[prost(string, tag="5")]
+    pub nearest: ::prost::alloc::string::String,
+}
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct QueryFrontierMember {
+    #[prost(string, tag="1")]
+    pub name: ::prost::alloc::string::String,
+    #[prost(string, tag="2")]
+    pub metaclass: ::prost::alloc::string::String,
+}
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct QueryFrontierFeature {
+    #[prost(string, tag="1")]
+    pub name: ::prost::alloc::string::String,
+    /// empty for an untyped feature
+    #[prost(string, tag="2")]
+    pub r#type: ::prost::alloc::string::String,
+}
+/// QueryFinding is one finding about an element at a step: a constraint the
+/// model violates (ambiguousName, multiplicity, typing, unit) and what was observed.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct QueryFinding {
+    #[prost(string, tag="1")]
+    pub step: ::prost::alloc::string::String,
+    #[prost(string, tag="2")]
+    pub element: ::prost::alloc::string::String,
+    #[prost(string, tag="3")]
+    pub constraint: ::prost::alloc::string::String,
+    #[prost(string, tag="4")]
+    pub observed: ::prost::alloc::string::String,
+}
 /// RenderDocumentRequest renders a named document — a part def specializing
 /// DocumentQueries::Document — to Markdown or HTML. A document binds its
 /// queries' parameters in the model, so the request carries none.
@@ -3764,6 +3885,11 @@ pub struct RenderNode {
     /// ("attributes", "parts", "ports", ...); unset for a node drawn as a box.
     #[prost(string, tag="14")]
     pub compartment: ::prost::alloc::string::String,
+    /// The owner the node is drawn or listed under has the usage through typing,
+    /// subclassification or subsetting rather than declares it; the notation
+    /// prefixes its name with `^`. `name` stays the bare name.
+    #[prost(bool, tag="15")]
+    pub inherited: bool,
 }
 /// RenderPort is a feature drawn on a node's border.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
@@ -3776,6 +3902,9 @@ pub struct RenderPort {
     pub r#type: ::prost::alloc::string::String,
     #[prost(string, tag="4")]
     pub direction: ::prost::alloc::string::String,
+    /// The node's owner has the port from its type rather than declares it; drawn with a `^` before `name`.
+    #[prost(bool, tag="5")]
+    pub inherited: bool,
 }
 /// RenderEdge joins two rendered nodes and may connect their ports.
 #[derive(Clone, PartialEq, ::prost::Message)]

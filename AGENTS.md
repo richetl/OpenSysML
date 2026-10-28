@@ -3,7 +3,7 @@
 > **Prime directive:** If I wanted hacks, I'd write it myself. **Don't ever choose hacky over correct.**
 > Fix root causes upstream, not symptoms. Never weaken, skip, or delete tests to make them pass.
 
-The OpenSysML MDK (Runtime Environment and Development Kit) is a production-grade SysML v2 implementation in **Go 1.23+** (module `github.com/Open-MBEE/OpenSysML`).
+The OpenSysML MDK (Runtime Environment and Development Kit) is a production-grade SysML v2 implementation in **Go 1.26+** (module `github.com/Open-MBEE/OpenSysML`).
 It provides a hand-written lexer/parser, semantic engine, execution runtime, LSP server (`sysml-lsp`), and REPL (`sysml`).
 
 ---
@@ -185,10 +185,10 @@ Then update `docs/project/spec-compliance.md` mapping: semantic rule → impleme
 6. **Add/adjust tests** to lock in the fix and cover the failure mode.
 7. **Verify** with the full gate in §2. Remove any temporary debug code and dead code.
 8. **Commit** using Conventional Commits (see §7). Keep PRs focused (one feature/fix each).
-9. **Open the PR as a draft** against `develop`. A draft runs the quick CI tier (race-free suite, cheap
-   static checks); mark it ready for review once that is green. The full tier then runs on the ready PR
-   and on every later push, and it must be green too. Address review findings as they arrive rather than
-   waiting for CI. Merging is a maintainer's decision.
+9. **Open the PR ready for review** against `develop`. The full CI tier runs on every push and must be
+   green. Address review findings as they arrive rather than waiting for CI. Merging is a maintainer's
+   decision. A draft is only for work you do not yet want reviewed — it runs the cheaper quick tier —
+   and it has to be marked ready before it can be considered.
 
 ---
 
