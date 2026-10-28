@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
-  "pilotTag": "2026-08",
-  "pilotCommit": "692170b71867353b8f90341e61556f49a5beb0e5",
-  "pilotArtifact": "0.62.0",
+  "pilotTag": "2026-09",
+  "pilotCommit": "38665073bbf02849bd309b106eba79cbb3a1ee1d",
+  "pilotArtifact": "0.63.0",
   "jar": {
-    "name": "jupyter-sysml-kernel-0.62.0-all.jar",
-    "digest": "sha256:b1ad9d64b1f0c75730facf25a5e2856bc9df2bb4bd39476df2fdf5ae68cd9350"
+    "name": "jupyter-sysml-kernel-0.63.0-all.jar",
+    "digest": "sha256:0de2fb9fdc19da3c00194bbb7e394a793e579a1e02f171279544e83e4a1fb376"
   },
   "extraction": {
     "classes": [
@@ -14,7 +14,7 @@
     ],
     "method": "CONSTANT_String entries of each class's constant pool matching ^(in)?validate[A-Za-z]+_?$, normalized to the validate... name by dropping the in prefix and one trailing underscore; a name found in both classes has source \"both\""
   },
-  "recorded": "2026-09-12",
+  "recorded": "2026-10-26",
   "specifications": {
     "kerml": {
       "name": "KerML",
@@ -529,8 +529,8 @@
         "clause": "8.3.4.5.2"
       },
       "checks": "The two features a binding connector binds have conforming types, on the explicit `bind`/`binding` and on the bindings the language implies: a feature value to its feature, a result expression to the result parameter, a `satisfy … by` operand and a nested requirement's or case's subject to the subject they fill, and each operator or invocation argument to the parameter of the function it fills (warning)",
-      "implementation": "internal/check/passes/w9c_bound_feature_types.go:W9CBoundFeatureTypesPass.Run; internal/check/passes/typecheck_value.go:exprChecker.checkValueConformance; internal/check/passes/w9c_argument_bindings.go:exprChecker.judgeArgumentBinding",
-      "message": "same wording and position for `bind`/`binding` (feature-chain ends included), result expressions, `satisfy … by` and nested subjects, and for an operator or invocation argument whose static type does not conform to the selected function's parameter (`w + 1` and `sum(masses)` against a `Real` parameter, at the argument of an invocation and at the whole operator expression), with the same silence where the callee is unresolved or ambiguous, the argument's type unknown or collection-valued, or the parameter typed by a `Collection` or `Element`; and the same silence for a Boolean-valued `{ … }` against `BooleanEvaluation` and an expression body against a feature typed by an `Evaluation` in either direction; the implicit binding of a feature value `part x : D = c;` or `return : D = c;` is the typechecker's error `cannot bind a value of type C to a feature typed by D` at the value where the pilot warns at the feature, and that check also judges a `default` value and a narrowing literal (`attribute i : Integer = 1.5;`), which the pilot leaves silent; a `predicate`'s or `bool`'s non-Boolean result expression is likewise the typechecker's error `constraint expression must be Boolean, found D` at the expression (internal/check/passes/typecheck_expr.go:exprChecker.checkBoolean) where the pilot warns at the predicate. Stays approximate: the value/feature typing judgment is the type tier's and a mismatch is an error there, so it cannot become the pilot's constraint-tier warning without letting the constraint tier run over an ill-typed model; the `default` and narrowing-literal cases the pilot leaves silent are spec-genuine; see [gap register §26](spec-pilot-gap-register.md#26-validation-constraints-marked-todo-in-the-pilot-source)",
+      "implementation": "internal/check/passes/w9c_bound_feature_types.go:W9CBoundFeatureTypesPass.Run; internal/check/passes/typecheck_value.go:exprChecker.checkValueConformance; internal/check/passes/w9c_argument_bindings.go:exprChecker.judgeArgumentBinding; internal/check/passes/w9c_argument_bindings.go:exprChecker.judgeFeatureValueBinding",
+      "message": "same wording and position for `bind`/`binding` (feature-chain ends included), result expressions, `satisfy … by` and nested subjects, and for an operator or invocation argument whose static type does not conform to the selected function's parameter (`w + 1` and `sum(masses)` against a `Real` parameter, at the argument of an invocation and at the whole operator expression), with the same silence where the callee is unresolved or ambiguous, the argument's type unknown or collection-valued, or the parameter typed by a `Collection` or `Element`; and the same silence for a Boolean-valued `{ … }` against `BooleanEvaluation` and an expression body against a feature typed by an `Evaluation` in either direction; the implicit binding of a feature value is judged by the value's declared result type against the feature's own types, symmetrically, and warned at the feature as the pilot does (`attribute def R :> Real; attribute a : R = 5;` and `attribute :>> x = 5;` over `x : R`: Integer and `R` specialize neither the other), where a value the type checker's lattice already refuses (`part x : D = c;`, `return : D = c;`, `attribute s : String = 5;`) stays its error `cannot bind a value of type C to a feature typed by D` at the value alone, and that check also judges a `default` value and a narrowing literal (`attribute i : Integer = 1.5;`), which the pilot leaves silent; a `default` value implies no binding and is not warned on, `R = 5.0` conforms because `LiteralRationalEvaluation` returns a `Real`, and an operator's or invocation's result is the library function's or behavior's declared result (`-5` a `DataValue`, `5 [m]` an `Anything`); a `predicate`'s or `bool`'s non-Boolean result expression is likewise the typechecker's error `constraint expression must be Boolean, found D` at the expression (internal/check/passes/typecheck_expr.go:exprChecker.checkBoolean) where the pilot warns at the predicate. Stays approximate: on unrelated primitive kinds the value/feature typing judgment is the type tier's and a mismatch is an error there, so it cannot become the pilot's constraint-tier warning without letting the constraint tier run over an ill-typed model; the `default` and narrowing-literal cases the pilot leaves silent are spec-genuine; see [gap register §26](spec-pilot-gap-register.md#26-validation-constraints-marked-todo-in-the-pilot-source)",
       "negativeCase": "none",
       "codes": [
         "bound-feature-types"
@@ -818,6 +818,28 @@
       "passes": [],
       "status": "unknown",
       "rationale": "no case and no identifiable pass yet"
+    },
+    {
+      "name": "validateConnectionDefinitionEndsAreUsages",
+      "raw": "validateConnectionDefinitionEndsAreUsages_",
+      "source": "sysml",
+      "kind": "validate",
+      "metaclass": "ConnectionDefinition",
+      "spec": {
+        "document": "sysml",
+        "clause": "8.3.13.3"
+      },
+      "checks": "A connection definition's ends, inherited ones included, are usages",
+      "implementation": "internal/check/passes/w10b_ends.go:W10BEndKindPass.Run",
+      "message": "—",
+      "negativeCase": "`semantic/connection-def-end-not-usage.sysml`",
+      "codes": [
+        "connection-def-end-not-usage"
+      ],
+      "passes": [
+        "type"
+      ],
+      "status": "faithful"
     },
     {
       "name": "validateConnectionUsageType",
@@ -1949,6 +1971,28 @@
       "negativeCase": "`semantic/s18-flow-def-three-ends.sysml`",
       "codes": [
         "flow-def-too-many-ends"
+      ],
+      "passes": [
+        "type"
+      ],
+      "status": "faithful"
+    },
+    {
+      "name": "validateFlowDefinitionEndsAreUsages",
+      "raw": "validateFlowDefinitionEndsAreUsages_",
+      "source": "sysml",
+      "kind": "validate",
+      "metaclass": "FlowDefinition",
+      "spec": {
+        "document": "sysml",
+        "clause": "8.3.16.2"
+      },
+      "checks": "A flow definition's ends, inherited ones included, are usages",
+      "implementation": "internal/check/passes/w10b_ends.go:W10BEndKindPass.Run",
+      "message": "—",
+      "negativeCase": "`semantic/flow-def-end-not-usage.sysml`",
+      "codes": [
+        "flow-def-end-not-usage"
       ],
       "passes": [
         "type"
@@ -13728,24 +13772,6 @@
       "heading": "`zeroDegreeFahrenheitInKelvin = 229835/900 [K]` divides by a temperature",
       "path": "internal/workspace/libs/stdlib/Domain Libraries/Quantities and Units/USCustomaryUnits.sysml",
       "line": 255
-    },
-    {
-      "id": "Flows-46",
-      "heading": "`Flows::Message` inherits `Transfer::source` and `Transfer::target`, KerML features, as its flow ends",
-      "path": "internal/workspace/libs/stdlib/Systems Library/Flows.sysml",
-      "line": 46
-    },
-    {
-      "id": "Flows-99",
-      "heading": "`Flows::messages` is a flow usage whose ends are `Transfer::source` and `Transfer::target`",
-      "path": "internal/workspace/libs/stdlib/Systems Library/Flows.sysml",
-      "line": 99
-    },
-    {
-      "id": "Flows-103",
-      "heading": "`Flows::messages` owns no ends redefining `Message::source` and `Message::target`",
-      "path": "internal/workspace/libs/stdlib/Systems Library/Flows.sysml",
-      "line": 103
     }
   ],
   "specIssues": [

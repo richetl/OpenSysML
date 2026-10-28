@@ -90,7 +90,7 @@ var Tools = []Entry{
 		Summary: "Apply workspace edits to a parsed model and answer the edited documents."},
 	{Name: "compare_results", Group: GroupRuntime, RPCs: []string{"CompareResults"}, Flags: []string{"compare-results"},
 		Summary: "Run the configurations a SysML v1 tool's results index and table the tool's distributions beside the runs'."},
-	{Name: "convert", Group: GroupRuntime, RPCs: []string{"Convert"}, Flags: []string{"convert", "from", "id"},
+	{Name: "convert", Group: GroupRuntime, RPCs: []string{"Convert"}, Flags: []string{"convert", "from", "id", "include-library-stubs"},
 		Summary: "Convert a model between the textual notation, JSON, RDF and XMI."},
 	{Name: "diagnostics", Group: GroupRuntime, RPCs: []string{"GetDiagnostics"}, Flags: []string{"validate", "disable-lint", "enable-lint"},
 		Summary: "Report every diagnostic of a parsed model, as sysml -validate does."},
@@ -206,6 +206,7 @@ const (
 // adding the field or RPC and the tool moves the flag into an entry.
 var Unserved = map[string]string{
 	"metaclass-graph":     "no RPC answers the metaclass hierarchy vocabulary graph",
+	"metamodel-table":     "no RPC answers the pinned metamodel's table as JSON",
 	"portable":            "MigrateRequest has no portable field",
 	"render-all":          "no RPC renders every declared view",
 	"render-form":         notDrawn,
@@ -247,6 +248,7 @@ var CLIOnly = map[string]string{
 	"baseline":             "reads a file on the host and shapes the exit status; a tool answers every diagnostic",
 	"warnings-as-errors":   "exit-status policy of the command; a tool answers each diagnostic with its severity",
 	"output":               "writes a file on the host; a tool answers the content",
+	"library-references":   "writes a side file on the host; convert answers libraryReferences inline",
 	"bundle":               "archives a project directory on the host",
 	"unbundle":             "writes a project directory on the host",
 	"jobs":                 "host concurrency",

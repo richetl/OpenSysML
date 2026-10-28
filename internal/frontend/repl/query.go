@@ -3,13 +3,13 @@ package repl
 import (
 	"errors"
 	"fmt"
+	"github.com/Open-MBEE/OpenSysML/internal/doc/queryexec"
 	"strings"
 
 	"github.com/Open-MBEE/OpenSysML/internal/exec/analysis"
 	"github.com/Open-MBEE/OpenSysML/internal/exec/objref"
 	"github.com/Open-MBEE/OpenSysML/internal/exec/runtime"
 	"github.com/Open-MBEE/OpenSysML/internal/semantic/symbols"
-	"github.com/Open-MBEE/OpenSysML/internal/syntax/source"
 )
 
 // VerdictStatus is what a checked condition answered.
@@ -65,6 +65,9 @@ type Verdict struct {
 	// order, and Exploration how it ended; only an explored run has them.
 	Outcomes    []VerdictOutcome
 	Exploration *VerdictExploration
+	// Outcome is the QVTS record behind a document query that could not be run
+	// (queryexec.Outcome); nil for every other verdict.
+	Outcome *queryexec.Outcome
 	// Plan is how the engines answered: the selection made, each engine put to
 	// the question and what it answered, and the composed result whose standing
 	// the last line reports. Nil for a verdict decided before any engine was asked.
@@ -412,18 +415,16 @@ func (s *Session) reportedSubject(result runtime.CheckResult, inst *runtime.Inst
 		// rather than reported under the wrong one.
 		return inst, owner
 	}
-	return result.Subject, root + featurePath(result.SubjectPath)
+	return result.Subject, objectPath(root, result.SubjectPath)
 }
 
-// featurePath spells walked feature names as a label's tail, each after a `.`
-// and quoted where its spelling needs it: `engine`, `mount` → `.engine.mount`.
-func featurePath(names []string) string {
-	var out strings.Builder
-	for _, name := range names {
-		out.WriteString(".")
-		out.WriteString(source.NameText(name))
+// objectPath labels an object nested in the labelled root by the segments walked to it,
+// `fleet.cheap[2]`, the one spelling every verdict about a nested object uses.
+func objectPath(root string, path []string) string {
+	if len(path) == 0 {
+		return root
 	}
-	return out.String()
+	return root + "." + strings.Join(path, ".")
 }
 
 // instanceName is the label the session holds inst under — its name as the

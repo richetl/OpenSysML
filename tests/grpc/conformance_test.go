@@ -17,6 +17,7 @@ import (
 
 	pb "github.com/Open-MBEE/OpenSysML/api/proto"
 	"github.com/Open-MBEE/OpenSysML/internal/exec/analysis"
+	"github.com/Open-MBEE/OpenSysML/internal/exec/solve"
 	"github.com/Open-MBEE/OpenSysML/internal/frontend/grpc"
 	"github.com/Open-MBEE/OpenSysML/internal/semantic/semantics"
 	"github.com/Open-MBEE/OpenSysML/tests/fixtures"
@@ -49,10 +50,20 @@ type expectedAttribute struct {
 	Unit      string      `json:"unit"`
 }
 
+// expectedNote is the fixture encoding of a pb.VerdictNote.
+type expectedNote struct {
+	Kind    string `json:"kind"`
+	Subject string `json:"subject"`
+	Text    string `json:"text"`
+}
+
 // conformanceCase is the schema of a <name>.expected.json fixture. See
 // testdata/conformance/README.md.
 type conformanceCase struct {
 	RPC string `json:"rpc"`
+
+	// Convert: the standard-library names carried outside the element array.
+	LibraryReferences []*pb.LibraryReference `json:"library_references,omitempty"`
 
 	// ApplyEdits
 	Operations      []conformanceEditOperation `json:"operations,omitempty"`
@@ -125,8 +136,17 @@ type conformanceCase struct {
 	ExpectedViolations  []expectedViolation `json:"expected_violations"`
 	ExpectedDivergences map[string][]string `json:"expected_divergences"`
 
-	// RunDocumentQuery: the symbols Instantiate creates objects of first, in
-	// order, then the query and its bindings.
+	// VerifyConstraint: the question asked of the constraint and the notes its
+	// verdict must carry, in order; ExpectedStatus is the status it must answer.
+	Question      string         `json:"question,omitempty"`
+	ExpectedNotes []expectedNote `json:"expected_notes"`
+
+	// VerifyRequirement: the body verdicts the cases verifying the requirement
+	// must answer, in order, each about the object it ran on.
+	ExpectedVerificationVerdicts []expectedVerificationVerdict `json:"expected_verification_verdicts"`
+
+	// RunDocumentQuery, VerifyRequirement: the symbols Instantiate creates objects
+	// of first, in order, so the request is about the objects the model holds.
 	Instantiate     []string          `json:"instantiate,omitempty"`
 	QueryID         string            `json:"query_id,omitempty"`
 	Bindings        []expectedBinding `json:"bindings,omitempty"`
@@ -340,8 +360,7 @@ func runGRPCConformanceCase(t *testing.T, dir, caseName string) {
 	ctx := context.Background()
 
 	parseResp, err := srv.ParseFile(ctx, &pb.ParseFileRequest{
-		Source:      &pb.ParseFileRequest_Content{Content: string(modelData)},
-		ContentHash: caseName,
+		Source: &pb.ParseFileRequest_Content{Content: string(modelData)},
 	})
 	if err != nil {
 		t.Fatalf("ParseFile: %v", err)
@@ -353,6 +372,8 @@ func runGRPCConformanceCase(t *testing.T, dir, caseName string) {
 	}
 
 	switch tc.RPC {
+	case "Convert":
+		runConvertLibraryReferencesCase(t, srv, ctx, parseResp.ModelHash, tc)
 	case "GetSymbol":
 		runGetSymbolCase(t, srv, ctx, parseResp.ModelHash, tc)
 	case "Evaluate":
@@ -387,6 +408,10 @@ func runGRPCConformanceCase(t *testing.T, dir, caseName string) {
 		runCompareResultsCase(t, srv, ctx, parseResp.ModelHash, tc)
 	case "CheckBehavior":
 		runCheckBehaviorCase(t, srv, ctx, parseResp.ModelHash, tc)
+	case "VerifyConstraint":
+		runVerifyConstraintCase(t, srv, ctx, parseResp.ModelHash, tc)
+	case "VerifyRequirement":
+		runVerifyRequirementCase(t, srv, ctx, parseResp.ModelHash, tc)
 	default:
 		t.Fatalf("unknown rpc %q", tc.RPC)
 	}
@@ -1284,6 +1309,52 @@ func runCheckBehaviorCase(t *testing.T, srv *grpc.Service, ctx context.Context, 
 		if !slices.Equal(values, want) {
 			t.Errorf("%s ends as %v, want %v", got.Feature, values, want)
 		}
+	}
+}
+
+func runVerifyConstraintCase(t *testing.T, srv *grpc.Service, ctx context.Context, modelHash string, tc conformanceCase) {
+	t.Helper()
+	if tc.Question != "" && tc.Question != "evaluate" {
+		requireSolver(t)
+	}
+
+	resp, err := srv.VerifyConstraint(ctx, &pb.VerifyConstraintRequest{
+		ModelHash: modelHash,
+		SymbolId:  tc.SymbolID,
+		Question:  tc.Question,
+	})
+	if err != nil {
+		t.Fatalf("VerifyConstraint: %v", err)
+	}
+	if checkExpectedError(t, tc, resp.Error) {
+		return
+	}
+	if resp.Verdict.Error != "" {
+		t.Fatalf("verdict error = %q, want an answer", resp.Verdict.Error)
+	}
+	if resp.Verdict.Status != tc.ExpectedStatus {
+		t.Errorf("status = %q, want %q", resp.Verdict.Status, tc.ExpectedStatus)
+	}
+	if len(resp.Verdict.Notes) != len(tc.ExpectedNotes) {
+		t.Fatalf("notes = %v, want %d", resp.Verdict.Notes, len(tc.ExpectedNotes))
+	}
+	for i, want := range tc.ExpectedNotes {
+		got := resp.Verdict.Notes[i]
+		if got.Kind != want.Kind || got.Subject != want.Subject || got.Text != want.Text {
+			t.Errorf("note %d = %v, want %+v", i, got, want)
+		}
+	}
+}
+
+// requireSolver skips a case that asks a solver question when no SMT solver is
+// installed, unless OPENSYSML_REQUIRE_SMT insists on one.
+func requireSolver(t *testing.T) {
+	t.Helper()
+	if _, err := solve.Discover(); err != nil {
+		if os.Getenv("OPENSYSML_REQUIRE_SMT") != "" {
+			t.Fatalf("no SMT solver found, but OPENSYSML_REQUIRE_SMT is set: %v", err)
+		}
+		t.Skipf("no SMT solver installed: %v", err)
 	}
 }
 

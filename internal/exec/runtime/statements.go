@@ -824,6 +824,7 @@ func (e *stmtEngine) pickStatement(stmts []lower.Statement, next []int, order *l
 		Where:        statementsWherePrefix + e.host.describe(),
 		Alternatives: alts,
 	}
+	choice.alike = e.ctx.heldAlike
 	classifyBy(&choice, fps, func(a, b int) bool { return order.Dependent(next[a], next[b], divided) },
 		func(int, int) lower.Relation { return lower.Relation{} })
 	if e.ctx.statementOrderSweep != nil {
@@ -1068,7 +1069,7 @@ func (e *stmtEngine) execute(stmt lower.Statement) (stmtFlow, error) {
 // here, a failing condition ending the run as a ViolationError.
 func (e *stmtEngine) assert(s lower.Assert) error {
 	if s.Sym == nil {
-		return fmt.Errorf("%w: %s: the assertion is not declared where it was written", ErrNoConditions, e.host.describe())
+		return fmt.Errorf("%w: %s: the assertion is not declared where it was written", ErrNotAConstraint, e.host.describe())
 	}
 	ec := e.evalIn(s.Scope)
 	check := conditionCheck{

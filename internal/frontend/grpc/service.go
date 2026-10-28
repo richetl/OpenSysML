@@ -67,6 +67,10 @@ const CapabilityRecordRun = "record_run"
 // and the `question`, `status` and `witness` fields of every Verdict.
 const CapabilityVerificationQuestions = "verification_questions"
 
+// CapabilityVerdictNotes names the `notes` field of every Verdict: the
+// assumptions and omissions behind a solver's answer, as the REPL prints them.
+const CapabilityVerdictNotes = "verdict_notes"
+
 // CapabilityVerificationArguments names the `arguments` and `named_arguments`
 // fields of VerifyConstraintRequest and VerifyRequirementRequest, which bind the
 // checked element's `in` parameters as RunAnalysisRequest binds a case's.
@@ -225,6 +229,12 @@ const CapabilityConvertDocuments = "convert_documents"
 // keep_derived: api-json written as the compact document, with an id table and
 // handles, and optionally without the metamodel's derived properties.
 const CapabilityConvertCompact = "convert_compact"
+
+// CapabilityConvertLibraryReferences names ConvertResponse.library_references.
+const CapabilityConvertLibraryReferences = "convert_library_references"
+
+// CapabilityConvertLibraryStubs names ConvertRequest.include_library_stubs.
+const CapabilityConvertLibraryStubs = "convert_library_stubs"
 
 // CapabilityConvertCheckDiagnostics names ConvertRequest.include_check_diagnostics:
 // the semantic check's diagnostics, with their severities, reported alongside
@@ -390,10 +400,13 @@ var capabilities = []string{
 	CapabilityCheck,
 	CapabilityConvertDocuments,
 	CapabilityConvertCompact,
+	CapabilityConvertLibraryReferences,
+	CapabilityConvertLibraryStubs,
 	CapabilityConvertCheckDiagnostics,
 	CapabilityParseSourcesAffected,
 	CapabilityRenderDocumentFileName,
 	CapabilityOrderDependence,
+	CapabilityVerdictNotes,
 }
 
 type capabilityAvailability struct {

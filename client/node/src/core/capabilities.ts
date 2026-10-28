@@ -54,6 +54,8 @@ export const CAPABILITY_VERIFICATION = "verification";
 export const CAPABILITY_VERIFICATION_QUESTIONS = "verification_questions";
 /** `arguments` and `named_arguments` on VerifyConstraint and VerifyRequirement. */
 export const CAPABILITY_VERIFICATION_ARGUMENTS = "verification_arguments";
+/** `notes` on every Verdict; a service without it answers with none. */
+export const CAPABILITY_VERDICT_NOTES = "verdict_notes";
 /** The `Query` RPC. */
 export const CAPABILITY_QUERY = "query";
 /** `orderBy` on `Query`; a service without it would ignore the field. */
@@ -139,6 +141,10 @@ export const CAPABILITY_RATIONAL_VALUES = "rational_values";
 export const CAPABILITY_CONVERT_DOCUMENTS = "convert_documents";
 /** `ConvertRequest.compact`, `omitDerived` and `keepDerived`: api-json written as the compact document (an id table and handles), optionally without derived properties. */
 export const CAPABILITY_CONVERT_COMPACT = "convert_compact";
+/** The standard-library name table outside API JSON's element array. */
+export const CAPABILITY_CONVERT_LIBRARY_REFERENCES = "convert_library_references";
+/** Opt-in ownerless library stubs for legacy API JSON readers. */
+export const CAPABILITY_CONVERT_LIBRARY_STUBS = "convert_library_stubs";
 /** `ConvertRequest.includeCheckDiagnostics`: the semantic check's diagnostics, each with its own severity, reported alongside the converted output. */
 export const CAPABILITY_CONVERT_CHECK_DIAGNOSTICS = "convert_check_diagnostics";
 /** `ParseSourcesRequest.baseModelHash` and `ParseSourcesResponse.affected`: the documents whose results may differ from the base model's, so a client re-reads only those after an edit. */

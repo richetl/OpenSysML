@@ -32,6 +32,7 @@ var plantumlGoldenCases = []struct {
 	{"action", "action.sysml", "FlowViews::driveView", KindAction},
 	{"case", "case.sysml", "CaseExamples::caseDiagram", KindCase},
 	{"mixed", "mixed.sysml", "MixedExamples::mixedDiagram", KindMixed},
+	{"mixed-memberships", "mixed-memberships.sysml", "MixedMemberships::memberships", KindMixed},
 	{"typed-action", "typed-behavior.sysml", "TypedViews::cycleView", KindAction},
 	{"typed-state", "typed-behavior.sysml", "TypedViews::boilerView", KindState},
 	{"filters", "filters.sysml", "FilteredViews::safetyView", KindTree},
@@ -54,6 +55,8 @@ var plantumlGoldenCases = []struct {
 	{"glyphs-definition", "notation-glyphs.sysml", "NotationGlyphs::Diagrams::definitionGlyphs", KindDefinition},
 	{"glyphs-package", "notation-glyphs.sysml", "NotationGlyphs::Diagrams::packageGlyphs", KindPackage},
 	{"glyphs-tree", "notation-glyphs.sysml", "NotationGlyphs::Diagrams::treeGlyphs", KindTree},
+	{"calc-parameters", "calc-parameters.sysml", "ParameterCalcViews::calculations", KindTree},
+	{"calc-parameter-definitions", "calc-parameters.sysml", "ParameterCalcViews::definitions", KindTree},
 	{"glyphs-interconnection", "notation-glyphs.sysml", "NotationGlyphs::Diagrams::lineGlyphs", KindInterconnection},
 	{"glyphs-action", "notation-glyphs.sysml", "NotationGlyphs::Diagrams::fillGlyphs", KindAction},
 	{"glyphs-mixed", "notation-glyphs.sysml", "NotationGlyphs::Diagrams::mixedGlyphs", KindMixed},
@@ -207,7 +210,7 @@ func TestPlantUMLInterconnectionNestsRectangles(t *testing.T) {
 		t.Fatalf("PlantUML: %v", err)
 	}
 	for _, want := range []string{
-		"rectangle \"<size:10>//«part def»//</size>\\n**Loop**\" as n0 <<part def>> {\n  rectangle \"<size:10>//«part»//</size>\\n**pump : Pump**\" as n1 <<part>> <<usage>> {\n    port \"outlet\" as n1.0\n    rectangle \"<size:10>//«item»//</size>\\n**waterOut : Water**\" as n2 <<item>> <<usage>>\n  }\n",
+		"rectangle \"<size:10>//«part def»//</size>\\n**Loop**\" as n0 <<part def>> {\n  rectangle \"<size:10>//«part»//</size>\\n**pump : Pump**\" as n1 <<part>> <<usage>> {\n    port \"^outlet\" as n1.0\n    rectangle \"<size:10>//«item»//</size>\\n**^waterOut : Water**\" as n2 <<item>> <<usage>>\n  }\n",
 		"\n}\nn1.0 -[thickness=3]- n3.0 : supply\nn2 --> n4 : of Water\n@enduml\n",
 	} {
 		if !strings.Contains(puml, want) {
@@ -256,7 +259,7 @@ func TestPlantUMLActionUsesStateGrammar(t *testing.T) {
 		"  state \"<size:10>//«fork»//</size>\\n**split**\" as n7 <<fork>>\n",
 		"  state \"**final**\" as n9 <<end>>\n",
 		"  state \"<size:10>//«decision»//</size>\\n**check**\" as n11 <<choice>>\n",
-		"  state \"<size:10>//«action»//</size>\\n**monitor**\\nown flow\" as n3 <<action>> <<usage>> {\n",
+		"  state \"<size:10>//«action»//</size>\\n**monitor**\\nown flow\\nparameters\\nin reading\" as n3 <<action>> <<usage>> {\n",
 		"\nn2 --> n3 : torque to reading\n",
 		"\nn11 -[dashed]-> n9 : [speed <U+003E> 0]\n",
 		"\nn1 -[dashed]-> n7\n",

@@ -14,6 +14,7 @@ import {
   CAPABILITY_BIG_INT_VALUES,
   CAPABILITY_RATIONAL_VALUES,
   CAPABILITY_CONVERT,
+  CAPABILITY_CONVERT_LIBRARY_STUBS,
   CAPABILITY_DOCUMENT_QUERY,
   CAPABILITY_ENGINES,
   CAPABILITY_FEATURE_VALUES,
@@ -117,7 +118,7 @@ import {
   migrationReportOf,
   pathIsV1,
 } from "./conversion.js";
-import type { MigrateOptions } from "./conversion.js";
+import type { ConvertOptions, MigrateOptions } from "./conversion.js";
 import {
   buildQuery,
   elementsOf,
@@ -200,6 +201,8 @@ export interface TransportOptions {
   timeoutMs?: number;
   /** Extra headers sent with every call. */
   headers?: Record<string, string>;
+  /** Bearer token every call carries, for a service that requires one. */
+  token?: string;
   /** Called with each response, for logging, metrics or a conformance runner. */
   onResponse?: ResponseTap;
 }
@@ -404,7 +407,7 @@ export class Connection {
   async convert(
     toFormat: string,
     source: { path: string } | { content: string } | { modelHash: string },
-    options: { fromFormat?: string; tolerateSyntaxErrors?: boolean } = {},
+    options: ConvertOptions = {},
   ): Promise<Conversion> {
     const given = ["path", "content", "modelHash"].filter(
       (name) => (source as Record<string, unknown>)[name] !== undefined,
@@ -433,10 +436,14 @@ export class Connection {
       CAPABILITY_CONVERT,
       upgradeRemedy(CAPABILITY_CONVERT),
     );
+    if (options.includeLibraryStubs) {
+      requireCapability(this.info, CAPABILITY_CONVERT_LIBRARY_STUBS, upgradeRemedy(CAPABILITY_CONVERT_LIBRARY_STUBS));
+    }
     const request = create(ConvertRequestSchema, {
       toFormat,
       fromFormat: options.fromFormat ?? "",
       tolerateSyntaxErrors: options.tolerateSyntaxErrors === true,
+      includeLibraryStubs: options.includeLibraryStubs === true,
     });
     if ("path" in source) {
       request.source = { case: "filePath", value: source.path };
@@ -469,6 +476,7 @@ export class Connection {
       throw new ConversionError(response.error, diagnostics);
     }
     return new Conversion({
+      libraryReferences: response.libraryReferences,
       content: response.content,
       fromFormat: response.fromFormat,
       toFormat: response.toFormat,
