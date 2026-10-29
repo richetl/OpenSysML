@@ -26,6 +26,15 @@ RUNTIMES_10 = (
 )
 RUNTIMES_9 = "Microsoft.NETCore.App 9.0.10 [/x/shared/Microsoft.NETCore.App]\n"
 IDENTITY = "OpenMBEE.OpenSysML 0.10.1 (.NETCoreApp,Version=v10.0)"
+METAMODEL_IDENTITY = "OpenMBEE.OpenSysML.Metamodel 0.10.1 (.NETCoreApp,Version=v10.0)"
+METAMODEL_LINES = (
+    METAMODEL_IDENTITY,
+    "87 elements, 1 root namespace(s), metamodel 20250201",
+    "part def Base owns mass",
+    "part def Vehicle owns mass2, wheel, p, cargo, a, c, s",
+    "part wheel : (none)",
+    "part v : Vehicle",
+)
 
 
 def report(classes, valid=10, covered=5, sources=()):
@@ -310,6 +319,58 @@ class GatesTest(unittest.TestCase):
         with self.assertRaisesRegex(gates.GateError, "reported no address"):
             gates.sample(IDENTITY, dotnet, binary, environ={})
         self.assertTrue(os.path.exists(stopped))
+
+    def metamodel_host(self, lines=METAMODEL_LINES, exit_code=0):
+        """A stand-in dotnet whose metamodel sample records how it was run, then prints lines and exits."""
+        seen = os.path.join(self.tmp.name, "seen-metamodel")
+        return self.executable("metamodel-dotnet", f"""\
+            import json, os, sys
+            json.dump({{"argv": sys.argv[1:], "service": os.environ.get("OPENSYSML_SERVICE"),
+                       "binary": os.environ.get("OPENSYSML_GRPC_BINARY")}}, open({seen!r}, "w"))
+            for line in {list(lines)!r}:
+                print(line)
+            sys.exit({exit_code})
+            """), seen
+
+    def test_metamodel_sample_reads_the_fixture_with_no_service_named(self):
+        dotnet, seen = self.metamodel_host()
+        environ = {"OPENSYSML_SERVICE": "elsewhere:1", "OPENSYSML_GRPC_BINARY": "/bin/sysml-grpc"}
+        self.assertEqual(gates.metamodel_sample(METAMODEL_IDENTITY, dotnet, environ=environ), list(METAMODEL_LINES))
+        with open(seen, encoding="utf-8") as f:
+            run = json.load(f)
+        fixture = os.path.join(gates.REPO_ROOT, gates.METAMODEL_SAMPLE_INPUT)
+        self.assertEqual(run["argv"], ["run", "--project", gates.METAMODEL_SAMPLE_PROJECT, "-c", "Release", "--no-build", "--", fixture])
+        self.assertTrue(os.path.isfile(fixture))
+        self.assertEqual((run["service"], run["binary"]), (None, None))
+
+    def test_metamodel_sample_accepts_another_metamodel_release(self):
+        lines = (METAMODEL_LINES[0], "87 elements, 1 root namespace(s), metamodel 20990101", *METAMODEL_LINES[2:])
+        dotnet, _ = self.metamodel_host(lines)
+        self.assertEqual(gates.metamodel_sample(METAMODEL_IDENTITY, dotnet, environ={}), list(lines))
+
+    def test_metamodel_sample_rejects_other_output(self):
+        for lines in (
+            (IDENTITY, *METAMODEL_LINES[1:]),
+            METAMODEL_LINES[:-1],
+            (*METAMODEL_LINES, "part extra : (none)"),
+            (*METAMODEL_LINES[:-1], "part v : (type not exported)"),
+            (METAMODEL_LINES[0], "87 elements, 1 root namespace(s), metamodel 2025", *METAMODEL_LINES[2:]),
+        ):
+            with self.subTest(lines=lines):
+                dotnet, _ = self.metamodel_host(lines)
+                with self.assertRaisesRegex(gates.GateError, "the sample printed"):
+                    gates.metamodel_sample(METAMODEL_IDENTITY, dotnet, environ={})
+
+    def test_metamodel_sample_rejects_a_failing_run(self):
+        dotnet, _ = self.metamodel_host(exit_code=2)
+        with self.assertRaisesRegex(gates.GateError, "exited 2"):
+            gates.metamodel_sample(METAMODEL_IDENTITY, dotnet, environ={})
+
+    def test_main_metamodel_sample_can_report_success_on_a_legacy_windows_console(self):
+        with mock.patch.object(gates, "metamodel_sample", return_value=list(METAMODEL_LINES)):
+            result, stdout = self.main_on_legacy_console(["metamodel-sample", "--expect", METAMODEL_IDENTITY])
+        self.assertEqual(result, 0)
+        self.assertEqual(stdout, f"OK {METAMODEL_IDENTITY}: {METAMODEL_LINES[1]}\n")
 
     def test_sample_rejects_a_binary_that_is_not_a_file(self):
         dotnet, _ = self.sample_host()

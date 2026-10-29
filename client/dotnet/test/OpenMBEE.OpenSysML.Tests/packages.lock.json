@@ -272,6 +272,9 @@
           "OpenMBEE.OpenSysML": "[0.10.1, )"
         }
       },
+      "openmbee.opensysml.metamodel": {
+        "type": "Project"
+      },
       "Google.Protobuf": {
         "type": "CentralTransitive",
         "requested": "[3.36.2, )",

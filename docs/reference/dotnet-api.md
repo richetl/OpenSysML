@@ -212,9 +212,9 @@ and fails a required property; a sequence reads as several values.
 
 ## Metamodel types
 
-The `OpenMBEE.OpenSysML.Metamodel` assembly is the SysML v2 metamodel as C# types, standalone: it
-references neither `OpenMBEE.OpenSysML` nor any package at run time, and is consumed by its own
-`ProjectReference`:
+The `OpenMBEE.OpenSysML.Metamodel` assembly is the SysML v2 metamodel as C# types and a reader of
+exported model JSON into them, standalone: it references neither `OpenMBEE.OpenSysML` nor any package
+at run time, needs no service, and is consumed by its own `ProjectReference`:
 
 ```xml
 <ProjectReference Include="path/to/OpenSysML/client/dotnet/src/OpenMBEE.OpenSysML.Metamodel/OpenMBEE.OpenSysML.Metamodel.csproj" />
@@ -226,7 +226,8 @@ dotnet-metamodel`; `make dotnet-metamodel-check` fails when they are stale):
 | Generated | For | Shape |
 | --- | --- | --- |
 | `IPartUsage` and one interface per metaclass | every metaclass | extends its superclasses' interfaces, so `is` and `OfType<T>()` select by metamodel ancestry; declares the metaclass's own properties, read-only and PascalCased |
-| `Elements.PartUsage` and one sealed class per concrete metaclass | concrete metaclasses | derives from `MetamodelElement` and implements every inherited property explicitly; created only by a reader |
+| `Elements.PartUsage` and one sealed class per concrete metaclass | concrete metaclasses | derives from `MetamodelElement` and implements every inherited property explicitly; created only by the reader |
+| an internal sealed class per abstract metaclass | abstract metaclasses | the same, for elements a document types as the abstract metaclass or as a type the reader maps to it; read through the interface |
 | `FeatureDirectionKind` and one enum per enumeration | every enumeration | members are the literals PascalCased, valued by position |
 | `Metaclasses.PartUsage` and one `MetaclassInfo` per metaclass | every metaclass | `MetamodelVersion`, `SourceTag` and `SourceCommit` record the metamodel release |
 
@@ -237,10 +238,10 @@ the most specific value.
 
 | Type | Role |
 | --- | --- |
-| `IMetamodelElement` | what every element has: `Id` (`@id`), `JsonType` (`@type` as written), `MetaclassInfo`; no property may take these names |
+| `IMetamodelElement` | what every element has: `Id` (`@id`), `JsonType` (`@type` as written), `MetaclassInfo`, `GetValue(jsonKey)`, an untyped read, and `Extensions`, the keys no property has; no property may take these names |
 | `MetamodelElement` | base of the element classes; `ToString` is the metaclass and `@id` |
 | `Metaclasses` | `All`, `Enumerations`, `TryGet` by name or generated type, `Of<T>()`, `TryGetEnumeration` |
-| `MetaclassInfo` | `Name`, `IsAbstract`, `InterfaceType`, `ElementType`, `Parents`, `Ancestors` (linearized, nearest first), `DeclaredProperties`, `Properties`, `ConformsTo`, `TryGetProperty` by JSON key, `TryGetPropertyByName` |
+| `MetaclassInfo` | `Name`, `IsAbstract`, `InterfaceType`, `ElementType`, `Parents`, `Ancestors` (linearized, nearest first), `DeclaredProperties`, `Properties`, `ConformsTo`, `TryGetProperty` and `GetProperty` by JSON key, `TryGetPropertyByName` |
 | `MetaProperty` | `JsonKey`, `Name`, `QualifiedName`, `Iri`, `DeclaringMetaclass`, `RangeKind`, `RangeMetaclass`, `RangeEnumeration`, `ValueType`, `IsMany`, `IsOrdered`, `IsUnique`, `IsDerived`, `LowerBound`, `DefaultLiteral`, `Redefines`, `Subsets`, `Opposite` |
 | `PropertyRangeKind` | `Metaclass`, `Enumeration` or `Primitive` |
 | `EnumerationInfo` | `Name`, `EnumType`, `Literals`, `TryParse`, `GetLiteral`, `Of<TEnum>()` |
@@ -251,8 +252,42 @@ rejects names that hide runtime or framework types or inherited registry members
 that do not match their primitive, enumeration or metaclass ranges.
 
 A property the document does not supply throws `NotSuppliedException`, never a default the
-metamodel states; one supplied as null reads as null, or as empty when many-valued. The reader that
-loads exported JSON into these types is not yet in this tree, so no public API creates an element.
+metamodel states; one supplied as null reads as null, or as empty when many-valued.
+
+### Reading exported JSON
+
+```csharp
+var graph = MetamodelGraph.ReadJson("vehicle.json");   // a path, never JSON text
+var vehicle = graph.All<IPartDefinition>().Single(definition => definition.DeclaredName == "Vehicle");
+var parts = vehicle.OwnedFeature.OfType<IPartUsage>();
+```
+
+| Type | Role |
+| --- | --- |
+| `MetamodelGraph` | `ReadJson` from a path, a `Stream`, a `JsonDocument` or `JsonElement`s, each with or without `ReadOptions`; `Elements` in document order; `this[id]`, `TryGet`, `Contains`; `All<T>()` by metamodel ancestry; `Roots`, the namespaces with no recorded owner; `CheckRanges`; `KeepsExtensions` |
+| `ReadOptions` | `CheckRanges`, true by default; `Supertypes`, the metaclass chain of `@type`s the metamodel lacks; `KeepExtensions`, false by default |
+
+A document is an element object, an array of them, a DataVersion or an array of them, or a Commit
+whose `change` holds DataVersions; a null payload holds no element. `ReadJson` neither disposes a
+caller's stream or document nor keeps any of its JSON: the graph is complete, every value converted
+and every reference resolved, when it returns, and immutable. `@type` is matched without a `sysml:`
+prefix or SysML namespace IRI, versioned or not, and kept as written; a type the metamodel lacks is
+read as the first metaclass along `Supertypes`, else as `Element`. A key the element's metaclass has
+no property for, such as an exporter's `sysx:` annotations, is not converted; with `KeepExtensions`
+each element's `Extensions` holds those members as written, copied out of the source, and without it
+reading `Extensions` throws `InvalidOperationException`.
+
+A document that is not an element graph fails the read with `MalformedDocumentException`. Every
+source overload rejects invalid UTF-8, undecodable Unicode property names or element identities,
+and duplicate keys anywhere, including ignored extensions and envelope metadata. A value
+that does not fit its property, a reference outside its metaclass or an undecodable Unicode string
+among them, fails only reads of that
+property, every time, with `MalformedValueException`, and a reference to an `@id` the document does
+not include, or any `@ref`, with `UnresolvedReferenceException`. With `CheckRanges` off an
+out-of-range reference is kept: the typed property, which cannot hold it, still throws, and `GetValue`
+returns it. OpenSysML's `api-json` export omits the derived `feature`, `inheritedFeature` and
+`definition`, which read as `NotSuppliedException` with `IsDerived`, and refers to standard-library
+elements it does not include. The compact form is not read.
 
 ## Exceptions
 
@@ -290,7 +325,11 @@ client library:
 
 ```text
 MetamodelException
-└── NotSuppliedException           a property the document does not supply; Property, ElementId, IsDerived
+├── NotSuppliedException           a property the document does not supply; Property, ElementId, IsDerived
+├── UnresolvedReferenceException   a property's reference the document does not resolve; Property, ElementId, TargetId, TargetRef
+├── MalformedValueException        a property's value that does not fit it; Property, ElementId
+├── MalformedDocumentException     a document that is not an element graph
+└── UnknownJsonKeyException        a JSON key the metaclass has no property for; Metaclass, JsonKey
 ```
 
 A `ServiceException` is only ever a status the service itself sent. A status the transport made
@@ -332,7 +371,8 @@ never retried.
 - It is not on NuGet, and has no packaged `dotnet` tool, symbol package or SourceLink.
 - It targets `net10.0` only, and makes no Native AOT, trimming, browser or Blazor claim.
 - It has no synchronous API, no notebook display hooks and no DataFrame integration.
-- Its standalone metamodel types have no JSON reader yet, and its typed-class generator is a
+- Its standalone metamodel reader reads the API's element array and sysml-toolkit JSON, not the
+  compact form, and computes no derived property an export omits. Its typed-class generator is a
   checkout console, not a Roslyn source generator, MSBuild task or packaged `dotnet` tool.
 - It never retries a call, falls back to another protocol, or bypasses TLS validation.
 - It starts no service implicitly from the compiler or MSBuild.

@@ -156,6 +156,34 @@ property cannot read, two elements generating one C# name, a reference outside t
 Commit the file and gate it with `--check`, which exits 1 when the model has changed. The
 [.NET API reference](../reference/dotnet-api.md#typed-model-classes) lists every rule.
 
+## Reading exported JSON
+
+The checkout's `OpenMBEE.OpenSysML.Metamodel` project holds the SysML metamodel as C# types, one
+interface per metaclass, and reads an exported model into them without a service. Reference it alone:
+
+```xml
+<ProjectReference Include="path/to/OpenSysML/client/dotnet/src/OpenMBEE.OpenSysML.Metamodel/OpenMBEE.OpenSysML.Metamodel.csproj" />
+```
+
+```csharp
+using OpenMBEE.OpenSysML.Metamodel;
+
+var graph = MetamodelGraph.ReadJson("vehicle.json");   // what ToApiJsonAsync wrote, or sysml-toolkit JSON
+foreach (var part in graph.All<IPartUsage>())          // every element whose metaclass specializes PartUsage
+{
+    Console.WriteLine($"{part.DeclaredName}: {string.Join(", ", part.Type.Select(type => type.DeclaredName))}");
+}
+```
+
+An export need not carry every property. One it omits throws `NotSuppliedException`, never a default;
+OpenSysML's export omits derived properties such as `feature` and `definition`. A reference to an
+element it does not include, such as a standard-library type, throws `UnresolvedReferenceException`,
+and a value that does not fit its property `MalformedValueException`, when that property is read; the
+rest of the graph reads. A document that is not an element graph fails `ReadJson` itself with
+`MalformedDocumentException`. [`samples/MetamodelReader`](../../client/dotnet/samples/MetamodelReader/)
+is a complete program, and the
+[.NET API reference](../reference/dotnet-api.md#reading-exported-json) lists the rules.
+
 ## Limitations
 
 - Distributed as a checkout only: no NuGet package and no packaged `dotnet` tool.
@@ -165,9 +193,8 @@ Commit the file and gate it with `--check`, which exits 1 when the model has cha
 - Asynchronous only, with no synchronous mirrors, notebook display or DataFrame integration.
 - Typed model classes come from a checkout console, not a Roslyn source generator, MSBuild task
   or packaged `dotnet` tool, and no build starts a service.
-- No standalone metamodel reader yet: the API's JSON form is read through `Symbol` and `Value`. The
-  metamodel's metaclasses, properties and enumerations exist as standalone C# types, described in
-  the [API reference](../reference/dotnet-api.md#metamodel-types).
+- The metamodel reader computes no derived property an export omits and does not read the compact
+  `api-json` form; it implements no metamodel operation and loads nothing into a service.
 
 ## Next steps
 

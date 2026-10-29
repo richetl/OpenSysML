@@ -278,6 +278,8 @@ The [Rust client guide](../clients/rust.md) covers the crates.io package and a f
 The [.NET client guide](../clients/dotnet.md) covers referencing the checkout, the runnable Vehicle
 sample, protocols and the service binary. See the [.NET API reference](../reference/dotnet-api.md)
 for the asynchronous typed API and its exceptions.
+[Reading exported JSON](../clients/dotnet.md#reading-exported-json) reads a JSON export into the
+SysML metamodel as C# types without a service.
 
 ## From Julia
 

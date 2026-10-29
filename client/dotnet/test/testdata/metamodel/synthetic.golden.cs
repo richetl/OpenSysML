@@ -3,7 +3,7 @@
 //     Metamodel: synthetic
 //     Pilot tag: none
 //     Pilot commit: none
-//     9 metaclasses, 14 properties, 1 enumerations
+//     10 metaclasses, 14 properties, 1 enumerations
 //     Regenerate with: make dotnet-metamodel
 // </auto-generated>
 #nullable enable
@@ -91,6 +91,11 @@ namespace OpenMBEE.OpenSysML.Metamodel
         string? LeftName { get; }
     }
 
+    /// <summary>Metaclass <c>Namespace</c>, specializing <c>Element</c>.</summary>
+    public interface INamespace : IElement
+    {
+    }
+
     /// <summary>Metaclass <c>Narrow</c>, specializing <c>Base</c>.</summary>
     public interface INarrow : IBase
     {
@@ -133,19 +138,22 @@ namespace OpenMBEE.OpenSysML.Metamodel
         public const string SourceCommit = "none";
 
         /// <summary>Metaclass <c>Base</c>.</summary>
-        public static MetaclassInfo Base { get; } = new("Base", true, typeof(IBase), null, null);
+        public static MetaclassInfo Base { get; } = new("Base", true, typeof(IBase), null, static (id, jsonType) => new global::OpenMBEE.OpenSysML.Metamodel.Elements.Base(id, jsonType));
 
         /// <summary>Metaclass <c>Definition</c>.</summary>
         public static MetaclassInfo Definition { get; } = new("Definition", false, typeof(IDefinition), typeof(global::OpenMBEE.OpenSysML.Metamodel.Elements.Definition), static (id, jsonType) => new global::OpenMBEE.OpenSysML.Metamodel.Elements.Definition(id, jsonType));
 
         /// <summary>Metaclass <c>Element</c>.</summary>
-        public static MetaclassInfo Element { get; } = new("Element", true, typeof(IElement), null, null);
+        public static MetaclassInfo Element { get; } = new("Element", true, typeof(IElement), null, static (id, jsonType) => new global::OpenMBEE.OpenSysML.Metamodel.Elements.Element(id, jsonType));
 
         /// <summary>Metaclass <c>Leaf</c>.</summary>
         public static MetaclassInfo Leaf { get; } = new("Leaf", false, typeof(ILeaf), typeof(global::OpenMBEE.OpenSysML.Metamodel.Elements.Leaf), static (id, jsonType) => new global::OpenMBEE.OpenSysML.Metamodel.Elements.Leaf(id, jsonType));
 
         /// <summary>Metaclass <c>Left</c>.</summary>
         public static MetaclassInfo Left { get; } = new("Left", false, typeof(ILeft), typeof(global::OpenMBEE.OpenSysML.Metamodel.Elements.Left), static (id, jsonType) => new global::OpenMBEE.OpenSysML.Metamodel.Elements.Left(id, jsonType));
+
+        /// <summary>Metaclass <c>Namespace</c>.</summary>
+        public static MetaclassInfo Namespace { get; } = new("Namespace", false, typeof(INamespace), typeof(global::OpenMBEE.OpenSysML.Metamodel.Elements.Namespace), static (id, jsonType) => new global::OpenMBEE.OpenSysML.Metamodel.Elements.Namespace(id, jsonType));
 
         /// <summary>Metaclass <c>Narrow</c>.</summary>
         public static MetaclassInfo Narrow { get; } = new("Narrow", false, typeof(INarrow), typeof(global::OpenMBEE.OpenSysML.Metamodel.Elements.Narrow), static (id, jsonType) => new global::OpenMBEE.OpenSysML.Metamodel.Elements.Narrow(id, jsonType));
@@ -182,6 +190,7 @@ namespace OpenMBEE.OpenSysML.Metamodel
             Base.Initialize([Element], [Element], [Base_definition, Base_definitions, Base_direction, Base_size, Base_weight]);
             Definition.Initialize([Element], [Element], []);
             Left.Initialize([Base], [Base, Element], [Left_leftName]);
+            Namespace.Initialize([Element], [Element], []);
             Narrow.Initialize([Base], [Base, Element], [Narrow_definition, Narrow_definitions]);
             Narrower.Initialize([Narrow], [Narrow, Base, Element], [Narrower_definition]);
             PartDefinition.Initialize([Definition], [Definition, Element], []);
@@ -202,7 +211,7 @@ namespace OpenMBEE.OpenSysML.Metamodel
             Narrow_definitions.Link([Base_definitions], [], null);
             Narrower_definition.Link([Narrow_definition], [], null);
             Register(
-                [Base, Definition, Element, Leaf, Left, Narrow, Narrower, PartDefinition, Right],
+                [Base, Definition, Element, Leaf, Left, Namespace, Narrow, Narrower, PartDefinition, Right],
                 [Enumeration_Direction]);
         }
     }
@@ -210,11 +219,46 @@ namespace OpenMBEE.OpenSysML.Metamodel
 
 namespace OpenMBEE.OpenSysML.Metamodel.Elements
 {
+    /// <summary>An element read as abstract metaclass <c>Base</c>, which its document types as <c>Base</c> or as a type the reader maps to it. Its properties are read through <see cref="IBase"/>, which it implements explicitly.</summary>
+    internal sealed class Base : MetamodelElement, IBase
+    {
+        internal Base(string id, string jsonType)
+            : base(Metaclasses.Base, id, jsonType)
+        {
+        }
+
+        IDefinition? IBase.Definition => ReadReference<IDefinition>(Metaclasses.Base_definition);
+        IReadOnlyList<IDefinition> IBase.Definitions => ReadList<IDefinition>(Metaclasses.Base_definitions);
+        Direction? IBase.Direction => ReadValue<Direction>(Metaclasses.Base_direction);
+        int? IBase.Size => ReadValue<int>(Metaclasses.Base_size);
+        double? IBase.Weight => ReadValue<double>(Metaclasses.Base_weight);
+        IReadOnlyList<string> IElement.AliasIds => ReadList<string>(Metaclasses.Element_aliasIds);
+        string? IElement.DeclaredName => ReadText(Metaclasses.Element_declaredName);
+        bool? IElement.IsLibraryElement => ReadValue<bool>(Metaclasses.Element_isLibraryElement);
+        IReadOnlyList<IElement> IElement.OwnedElement => ReadList<IElement>(Metaclasses.Element_ownedElement);
+        IElement? IElement.Owner => ReadReference<IElement>(Metaclasses.Element_owner);
+    }
+
     /// <summary>An element of exactly metaclass <c>Definition</c>. Its properties are read through <see cref="IDefinition"/>, which it implements explicitly.</summary>
     public sealed class Definition : MetamodelElement, IDefinition
     {
         internal Definition(string id, string jsonType)
             : base(Metaclasses.Definition, id, jsonType)
+        {
+        }
+
+        IReadOnlyList<string> IElement.AliasIds => ReadList<string>(Metaclasses.Element_aliasIds);
+        string? IElement.DeclaredName => ReadText(Metaclasses.Element_declaredName);
+        bool? IElement.IsLibraryElement => ReadValue<bool>(Metaclasses.Element_isLibraryElement);
+        IReadOnlyList<IElement> IElement.OwnedElement => ReadList<IElement>(Metaclasses.Element_ownedElement);
+        IElement? IElement.Owner => ReadReference<IElement>(Metaclasses.Element_owner);
+    }
+
+    /// <summary>An element read as abstract metaclass <c>Element</c>, which its document types as <c>Element</c> or as a type the reader maps to it. Its properties are read through <see cref="IElement"/>, which it implements explicitly.</summary>
+    internal sealed class Element : MetamodelElement, IElement
+    {
+        internal Element(string id, string jsonType)
+            : base(Metaclasses.Element, id, jsonType)
         {
         }
 
@@ -265,6 +309,21 @@ namespace OpenMBEE.OpenSysML.Metamodel.Elements
         IReadOnlyList<IElement> IElement.OwnedElement => ReadList<IElement>(Metaclasses.Element_ownedElement);
         IElement? IElement.Owner => ReadReference<IElement>(Metaclasses.Element_owner);
         string? ILeft.LeftName => ReadText(Metaclasses.Left_leftName);
+    }
+
+    /// <summary>An element of exactly metaclass <c>Namespace</c>. Its properties are read through <see cref="INamespace"/>, which it implements explicitly.</summary>
+    public sealed class Namespace : MetamodelElement, INamespace
+    {
+        internal Namespace(string id, string jsonType)
+            : base(Metaclasses.Namespace, id, jsonType)
+        {
+        }
+
+        IReadOnlyList<string> IElement.AliasIds => ReadList<string>(Metaclasses.Element_aliasIds);
+        string? IElement.DeclaredName => ReadText(Metaclasses.Element_declaredName);
+        bool? IElement.IsLibraryElement => ReadValue<bool>(Metaclasses.Element_isLibraryElement);
+        IReadOnlyList<IElement> IElement.OwnedElement => ReadList<IElement>(Metaclasses.Element_ownedElement);
+        IElement? IElement.Owner => ReadReference<IElement>(Metaclasses.Element_owner);
     }
 
     /// <summary>An element of exactly metaclass <c>Narrow</c>. Its properties are read through <see cref="INarrow"/>, which it implements explicitly.</summary>

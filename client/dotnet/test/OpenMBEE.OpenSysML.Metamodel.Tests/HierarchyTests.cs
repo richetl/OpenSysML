@@ -84,7 +84,10 @@ public sealed class HierarchyTests
         Assert.False(elements.Single(element => element is Namespace) is IFeature);
     }
 
-    /// <summary>Concrete metaclasses, and only they, have a sealed element class that only a reader can construct.</summary>
+    /// <summary>
+    /// Concrete metaclasses, and only they, have a public sealed element class that only a reader can construct;
+    /// an abstract one's elements, those a document types as it, are of an internal sealed class read through its interface.
+    /// </summary>
     [Fact]
     public void ConcreteMetaclassesHaveSealedElementClasses()
     {
@@ -97,7 +100,18 @@ public sealed class HierarchyTests
             if (metaclass.IsAbstract)
             {
                 Assert.Null(metaclass.ElementType);
-                Assert.Throws<InvalidOperationException>(() => metaclass.CreateElement("x", "x"));
+                var standIn = metaclass.CreateElement("x", "vendor:Thing");
+                var standInType = standIn.GetType();
+                Assert.False(standInType.IsVisible, metaclass.Name);
+                Assert.True(standInType.IsSealed, metaclass.Name);
+                Assert.Equal(typeof(MetamodelElement), standInType.BaseType);
+                Assert.IsAssignableFrom(metaclass.InterfaceType, standIn);
+                Assert.Same(metaclass, standIn.MetaclassInfo);
+                Assert.Equal("vendor:Thing", standIn.JsonType);
+                Assert.False(Metaclasses.TryGet(standInType, out _));
+                Assert.All(
+                    Metaclasses.All.Where(other => !metaclass.ConformsTo(other)),
+                    other => Assert.False(other.InterfaceType.IsInstanceOfType(standIn), $"{metaclass.Name} is no {other.Name}"));
                 continue;
             }
 

@@ -83,7 +83,7 @@ DOTNET ?= dotnet
 DOTNET_DIR := client/dotnet
 DOTNET_SLN := $(DOTNET_DIR)/OpenSysML.slnx
 DOTNET_REPORTS := $(BIN_DIR)/dotnet
-DOTNET_MIN_TESTS := 3121
+DOTNET_MIN_TESTS := 3242
 DOTNET_CLIENT_VERSION = $(shell sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' $(DOTNET_DIR)/Directory.Build.props)
 # The typed-code generator, run from its Release build with the arguments a user gives it.
 DOTNET_GENERATE = $(DOTNET) run --project $(DOTNET_DIR)/src/OpenMBEE.OpenSysML.Generate -c Release --no-build --
@@ -702,7 +702,7 @@ dotnet-build: dotnet-preflight ## Restore the .NET client from its lock files an
 # With OPENSYSML_GRPC_BINARY and OPENSYSML_REQUIRE_SERVICE=1 set, as CI sets them,
 # a test that needs the service fails rather than skips without one, and so does the
 # Vehicle sample's run against a service the sample gate starts.
-dotnet-test: dotnet-build ## Check formatting, run the .NET client tests and its sample, and write JUnit under bin/dotnet/test
+dotnet-test: dotnet-build ## Check formatting, run the .NET client tests and its samples, and write JUnit under bin/dotnet/test
 	@echo "Running .NET client tests..."
 	$(DOTNET) format $(DOTNET_SLN) --verify-no-changes --no-restore
 	rm -rf $(DOTNET_REPORTS)/test
@@ -711,6 +711,8 @@ dotnet-test: dotnet-build ## Check formatting, run the .NET client tests and its
 		--results-directory $(CURDIR)/$(DOTNET_REPORTS)/test --report-xunit-junit
 	$(PYTHON) $(DOTNET_DIR)/scripts/dotnet-gates.py sample --dotnet "$(DOTNET)" \
 		--expect "OpenMBEE.OpenSysML $(DOTNET_CLIENT_VERSION) (.NETCoreApp,Version=v10.0)"
+	$(PYTHON) $(DOTNET_DIR)/scripts/dotnet-gates.py metamodel-sample --dotnet "$(DOTNET)" \
+		--expect "OpenMBEE.OpenSysML.Metamodel $(DOTNET_CLIENT_VERSION) (.NETCoreApp,Version=v10.0)"
 	$(PYTHON) $(DOTNET_DIR)/scripts/dotnet-gates-test.py
 	$(PYTHON) scripts/sync-release-digests.py --check
 	@echo "✓ .NET client tests passed"

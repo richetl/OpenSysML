@@ -2531,8 +2531,8 @@ compared scenario by scenario with the reference runner (`make conformance-dotne
 sample the client's tests execute. Its checkout's generator (`OpenMBEE.OpenSysML.Generate`, `make
 dotnet-generate`) writes typed C# interfaces and classes over a model's definitions, refusing what
 it cannot type soundly. The standalone `OpenMBEE.OpenSysML.Metamodel` assembly holds the metamodel
-as C# types generated from the metamodel table (`make dotnet-metamodel`); the reader that loads
-exported JSON into them, as the Python client's does, is not yet implemented. Out of scope, and
+as C# types generated from the metamodel table (`make dotnet-metamodel`), and reads exported JSON
+into them without a service, as the Python client's reader does (`MetamodelGraph.ReadJson`). Out of scope, and
 stated as such: NuGet publication, Native AOT and trimming, browser hosts and synchronous mirrors.
 
 # Track B — bindings from modeled elements to external data and services

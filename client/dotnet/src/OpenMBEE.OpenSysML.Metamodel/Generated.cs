@@ -2618,7 +2618,7 @@ namespace OpenMBEE.OpenSysML.Metamodel
         public static MetaclassInfo Connector { get; } = new("Connector", false, typeof(IConnector), typeof(global::OpenMBEE.OpenSysML.Metamodel.Elements.Connector), static (id, jsonType) => new global::OpenMBEE.OpenSysML.Metamodel.Elements.Connector(id, jsonType));
 
         /// <summary>Metaclass <c>ConnectorAsUsage</c>.</summary>
-        public static MetaclassInfo ConnectorAsUsage { get; } = new("ConnectorAsUsage", true, typeof(IConnectorAsUsage), null, null);
+        public static MetaclassInfo ConnectorAsUsage { get; } = new("ConnectorAsUsage", true, typeof(IConnectorAsUsage), null, static (id, jsonType) => new global::OpenMBEE.OpenSysML.Metamodel.Elements.ConnectorAsUsage(id, jsonType));
 
         /// <summary>Metaclass <c>ConstraintDefinition</c>.</summary>
         public static MetaclassInfo ConstraintDefinition { get; } = new("ConstraintDefinition", false, typeof(IConstraintDefinition), typeof(global::OpenMBEE.OpenSysML.Metamodel.Elements.ConstraintDefinition), static (id, jsonType) => new global::OpenMBEE.OpenSysML.Metamodel.Elements.ConstraintDefinition(id, jsonType));
@@ -2630,7 +2630,7 @@ namespace OpenMBEE.OpenSysML.Metamodel
         public static MetaclassInfo ConstructorExpression { get; } = new("ConstructorExpression", false, typeof(IConstructorExpression), typeof(global::OpenMBEE.OpenSysML.Metamodel.Elements.ConstructorExpression), static (id, jsonType) => new global::OpenMBEE.OpenSysML.Metamodel.Elements.ConstructorExpression(id, jsonType));
 
         /// <summary>Metaclass <c>ControlNode</c>.</summary>
-        public static MetaclassInfo ControlNode { get; } = new("ControlNode", true, typeof(IControlNode), null, null);
+        public static MetaclassInfo ControlNode { get; } = new("ControlNode", true, typeof(IControlNode), null, static (id, jsonType) => new global::OpenMBEE.OpenSysML.Metamodel.Elements.ControlNode(id, jsonType));
 
         /// <summary>Metaclass <c>CrossSubsetting</c>.</summary>
         public static MetaclassInfo CrossSubsetting { get; } = new("CrossSubsetting", false, typeof(ICrossSubsetting), typeof(global::OpenMBEE.OpenSysML.Metamodel.Elements.CrossSubsetting), static (id, jsonType) => new global::OpenMBEE.OpenSysML.Metamodel.Elements.CrossSubsetting(id, jsonType));
@@ -2657,7 +2657,7 @@ namespace OpenMBEE.OpenSysML.Metamodel
         public static MetaclassInfo Documentation { get; } = new("Documentation", false, typeof(IDocumentation), typeof(global::OpenMBEE.OpenSysML.Metamodel.Elements.Documentation), static (id, jsonType) => new global::OpenMBEE.OpenSysML.Metamodel.Elements.Documentation(id, jsonType));
 
         /// <summary>Metaclass <c>Element</c>.</summary>
-        public static MetaclassInfo Element { get; } = new("Element", true, typeof(IElement), null, null);
+        public static MetaclassInfo Element { get; } = new("Element", true, typeof(IElement), null, static (id, jsonType) => new global::OpenMBEE.OpenSysML.Metamodel.Elements.Element(id, jsonType));
 
         /// <summary>Metaclass <c>ElementFilterMembership</c>.</summary>
         public static MetaclassInfo ElementFilterMembership { get; } = new("ElementFilterMembership", false, typeof(IElementFilterMembership), typeof(global::OpenMBEE.OpenSysML.Metamodel.Elements.ElementFilterMembership), static (id, jsonType) => new global::OpenMBEE.OpenSysML.Metamodel.Elements.ElementFilterMembership(id, jsonType));
@@ -2678,7 +2678,7 @@ namespace OpenMBEE.OpenSysML.Metamodel
         public static MetaclassInfo ExhibitStateUsage { get; } = new("ExhibitStateUsage", false, typeof(IExhibitStateUsage), typeof(global::OpenMBEE.OpenSysML.Metamodel.Elements.ExhibitStateUsage), static (id, jsonType) => new global::OpenMBEE.OpenSysML.Metamodel.Elements.ExhibitStateUsage(id, jsonType));
 
         /// <summary>Metaclass <c>Expose</c>.</summary>
-        public static MetaclassInfo Expose { get; } = new("Expose", true, typeof(IExpose), null, null);
+        public static MetaclassInfo Expose { get; } = new("Expose", true, typeof(IExpose), null, static (id, jsonType) => new global::OpenMBEE.OpenSysML.Metamodel.Elements.Expose(id, jsonType));
 
         /// <summary>Metaclass <c>Expression</c>.</summary>
         public static MetaclassInfo Expression { get; } = new("Expression", false, typeof(IExpression), typeof(global::OpenMBEE.OpenSysML.Metamodel.Elements.Expression), static (id, jsonType) => new global::OpenMBEE.OpenSysML.Metamodel.Elements.Expression(id, jsonType));
@@ -2735,7 +2735,7 @@ namespace OpenMBEE.OpenSysML.Metamodel
         public static MetaclassInfo IfActionUsage { get; } = new("IfActionUsage", false, typeof(IIfActionUsage), typeof(global::OpenMBEE.OpenSysML.Metamodel.Elements.IfActionUsage), static (id, jsonType) => new global::OpenMBEE.OpenSysML.Metamodel.Elements.IfActionUsage(id, jsonType));
 
         /// <summary>Metaclass <c>Import</c>.</summary>
-        public static MetaclassInfo Import { get; } = new("Import", true, typeof(IImport), null, null);
+        public static MetaclassInfo Import { get; } = new("Import", true, typeof(IImport), null, static (id, jsonType) => new global::OpenMBEE.OpenSysML.Metamodel.Elements.Import(id, jsonType));
 
         /// <summary>Metaclass <c>IncludeUseCaseUsage</c>.</summary>
         public static MetaclassInfo IncludeUseCaseUsage { get; } = new("IncludeUseCaseUsage", false, typeof(IIncludeUseCaseUsage), typeof(global::OpenMBEE.OpenSysML.Metamodel.Elements.IncludeUseCaseUsage), static (id, jsonType) => new global::OpenMBEE.OpenSysML.Metamodel.Elements.IncludeUseCaseUsage(id, jsonType));
@@ -2744,7 +2744,7 @@ namespace OpenMBEE.OpenSysML.Metamodel
         public static MetaclassInfo IndexExpression { get; } = new("IndexExpression", false, typeof(IIndexExpression), typeof(global::OpenMBEE.OpenSysML.Metamodel.Elements.IndexExpression), static (id, jsonType) => new global::OpenMBEE.OpenSysML.Metamodel.Elements.IndexExpression(id, jsonType));
 
         /// <summary>Metaclass <c>InstantiationExpression</c>.</summary>
-        public static MetaclassInfo InstantiationExpression { get; } = new("InstantiationExpression", true, typeof(IInstantiationExpression), null, null);
+        public static MetaclassInfo InstantiationExpression { get; } = new("InstantiationExpression", true, typeof(IInstantiationExpression), null, static (id, jsonType) => new global::OpenMBEE.OpenSysML.Metamodel.Elements.InstantiationExpression(id, jsonType));
 
         /// <summary>Metaclass <c>Interaction</c>.</summary>
         public static MetaclassInfo Interaction { get; } = new("Interaction", false, typeof(IInteraction), typeof(global::OpenMBEE.OpenSysML.Metamodel.Elements.Interaction), static (id, jsonType) => new global::OpenMBEE.OpenSysML.Metamodel.Elements.Interaction(id, jsonType));
@@ -2795,7 +2795,7 @@ namespace OpenMBEE.OpenSysML.Metamodel
         public static MetaclassInfo LiteralString { get; } = new("LiteralString", false, typeof(ILiteralString), typeof(global::OpenMBEE.OpenSysML.Metamodel.Elements.LiteralString), static (id, jsonType) => new global::OpenMBEE.OpenSysML.Metamodel.Elements.LiteralString(id, jsonType));
 
         /// <summary>Metaclass <c>LoopActionUsage</c>.</summary>
-        public static MetaclassInfo LoopActionUsage { get; } = new("LoopActionUsage", true, typeof(ILoopActionUsage), null, null);
+        public static MetaclassInfo LoopActionUsage { get; } = new("LoopActionUsage", true, typeof(ILoopActionUsage), null, static (id, jsonType) => new global::OpenMBEE.OpenSysML.Metamodel.Elements.LoopActionUsage(id, jsonType));
 
         /// <summary>Metaclass <c>Membership</c>.</summary>
         public static MetaclassInfo Membership { get; } = new("Membership", false, typeof(IMembership), typeof(global::OpenMBEE.OpenSysML.Metamodel.Elements.Membership), static (id, jsonType) => new global::OpenMBEE.OpenSysML.Metamodel.Elements.Membership(id, jsonType));
@@ -2897,7 +2897,7 @@ namespace OpenMBEE.OpenSysML.Metamodel
         public static MetaclassInfo ReferenceUsage { get; } = new("ReferenceUsage", false, typeof(IReferenceUsage), typeof(global::OpenMBEE.OpenSysML.Metamodel.Elements.ReferenceUsage), static (id, jsonType) => new global::OpenMBEE.OpenSysML.Metamodel.Elements.ReferenceUsage(id, jsonType));
 
         /// <summary>Metaclass <c>Relationship</c>.</summary>
-        public static MetaclassInfo Relationship { get; } = new("Relationship", true, typeof(IRelationship), null, null);
+        public static MetaclassInfo Relationship { get; } = new("Relationship", true, typeof(IRelationship), null, static (id, jsonType) => new global::OpenMBEE.OpenSysML.Metamodel.Elements.Relationship(id, jsonType));
 
         /// <summary>Metaclass <c>RenderingDefinition</c>.</summary>
         public static MetaclassInfo RenderingDefinition { get; } = new("RenderingDefinition", false, typeof(IRenderingDefinition), typeof(global::OpenMBEE.OpenSysML.Metamodel.Elements.RenderingDefinition), static (id, jsonType) => new global::OpenMBEE.OpenSysML.Metamodel.Elements.RenderingDefinition(id, jsonType));
@@ -7472,6 +7472,138 @@ namespace OpenMBEE.OpenSysML.Metamodel.Elements
         IReadOnlyList<IType> IType.UnioningType => ReadList<IType>(Metaclasses.Type_unioningType);
     }
 
+    /// <summary>An element read as abstract metaclass <c>ConnectorAsUsage</c>, which its document types as <c>ConnectorAsUsage</c> or as a type the reader maps to it. Its properties are read through <see cref="IConnectorAsUsage"/>, which it implements explicitly.</summary>
+    internal sealed class ConnectorAsUsage : MetamodelElement, IConnectorAsUsage
+    {
+        internal ConnectorAsUsage(string id, string jsonType)
+            : base(Metaclasses.ConnectorAsUsage, id, jsonType)
+        {
+        }
+
+        IReadOnlyList<IAssociation> IConnector.Association => ReadList<IAssociation>(Metaclasses.Connector_association);
+        IReadOnlyList<IFeature> IConnector.ConnectorEnd => ReadList<IFeature>(Metaclasses.Connector_connectorEnd);
+        IType? IConnector.DefaultFeaturingType => ReadReference<IType>(Metaclasses.Connector_defaultFeaturingType);
+        IReadOnlyList<IFeature> IConnector.RelatedFeature => ReadList<IFeature>(Metaclasses.Connector_relatedFeature);
+        IFeature? IConnector.SourceFeature => ReadReference<IFeature>(Metaclasses.Connector_sourceFeature);
+        IReadOnlyList<IFeature> IConnector.TargetFeature => ReadList<IFeature>(Metaclasses.Connector_targetFeature);
+        IReadOnlyList<string> IElement.AliasIds => ReadList<string>(Metaclasses.Element_aliasIds);
+        string? IElement.DeclaredName => ReadText(Metaclasses.Element_declaredName);
+        string? IElement.DeclaredShortName => ReadText(Metaclasses.Element_declaredShortName);
+        IReadOnlyList<IDocumentation> IElement.Documentation => ReadList<IDocumentation>(Metaclasses.Element_documentation);
+        string? IElement.ElementId => ReadText(Metaclasses.Element_elementId);
+        bool? IElement.IsImpliedIncluded => ReadValue<bool>(Metaclasses.Element_isImpliedIncluded);
+        bool? IElement.IsLibraryElement => ReadValue<bool>(Metaclasses.Element_isLibraryElement);
+        string? IElement.Name => ReadText(Metaclasses.Element_name);
+        IReadOnlyList<IAnnotation> IElement.OwnedAnnotation => ReadList<IAnnotation>(Metaclasses.Element_ownedAnnotation);
+        IReadOnlyList<IElement> IElement.OwnedElement => ReadList<IElement>(Metaclasses.Element_ownedElement);
+        IReadOnlyList<IRelationship> IElement.OwnedRelationship => ReadList<IRelationship>(Metaclasses.Element_ownedRelationship);
+        IElement? IElement.Owner => ReadReference<IElement>(Metaclasses.Element_owner);
+        IOwningMembership? IElement.OwningMembership => ReadReference<IOwningMembership>(Metaclasses.Element_owningMembership);
+        INamespace? IElement.OwningNamespace => ReadReference<INamespace>(Metaclasses.Element_owningNamespace);
+        IRelationship? IElement.OwningRelationship => ReadReference<IRelationship>(Metaclasses.Element_owningRelationship);
+        string? IElement.QualifiedName => ReadText(Metaclasses.Element_qualifiedName);
+        string? IElement.ShortName => ReadText(Metaclasses.Element_shortName);
+        IReadOnlyList<ITextualRepresentation> IElement.TextualRepresentation => ReadList<ITextualRepresentation>(Metaclasses.Element_textualRepresentation);
+        IReadOnlyList<IFeature> IFeature.ChainingFeature => ReadList<IFeature>(Metaclasses.Feature_chainingFeature);
+        IFeature? IFeature.CrossFeature => ReadReference<IFeature>(Metaclasses.Feature_crossFeature);
+        FeatureDirectionKind? IFeature.Direction => ReadValue<FeatureDirectionKind>(Metaclasses.Feature_direction);
+        IType? IFeature.EndOwningType => ReadReference<IType>(Metaclasses.Feature_endOwningType);
+        IFeature? IFeature.FeatureTarget => ReadReference<IFeature>(Metaclasses.Feature_featureTarget);
+        IReadOnlyList<IType> IFeature.FeaturingType => ReadList<IType>(Metaclasses.Feature_featuringType);
+        bool? IFeature.IsComposite => ReadValue<bool>(Metaclasses.Feature_isComposite);
+        bool? IFeature.IsConstant => ReadValue<bool>(Metaclasses.Feature_isConstant);
+        bool? IFeature.IsDerived => ReadValue<bool>(Metaclasses.Feature_isDerived);
+        bool? IFeature.IsEnd => ReadValue<bool>(Metaclasses.Feature_isEnd);
+        bool? IFeature.IsOrdered => ReadValue<bool>(Metaclasses.Feature_isOrdered);
+        bool? IFeature.IsPortion => ReadValue<bool>(Metaclasses.Feature_isPortion);
+        bool? IFeature.IsUnique => ReadValue<bool>(Metaclasses.Feature_isUnique);
+        bool? IFeature.IsVariable => ReadValue<bool>(Metaclasses.Feature_isVariable);
+        ICrossSubsetting? IFeature.OwnedCrossSubsetting => ReadReference<ICrossSubsetting>(Metaclasses.Feature_ownedCrossSubsetting);
+        IReadOnlyList<IFeatureChaining> IFeature.OwnedFeatureChaining => ReadList<IFeatureChaining>(Metaclasses.Feature_ownedFeatureChaining);
+        IReadOnlyList<IFeatureInverting> IFeature.OwnedFeatureInverting => ReadList<IFeatureInverting>(Metaclasses.Feature_ownedFeatureInverting);
+        IReadOnlyList<IRedefinition> IFeature.OwnedRedefinition => ReadList<IRedefinition>(Metaclasses.Feature_ownedRedefinition);
+        IReferenceSubsetting? IFeature.OwnedReferenceSubsetting => ReadReference<IReferenceSubsetting>(Metaclasses.Feature_ownedReferenceSubsetting);
+        IReadOnlyList<ISubsetting> IFeature.OwnedSubsetting => ReadList<ISubsetting>(Metaclasses.Feature_ownedSubsetting);
+        IReadOnlyList<ITypeFeaturing> IFeature.OwnedTypeFeaturing => ReadList<ITypeFeaturing>(Metaclasses.Feature_ownedTypeFeaturing);
+        IReadOnlyList<IFeatureTyping> IFeature.OwnedTyping => ReadList<IFeatureTyping>(Metaclasses.Feature_ownedTyping);
+        IFeatureMembership? IFeature.OwningFeatureMembership => ReadReference<IFeatureMembership>(Metaclasses.Feature_owningFeatureMembership);
+        IType? IFeature.OwningType => ReadReference<IType>(Metaclasses.Feature_owningType);
+        IReadOnlyList<IType> IFeature.Type => ReadList<IType>(Metaclasses.Feature_type);
+        IReadOnlyList<IMembership> INamespace.ImportedMembership => ReadList<IMembership>(Metaclasses.Namespace_importedMembership);
+        IReadOnlyList<IElement> INamespace.Member => ReadList<IElement>(Metaclasses.Namespace_member);
+        IReadOnlyList<IMembership> INamespace.Membership => ReadList<IMembership>(Metaclasses.Namespace_membership);
+        IReadOnlyList<IImport> INamespace.OwnedImport => ReadList<IImport>(Metaclasses.Namespace_ownedImport);
+        IReadOnlyList<IElement> INamespace.OwnedMember => ReadList<IElement>(Metaclasses.Namespace_ownedMember);
+        IReadOnlyList<IMembership> INamespace.OwnedMembership => ReadList<IMembership>(Metaclasses.Namespace_ownedMembership);
+        bool? IRelationship.IsImplied => ReadValue<bool>(Metaclasses.Relationship_isImplied);
+        IReadOnlyList<IElement> IRelationship.OwnedRelatedElement => ReadList<IElement>(Metaclasses.Relationship_ownedRelatedElement);
+        IElement? IRelationship.OwningRelatedElement => ReadReference<IElement>(Metaclasses.Relationship_owningRelatedElement);
+        IReadOnlyList<IElement> IRelationship.RelatedElement => ReadList<IElement>(Metaclasses.Relationship_relatedElement);
+        IReadOnlyList<IElement> IRelationship.Source => ReadList<IElement>(Metaclasses.Relationship_source);
+        IReadOnlyList<IElement> IRelationship.Target => ReadList<IElement>(Metaclasses.Relationship_target);
+        IReadOnlyList<IType> IType.DifferencingType => ReadList<IType>(Metaclasses.Type_differencingType);
+        IReadOnlyList<IFeature> IType.DirectedFeature => ReadList<IFeature>(Metaclasses.Type_directedFeature);
+        IReadOnlyList<IFeature> IType.EndFeature => ReadList<IFeature>(Metaclasses.Type_endFeature);
+        IReadOnlyList<IFeature> IType.Feature => ReadList<IFeature>(Metaclasses.Type_feature);
+        IReadOnlyList<IFeatureMembership> IType.FeatureMembership => ReadList<IFeatureMembership>(Metaclasses.Type_featureMembership);
+        IReadOnlyList<IFeature> IType.InheritedFeature => ReadList<IFeature>(Metaclasses.Type_inheritedFeature);
+        IReadOnlyList<IMembership> IType.InheritedMembership => ReadList<IMembership>(Metaclasses.Type_inheritedMembership);
+        IReadOnlyList<IFeature> IType.Input => ReadList<IFeature>(Metaclasses.Type_input);
+        IReadOnlyList<IType> IType.IntersectingType => ReadList<IType>(Metaclasses.Type_intersectingType);
+        bool? IType.IsAbstract => ReadValue<bool>(Metaclasses.Type_isAbstract);
+        bool? IType.IsConjugated => ReadValue<bool>(Metaclasses.Type_isConjugated);
+        bool? IType.IsSufficient => ReadValue<bool>(Metaclasses.Type_isSufficient);
+        IMultiplicity? IType.Multiplicity => ReadReference<IMultiplicity>(Metaclasses.Type_multiplicity);
+        IReadOnlyList<IFeature> IType.Output => ReadList<IFeature>(Metaclasses.Type_output);
+        IConjugation? IType.OwnedConjugator => ReadReference<IConjugation>(Metaclasses.Type_ownedConjugator);
+        IReadOnlyList<IDifferencing> IType.OwnedDifferencing => ReadList<IDifferencing>(Metaclasses.Type_ownedDifferencing);
+        IReadOnlyList<IDisjoining> IType.OwnedDisjoining => ReadList<IDisjoining>(Metaclasses.Type_ownedDisjoining);
+        IReadOnlyList<IFeature> IType.OwnedEndFeature => ReadList<IFeature>(Metaclasses.Type_ownedEndFeature);
+        IReadOnlyList<IFeature> IType.OwnedFeature => ReadList<IFeature>(Metaclasses.Type_ownedFeature);
+        IReadOnlyList<IFeatureMembership> IType.OwnedFeatureMembership => ReadList<IFeatureMembership>(Metaclasses.Type_ownedFeatureMembership);
+        IReadOnlyList<IIntersecting> IType.OwnedIntersecting => ReadList<IIntersecting>(Metaclasses.Type_ownedIntersecting);
+        IReadOnlyList<ISpecialization> IType.OwnedSpecialization => ReadList<ISpecialization>(Metaclasses.Type_ownedSpecialization);
+        IReadOnlyList<IUnioning> IType.OwnedUnioning => ReadList<IUnioning>(Metaclasses.Type_ownedUnioning);
+        IReadOnlyList<IType> IType.UnioningType => ReadList<IType>(Metaclasses.Type_unioningType);
+        IReadOnlyList<IClassifier> IUsage.Definition => ReadList<IClassifier>(Metaclasses.Usage_definition);
+        IReadOnlyList<IUsage> IUsage.DirectedUsage => ReadList<IUsage>(Metaclasses.Usage_directedUsage);
+        bool? IUsage.IsReference => ReadValue<bool>(Metaclasses.Usage_isReference);
+        bool? IUsage.IsVariation => ReadValue<bool>(Metaclasses.Usage_isVariation);
+        bool? IUsage.MayTimeVary => ReadValue<bool>(Metaclasses.Usage_mayTimeVary);
+        IReadOnlyList<IActionUsage> IUsage.NestedAction => ReadList<IActionUsage>(Metaclasses.Usage_nestedAction);
+        IReadOnlyList<IAllocationUsage> IUsage.NestedAllocation => ReadList<IAllocationUsage>(Metaclasses.Usage_nestedAllocation);
+        IReadOnlyList<IAnalysisCaseUsage> IUsage.NestedAnalysisCase => ReadList<IAnalysisCaseUsage>(Metaclasses.Usage_nestedAnalysisCase);
+        IReadOnlyList<IAttributeUsage> IUsage.NestedAttribute => ReadList<IAttributeUsage>(Metaclasses.Usage_nestedAttribute);
+        IReadOnlyList<ICalculationUsage> IUsage.NestedCalculation => ReadList<ICalculationUsage>(Metaclasses.Usage_nestedCalculation);
+        IReadOnlyList<ICaseUsage> IUsage.NestedCase => ReadList<ICaseUsage>(Metaclasses.Usage_nestedCase);
+        IReadOnlyList<IConcernUsage> IUsage.NestedConcern => ReadList<IConcernUsage>(Metaclasses.Usage_nestedConcern);
+        IReadOnlyList<IConnectorAsUsage> IUsage.NestedConnection => ReadList<IConnectorAsUsage>(Metaclasses.Usage_nestedConnection);
+        IReadOnlyList<IConstraintUsage> IUsage.NestedConstraint => ReadList<IConstraintUsage>(Metaclasses.Usage_nestedConstraint);
+        IReadOnlyList<IEnumerationUsage> IUsage.NestedEnumeration => ReadList<IEnumerationUsage>(Metaclasses.Usage_nestedEnumeration);
+        IReadOnlyList<IFlowUsage> IUsage.NestedFlow => ReadList<IFlowUsage>(Metaclasses.Usage_nestedFlow);
+        IReadOnlyList<IInterfaceUsage> IUsage.NestedInterface => ReadList<IInterfaceUsage>(Metaclasses.Usage_nestedInterface);
+        IReadOnlyList<IItemUsage> IUsage.NestedItem => ReadList<IItemUsage>(Metaclasses.Usage_nestedItem);
+        IReadOnlyList<IMetadataUsage> IUsage.NestedMetadata => ReadList<IMetadataUsage>(Metaclasses.Usage_nestedMetadata);
+        IReadOnlyList<IOccurrenceUsage> IUsage.NestedOccurrence => ReadList<IOccurrenceUsage>(Metaclasses.Usage_nestedOccurrence);
+        IReadOnlyList<IPartUsage> IUsage.NestedPart => ReadList<IPartUsage>(Metaclasses.Usage_nestedPart);
+        IReadOnlyList<IPortUsage> IUsage.NestedPort => ReadList<IPortUsage>(Metaclasses.Usage_nestedPort);
+        IReadOnlyList<IReferenceUsage> IUsage.NestedReference => ReadList<IReferenceUsage>(Metaclasses.Usage_nestedReference);
+        IReadOnlyList<IRenderingUsage> IUsage.NestedRendering => ReadList<IRenderingUsage>(Metaclasses.Usage_nestedRendering);
+        IReadOnlyList<IRequirementUsage> IUsage.NestedRequirement => ReadList<IRequirementUsage>(Metaclasses.Usage_nestedRequirement);
+        IReadOnlyList<IStateUsage> IUsage.NestedState => ReadList<IStateUsage>(Metaclasses.Usage_nestedState);
+        IReadOnlyList<ITransitionUsage> IUsage.NestedTransition => ReadList<ITransitionUsage>(Metaclasses.Usage_nestedTransition);
+        IReadOnlyList<IUsage> IUsage.NestedUsage => ReadList<IUsage>(Metaclasses.Usage_nestedUsage);
+        IReadOnlyList<IUseCaseUsage> IUsage.NestedUseCase => ReadList<IUseCaseUsage>(Metaclasses.Usage_nestedUseCase);
+        IReadOnlyList<IVerificationCaseUsage> IUsage.NestedVerificationCase => ReadList<IVerificationCaseUsage>(Metaclasses.Usage_nestedVerificationCase);
+        IReadOnlyList<IViewUsage> IUsage.NestedView => ReadList<IViewUsage>(Metaclasses.Usage_nestedView);
+        IReadOnlyList<IViewpointUsage> IUsage.NestedViewpoint => ReadList<IViewpointUsage>(Metaclasses.Usage_nestedViewpoint);
+        IDefinition? IUsage.OwningDefinition => ReadReference<IDefinition>(Metaclasses.Usage_owningDefinition);
+        IUsage? IUsage.OwningUsage => ReadReference<IUsage>(Metaclasses.Usage_owningUsage);
+        IReadOnlyList<IUsage> IUsage.Usage => ReadList<IUsage>(Metaclasses.Usage_usage);
+        IReadOnlyList<IUsage> IUsage.Variant => ReadList<IUsage>(Metaclasses.Usage_variant);
+        IReadOnlyList<IVariantMembership> IUsage.VariantMembership => ReadList<IVariantMembership>(Metaclasses.Usage_variantMembership);
+    }
+
     /// <summary>An element of exactly metaclass <c>ConstraintDefinition</c>. Its properties are read through <see cref="IConstraintDefinition"/>, which it implements explicitly.</summary>
     public sealed class ConstraintDefinition : MetamodelElement, IConstraintDefinition
     {
@@ -7788,6 +7920,133 @@ namespace OpenMBEE.OpenSysML.Metamodel.Elements
         IReadOnlyList<ISpecialization> IType.OwnedSpecialization => ReadList<ISpecialization>(Metaclasses.Type_ownedSpecialization);
         IReadOnlyList<IUnioning> IType.OwnedUnioning => ReadList<IUnioning>(Metaclasses.Type_ownedUnioning);
         IReadOnlyList<IType> IType.UnioningType => ReadList<IType>(Metaclasses.Type_unioningType);
+    }
+
+    /// <summary>An element read as abstract metaclass <c>ControlNode</c>, which its document types as <c>ControlNode</c> or as a type the reader maps to it. Its properties are read through <see cref="IControlNode"/>, which it implements explicitly.</summary>
+    internal sealed class ControlNode : MetamodelElement, IControlNode
+    {
+        internal ControlNode(string id, string jsonType)
+            : base(Metaclasses.ControlNode, id, jsonType)
+        {
+        }
+
+        IReadOnlyList<IBehavior> IActionUsage.ActionDefinition => ReadList<IBehavior>(Metaclasses.ActionUsage_actionDefinition);
+        IReadOnlyList<string> IElement.AliasIds => ReadList<string>(Metaclasses.Element_aliasIds);
+        string? IElement.DeclaredName => ReadText(Metaclasses.Element_declaredName);
+        string? IElement.DeclaredShortName => ReadText(Metaclasses.Element_declaredShortName);
+        IReadOnlyList<IDocumentation> IElement.Documentation => ReadList<IDocumentation>(Metaclasses.Element_documentation);
+        string? IElement.ElementId => ReadText(Metaclasses.Element_elementId);
+        bool? IElement.IsImpliedIncluded => ReadValue<bool>(Metaclasses.Element_isImpliedIncluded);
+        bool? IElement.IsLibraryElement => ReadValue<bool>(Metaclasses.Element_isLibraryElement);
+        string? IElement.Name => ReadText(Metaclasses.Element_name);
+        IReadOnlyList<IAnnotation> IElement.OwnedAnnotation => ReadList<IAnnotation>(Metaclasses.Element_ownedAnnotation);
+        IReadOnlyList<IElement> IElement.OwnedElement => ReadList<IElement>(Metaclasses.Element_ownedElement);
+        IReadOnlyList<IRelationship> IElement.OwnedRelationship => ReadList<IRelationship>(Metaclasses.Element_ownedRelationship);
+        IElement? IElement.Owner => ReadReference<IElement>(Metaclasses.Element_owner);
+        IOwningMembership? IElement.OwningMembership => ReadReference<IOwningMembership>(Metaclasses.Element_owningMembership);
+        INamespace? IElement.OwningNamespace => ReadReference<INamespace>(Metaclasses.Element_owningNamespace);
+        IRelationship? IElement.OwningRelationship => ReadReference<IRelationship>(Metaclasses.Element_owningRelationship);
+        string? IElement.QualifiedName => ReadText(Metaclasses.Element_qualifiedName);
+        string? IElement.ShortName => ReadText(Metaclasses.Element_shortName);
+        IReadOnlyList<ITextualRepresentation> IElement.TextualRepresentation => ReadList<ITextualRepresentation>(Metaclasses.Element_textualRepresentation);
+        IReadOnlyList<IFeature> IFeature.ChainingFeature => ReadList<IFeature>(Metaclasses.Feature_chainingFeature);
+        IFeature? IFeature.CrossFeature => ReadReference<IFeature>(Metaclasses.Feature_crossFeature);
+        FeatureDirectionKind? IFeature.Direction => ReadValue<FeatureDirectionKind>(Metaclasses.Feature_direction);
+        IType? IFeature.EndOwningType => ReadReference<IType>(Metaclasses.Feature_endOwningType);
+        IFeature? IFeature.FeatureTarget => ReadReference<IFeature>(Metaclasses.Feature_featureTarget);
+        IReadOnlyList<IType> IFeature.FeaturingType => ReadList<IType>(Metaclasses.Feature_featuringType);
+        bool? IFeature.IsComposite => ReadValue<bool>(Metaclasses.Feature_isComposite);
+        bool? IFeature.IsConstant => ReadValue<bool>(Metaclasses.Feature_isConstant);
+        bool? IFeature.IsDerived => ReadValue<bool>(Metaclasses.Feature_isDerived);
+        bool? IFeature.IsEnd => ReadValue<bool>(Metaclasses.Feature_isEnd);
+        bool? IFeature.IsOrdered => ReadValue<bool>(Metaclasses.Feature_isOrdered);
+        bool? IFeature.IsPortion => ReadValue<bool>(Metaclasses.Feature_isPortion);
+        bool? IFeature.IsUnique => ReadValue<bool>(Metaclasses.Feature_isUnique);
+        bool? IFeature.IsVariable => ReadValue<bool>(Metaclasses.Feature_isVariable);
+        ICrossSubsetting? IFeature.OwnedCrossSubsetting => ReadReference<ICrossSubsetting>(Metaclasses.Feature_ownedCrossSubsetting);
+        IReadOnlyList<IFeatureChaining> IFeature.OwnedFeatureChaining => ReadList<IFeatureChaining>(Metaclasses.Feature_ownedFeatureChaining);
+        IReadOnlyList<IFeatureInverting> IFeature.OwnedFeatureInverting => ReadList<IFeatureInverting>(Metaclasses.Feature_ownedFeatureInverting);
+        IReadOnlyList<IRedefinition> IFeature.OwnedRedefinition => ReadList<IRedefinition>(Metaclasses.Feature_ownedRedefinition);
+        IReferenceSubsetting? IFeature.OwnedReferenceSubsetting => ReadReference<IReferenceSubsetting>(Metaclasses.Feature_ownedReferenceSubsetting);
+        IReadOnlyList<ISubsetting> IFeature.OwnedSubsetting => ReadList<ISubsetting>(Metaclasses.Feature_ownedSubsetting);
+        IReadOnlyList<ITypeFeaturing> IFeature.OwnedTypeFeaturing => ReadList<ITypeFeaturing>(Metaclasses.Feature_ownedTypeFeaturing);
+        IReadOnlyList<IFeatureTyping> IFeature.OwnedTyping => ReadList<IFeatureTyping>(Metaclasses.Feature_ownedTyping);
+        IFeatureMembership? IFeature.OwningFeatureMembership => ReadReference<IFeatureMembership>(Metaclasses.Feature_owningFeatureMembership);
+        IType? IFeature.OwningType => ReadReference<IType>(Metaclasses.Feature_owningType);
+        IReadOnlyList<IType> IFeature.Type => ReadList<IType>(Metaclasses.Feature_type);
+        IReadOnlyList<IMembership> INamespace.ImportedMembership => ReadList<IMembership>(Metaclasses.Namespace_importedMembership);
+        IReadOnlyList<IElement> INamespace.Member => ReadList<IElement>(Metaclasses.Namespace_member);
+        IReadOnlyList<IMembership> INamespace.Membership => ReadList<IMembership>(Metaclasses.Namespace_membership);
+        IReadOnlyList<IImport> INamespace.OwnedImport => ReadList<IImport>(Metaclasses.Namespace_ownedImport);
+        IReadOnlyList<IElement> INamespace.OwnedMember => ReadList<IElement>(Metaclasses.Namespace_ownedMember);
+        IReadOnlyList<IMembership> INamespace.OwnedMembership => ReadList<IMembership>(Metaclasses.Namespace_ownedMembership);
+        IOccurrenceDefinition? IOccurrenceUsage.IndividualDefinition => ReadReference<IOccurrenceDefinition>(Metaclasses.OccurrenceUsage_individualDefinition);
+        bool? IOccurrenceUsage.IsIndividual => ReadValue<bool>(Metaclasses.OccurrenceUsage_isIndividual);
+        IReadOnlyList<IClass> IOccurrenceUsage.OccurrenceDefinition => ReadList<IClass>(Metaclasses.OccurrenceUsage_occurrenceDefinition);
+        PortionKind? IOccurrenceUsage.PortionKind => ReadValue<PortionKind>(Metaclasses.OccurrenceUsage_portionKind);
+        IReadOnlyList<IBehavior> IStep.Behavior => ReadList<IBehavior>(Metaclasses.Step_behavior);
+        IReadOnlyList<IFeature> IStep.Parameter => ReadList<IFeature>(Metaclasses.Step_parameter);
+        IReadOnlyList<IType> IType.DifferencingType => ReadList<IType>(Metaclasses.Type_differencingType);
+        IReadOnlyList<IFeature> IType.DirectedFeature => ReadList<IFeature>(Metaclasses.Type_directedFeature);
+        IReadOnlyList<IFeature> IType.EndFeature => ReadList<IFeature>(Metaclasses.Type_endFeature);
+        IReadOnlyList<IFeature> IType.Feature => ReadList<IFeature>(Metaclasses.Type_feature);
+        IReadOnlyList<IFeatureMembership> IType.FeatureMembership => ReadList<IFeatureMembership>(Metaclasses.Type_featureMembership);
+        IReadOnlyList<IFeature> IType.InheritedFeature => ReadList<IFeature>(Metaclasses.Type_inheritedFeature);
+        IReadOnlyList<IMembership> IType.InheritedMembership => ReadList<IMembership>(Metaclasses.Type_inheritedMembership);
+        IReadOnlyList<IFeature> IType.Input => ReadList<IFeature>(Metaclasses.Type_input);
+        IReadOnlyList<IType> IType.IntersectingType => ReadList<IType>(Metaclasses.Type_intersectingType);
+        bool? IType.IsAbstract => ReadValue<bool>(Metaclasses.Type_isAbstract);
+        bool? IType.IsConjugated => ReadValue<bool>(Metaclasses.Type_isConjugated);
+        bool? IType.IsSufficient => ReadValue<bool>(Metaclasses.Type_isSufficient);
+        IMultiplicity? IType.Multiplicity => ReadReference<IMultiplicity>(Metaclasses.Type_multiplicity);
+        IReadOnlyList<IFeature> IType.Output => ReadList<IFeature>(Metaclasses.Type_output);
+        IConjugation? IType.OwnedConjugator => ReadReference<IConjugation>(Metaclasses.Type_ownedConjugator);
+        IReadOnlyList<IDifferencing> IType.OwnedDifferencing => ReadList<IDifferencing>(Metaclasses.Type_ownedDifferencing);
+        IReadOnlyList<IDisjoining> IType.OwnedDisjoining => ReadList<IDisjoining>(Metaclasses.Type_ownedDisjoining);
+        IReadOnlyList<IFeature> IType.OwnedEndFeature => ReadList<IFeature>(Metaclasses.Type_ownedEndFeature);
+        IReadOnlyList<IFeature> IType.OwnedFeature => ReadList<IFeature>(Metaclasses.Type_ownedFeature);
+        IReadOnlyList<IFeatureMembership> IType.OwnedFeatureMembership => ReadList<IFeatureMembership>(Metaclasses.Type_ownedFeatureMembership);
+        IReadOnlyList<IIntersecting> IType.OwnedIntersecting => ReadList<IIntersecting>(Metaclasses.Type_ownedIntersecting);
+        IReadOnlyList<ISpecialization> IType.OwnedSpecialization => ReadList<ISpecialization>(Metaclasses.Type_ownedSpecialization);
+        IReadOnlyList<IUnioning> IType.OwnedUnioning => ReadList<IUnioning>(Metaclasses.Type_ownedUnioning);
+        IReadOnlyList<IType> IType.UnioningType => ReadList<IType>(Metaclasses.Type_unioningType);
+        IReadOnlyList<IClassifier> IUsage.Definition => ReadList<IClassifier>(Metaclasses.Usage_definition);
+        IReadOnlyList<IUsage> IUsage.DirectedUsage => ReadList<IUsage>(Metaclasses.Usage_directedUsage);
+        bool? IUsage.IsReference => ReadValue<bool>(Metaclasses.Usage_isReference);
+        bool? IUsage.IsVariation => ReadValue<bool>(Metaclasses.Usage_isVariation);
+        bool? IUsage.MayTimeVary => ReadValue<bool>(Metaclasses.Usage_mayTimeVary);
+        IReadOnlyList<IActionUsage> IUsage.NestedAction => ReadList<IActionUsage>(Metaclasses.Usage_nestedAction);
+        IReadOnlyList<IAllocationUsage> IUsage.NestedAllocation => ReadList<IAllocationUsage>(Metaclasses.Usage_nestedAllocation);
+        IReadOnlyList<IAnalysisCaseUsage> IUsage.NestedAnalysisCase => ReadList<IAnalysisCaseUsage>(Metaclasses.Usage_nestedAnalysisCase);
+        IReadOnlyList<IAttributeUsage> IUsage.NestedAttribute => ReadList<IAttributeUsage>(Metaclasses.Usage_nestedAttribute);
+        IReadOnlyList<ICalculationUsage> IUsage.NestedCalculation => ReadList<ICalculationUsage>(Metaclasses.Usage_nestedCalculation);
+        IReadOnlyList<ICaseUsage> IUsage.NestedCase => ReadList<ICaseUsage>(Metaclasses.Usage_nestedCase);
+        IReadOnlyList<IConcernUsage> IUsage.NestedConcern => ReadList<IConcernUsage>(Metaclasses.Usage_nestedConcern);
+        IReadOnlyList<IConnectorAsUsage> IUsage.NestedConnection => ReadList<IConnectorAsUsage>(Metaclasses.Usage_nestedConnection);
+        IReadOnlyList<IConstraintUsage> IUsage.NestedConstraint => ReadList<IConstraintUsage>(Metaclasses.Usage_nestedConstraint);
+        IReadOnlyList<IEnumerationUsage> IUsage.NestedEnumeration => ReadList<IEnumerationUsage>(Metaclasses.Usage_nestedEnumeration);
+        IReadOnlyList<IFlowUsage> IUsage.NestedFlow => ReadList<IFlowUsage>(Metaclasses.Usage_nestedFlow);
+        IReadOnlyList<IInterfaceUsage> IUsage.NestedInterface => ReadList<IInterfaceUsage>(Metaclasses.Usage_nestedInterface);
+        IReadOnlyList<IItemUsage> IUsage.NestedItem => ReadList<IItemUsage>(Metaclasses.Usage_nestedItem);
+        IReadOnlyList<IMetadataUsage> IUsage.NestedMetadata => ReadList<IMetadataUsage>(Metaclasses.Usage_nestedMetadata);
+        IReadOnlyList<IOccurrenceUsage> IUsage.NestedOccurrence => ReadList<IOccurrenceUsage>(Metaclasses.Usage_nestedOccurrence);
+        IReadOnlyList<IPartUsage> IUsage.NestedPart => ReadList<IPartUsage>(Metaclasses.Usage_nestedPart);
+        IReadOnlyList<IPortUsage> IUsage.NestedPort => ReadList<IPortUsage>(Metaclasses.Usage_nestedPort);
+        IReadOnlyList<IReferenceUsage> IUsage.NestedReference => ReadList<IReferenceUsage>(Metaclasses.Usage_nestedReference);
+        IReadOnlyList<IRenderingUsage> IUsage.NestedRendering => ReadList<IRenderingUsage>(Metaclasses.Usage_nestedRendering);
+        IReadOnlyList<IRequirementUsage> IUsage.NestedRequirement => ReadList<IRequirementUsage>(Metaclasses.Usage_nestedRequirement);
+        IReadOnlyList<IStateUsage> IUsage.NestedState => ReadList<IStateUsage>(Metaclasses.Usage_nestedState);
+        IReadOnlyList<ITransitionUsage> IUsage.NestedTransition => ReadList<ITransitionUsage>(Metaclasses.Usage_nestedTransition);
+        IReadOnlyList<IUsage> IUsage.NestedUsage => ReadList<IUsage>(Metaclasses.Usage_nestedUsage);
+        IReadOnlyList<IUseCaseUsage> IUsage.NestedUseCase => ReadList<IUseCaseUsage>(Metaclasses.Usage_nestedUseCase);
+        IReadOnlyList<IVerificationCaseUsage> IUsage.NestedVerificationCase => ReadList<IVerificationCaseUsage>(Metaclasses.Usage_nestedVerificationCase);
+        IReadOnlyList<IViewUsage> IUsage.NestedView => ReadList<IViewUsage>(Metaclasses.Usage_nestedView);
+        IReadOnlyList<IViewpointUsage> IUsage.NestedViewpoint => ReadList<IViewpointUsage>(Metaclasses.Usage_nestedViewpoint);
+        IDefinition? IUsage.OwningDefinition => ReadReference<IDefinition>(Metaclasses.Usage_owningDefinition);
+        IUsage? IUsage.OwningUsage => ReadReference<IUsage>(Metaclasses.Usage_owningUsage);
+        IReadOnlyList<IUsage> IUsage.Usage => ReadList<IUsage>(Metaclasses.Usage_usage);
+        IReadOnlyList<IUsage> IUsage.Variant => ReadList<IUsage>(Metaclasses.Usage_variant);
+        IReadOnlyList<IVariantMembership> IUsage.VariantMembership => ReadList<IVariantMembership>(Metaclasses.Usage_variantMembership);
     }
 
     /// <summary>An element of exactly metaclass <c>CrossSubsetting</c>. Its properties are read through <see cref="ICrossSubsetting"/>, which it implements explicitly.</summary>
@@ -8233,6 +8492,34 @@ namespace OpenMBEE.OpenSysML.Metamodel.Elements
         string? IComment.Body => ReadText(Metaclasses.Comment_body);
         string? IComment.Locale => ReadText(Metaclasses.Comment_locale);
         IElement? IDocumentation.DocumentedElement => ReadReference<IElement>(Metaclasses.Documentation_documentedElement);
+        IReadOnlyList<string> IElement.AliasIds => ReadList<string>(Metaclasses.Element_aliasIds);
+        string? IElement.DeclaredName => ReadText(Metaclasses.Element_declaredName);
+        string? IElement.DeclaredShortName => ReadText(Metaclasses.Element_declaredShortName);
+        IReadOnlyList<IDocumentation> IElement.Documentation => ReadList<IDocumentation>(Metaclasses.Element_documentation);
+        string? IElement.ElementId => ReadText(Metaclasses.Element_elementId);
+        bool? IElement.IsImpliedIncluded => ReadValue<bool>(Metaclasses.Element_isImpliedIncluded);
+        bool? IElement.IsLibraryElement => ReadValue<bool>(Metaclasses.Element_isLibraryElement);
+        string? IElement.Name => ReadText(Metaclasses.Element_name);
+        IReadOnlyList<IAnnotation> IElement.OwnedAnnotation => ReadList<IAnnotation>(Metaclasses.Element_ownedAnnotation);
+        IReadOnlyList<IElement> IElement.OwnedElement => ReadList<IElement>(Metaclasses.Element_ownedElement);
+        IReadOnlyList<IRelationship> IElement.OwnedRelationship => ReadList<IRelationship>(Metaclasses.Element_ownedRelationship);
+        IElement? IElement.Owner => ReadReference<IElement>(Metaclasses.Element_owner);
+        IOwningMembership? IElement.OwningMembership => ReadReference<IOwningMembership>(Metaclasses.Element_owningMembership);
+        INamespace? IElement.OwningNamespace => ReadReference<INamespace>(Metaclasses.Element_owningNamespace);
+        IRelationship? IElement.OwningRelationship => ReadReference<IRelationship>(Metaclasses.Element_owningRelationship);
+        string? IElement.QualifiedName => ReadText(Metaclasses.Element_qualifiedName);
+        string? IElement.ShortName => ReadText(Metaclasses.Element_shortName);
+        IReadOnlyList<ITextualRepresentation> IElement.TextualRepresentation => ReadList<ITextualRepresentation>(Metaclasses.Element_textualRepresentation);
+    }
+
+    /// <summary>An element read as abstract metaclass <c>Element</c>, which its document types as <c>Element</c> or as a type the reader maps to it. Its properties are read through <see cref="IElement"/>, which it implements explicitly.</summary>
+    internal sealed class Element : MetamodelElement, IElement
+    {
+        internal Element(string id, string jsonType)
+            : base(Metaclasses.Element, id, jsonType)
+        {
+        }
+
         IReadOnlyList<string> IElement.AliasIds => ReadList<string>(Metaclasses.Element_aliasIds);
         string? IElement.DeclaredName => ReadText(Metaclasses.Element_declaredName);
         string? IElement.DeclaredShortName => ReadText(Metaclasses.Element_declaredShortName);
@@ -8816,6 +9103,45 @@ namespace OpenMBEE.OpenSysML.Metamodel.Elements
         IReadOnlyList<IUsage> IUsage.Usage => ReadList<IUsage>(Metaclasses.Usage_usage);
         IReadOnlyList<IUsage> IUsage.Variant => ReadList<IUsage>(Metaclasses.Usage_variant);
         IReadOnlyList<IVariantMembership> IUsage.VariantMembership => ReadList<IVariantMembership>(Metaclasses.Usage_variantMembership);
+    }
+
+    /// <summary>An element read as abstract metaclass <c>Expose</c>, which its document types as <c>Expose</c> or as a type the reader maps to it. Its properties are read through <see cref="IExpose"/>, which it implements explicitly.</summary>
+    internal sealed class Expose : MetamodelElement, IExpose
+    {
+        internal Expose(string id, string jsonType)
+            : base(Metaclasses.Expose, id, jsonType)
+        {
+        }
+
+        IReadOnlyList<string> IElement.AliasIds => ReadList<string>(Metaclasses.Element_aliasIds);
+        string? IElement.DeclaredName => ReadText(Metaclasses.Element_declaredName);
+        string? IElement.DeclaredShortName => ReadText(Metaclasses.Element_declaredShortName);
+        IReadOnlyList<IDocumentation> IElement.Documentation => ReadList<IDocumentation>(Metaclasses.Element_documentation);
+        string? IElement.ElementId => ReadText(Metaclasses.Element_elementId);
+        bool? IElement.IsImpliedIncluded => ReadValue<bool>(Metaclasses.Element_isImpliedIncluded);
+        bool? IElement.IsLibraryElement => ReadValue<bool>(Metaclasses.Element_isLibraryElement);
+        string? IElement.Name => ReadText(Metaclasses.Element_name);
+        IReadOnlyList<IAnnotation> IElement.OwnedAnnotation => ReadList<IAnnotation>(Metaclasses.Element_ownedAnnotation);
+        IReadOnlyList<IElement> IElement.OwnedElement => ReadList<IElement>(Metaclasses.Element_ownedElement);
+        IReadOnlyList<IRelationship> IElement.OwnedRelationship => ReadList<IRelationship>(Metaclasses.Element_ownedRelationship);
+        IElement? IElement.Owner => ReadReference<IElement>(Metaclasses.Element_owner);
+        IOwningMembership? IElement.OwningMembership => ReadReference<IOwningMembership>(Metaclasses.Element_owningMembership);
+        INamespace? IElement.OwningNamespace => ReadReference<INamespace>(Metaclasses.Element_owningNamespace);
+        IRelationship? IElement.OwningRelationship => ReadReference<IRelationship>(Metaclasses.Element_owningRelationship);
+        string? IElement.QualifiedName => ReadText(Metaclasses.Element_qualifiedName);
+        string? IElement.ShortName => ReadText(Metaclasses.Element_shortName);
+        IReadOnlyList<ITextualRepresentation> IElement.TextualRepresentation => ReadList<ITextualRepresentation>(Metaclasses.Element_textualRepresentation);
+        INamespace? IImport.ImportOwningNamespace => ReadReference<INamespace>(Metaclasses.Import_importOwningNamespace);
+        IElement? IImport.ImportedElement => ReadReference<IElement>(Metaclasses.Import_importedElement);
+        bool? IImport.IsImportAll => ReadValue<bool>(Metaclasses.Import_isImportAll);
+        bool? IImport.IsRecursive => ReadValue<bool>(Metaclasses.Import_isRecursive);
+        VisibilityKind? IImport.Visibility => ReadValue<VisibilityKind>(Metaclasses.Import_visibility);
+        bool? IRelationship.IsImplied => ReadValue<bool>(Metaclasses.Relationship_isImplied);
+        IReadOnlyList<IElement> IRelationship.OwnedRelatedElement => ReadList<IElement>(Metaclasses.Relationship_ownedRelatedElement);
+        IElement? IRelationship.OwningRelatedElement => ReadReference<IElement>(Metaclasses.Relationship_owningRelatedElement);
+        IReadOnlyList<IElement> IRelationship.RelatedElement => ReadList<IElement>(Metaclasses.Relationship_relatedElement);
+        IReadOnlyList<IElement> IRelationship.Source => ReadList<IElement>(Metaclasses.Relationship_source);
+        IReadOnlyList<IElement> IRelationship.Target => ReadList<IElement>(Metaclasses.Relationship_target);
     }
 
     /// <summary>An element of exactly metaclass <c>Expression</c>. Its properties are read through <see cref="IExpression"/>, which it implements explicitly.</summary>
@@ -10318,6 +10644,45 @@ namespace OpenMBEE.OpenSysML.Metamodel.Elements
         IReadOnlyList<IVariantMembership> IUsage.VariantMembership => ReadList<IVariantMembership>(Metaclasses.Usage_variantMembership);
     }
 
+    /// <summary>An element read as abstract metaclass <c>Import</c>, which its document types as <c>Import</c> or as a type the reader maps to it. Its properties are read through <see cref="IImport"/>, which it implements explicitly.</summary>
+    internal sealed class Import : MetamodelElement, IImport
+    {
+        internal Import(string id, string jsonType)
+            : base(Metaclasses.Import, id, jsonType)
+        {
+        }
+
+        IReadOnlyList<string> IElement.AliasIds => ReadList<string>(Metaclasses.Element_aliasIds);
+        string? IElement.DeclaredName => ReadText(Metaclasses.Element_declaredName);
+        string? IElement.DeclaredShortName => ReadText(Metaclasses.Element_declaredShortName);
+        IReadOnlyList<IDocumentation> IElement.Documentation => ReadList<IDocumentation>(Metaclasses.Element_documentation);
+        string? IElement.ElementId => ReadText(Metaclasses.Element_elementId);
+        bool? IElement.IsImpliedIncluded => ReadValue<bool>(Metaclasses.Element_isImpliedIncluded);
+        bool? IElement.IsLibraryElement => ReadValue<bool>(Metaclasses.Element_isLibraryElement);
+        string? IElement.Name => ReadText(Metaclasses.Element_name);
+        IReadOnlyList<IAnnotation> IElement.OwnedAnnotation => ReadList<IAnnotation>(Metaclasses.Element_ownedAnnotation);
+        IReadOnlyList<IElement> IElement.OwnedElement => ReadList<IElement>(Metaclasses.Element_ownedElement);
+        IReadOnlyList<IRelationship> IElement.OwnedRelationship => ReadList<IRelationship>(Metaclasses.Element_ownedRelationship);
+        IElement? IElement.Owner => ReadReference<IElement>(Metaclasses.Element_owner);
+        IOwningMembership? IElement.OwningMembership => ReadReference<IOwningMembership>(Metaclasses.Element_owningMembership);
+        INamespace? IElement.OwningNamespace => ReadReference<INamespace>(Metaclasses.Element_owningNamespace);
+        IRelationship? IElement.OwningRelationship => ReadReference<IRelationship>(Metaclasses.Element_owningRelationship);
+        string? IElement.QualifiedName => ReadText(Metaclasses.Element_qualifiedName);
+        string? IElement.ShortName => ReadText(Metaclasses.Element_shortName);
+        IReadOnlyList<ITextualRepresentation> IElement.TextualRepresentation => ReadList<ITextualRepresentation>(Metaclasses.Element_textualRepresentation);
+        INamespace? IImport.ImportOwningNamespace => ReadReference<INamespace>(Metaclasses.Import_importOwningNamespace);
+        IElement? IImport.ImportedElement => ReadReference<IElement>(Metaclasses.Import_importedElement);
+        bool? IImport.IsImportAll => ReadValue<bool>(Metaclasses.Import_isImportAll);
+        bool? IImport.IsRecursive => ReadValue<bool>(Metaclasses.Import_isRecursive);
+        VisibilityKind? IImport.Visibility => ReadValue<VisibilityKind>(Metaclasses.Import_visibility);
+        bool? IRelationship.IsImplied => ReadValue<bool>(Metaclasses.Relationship_isImplied);
+        IReadOnlyList<IElement> IRelationship.OwnedRelatedElement => ReadList<IElement>(Metaclasses.Relationship_ownedRelatedElement);
+        IElement? IRelationship.OwningRelatedElement => ReadReference<IElement>(Metaclasses.Relationship_owningRelatedElement);
+        IReadOnlyList<IElement> IRelationship.RelatedElement => ReadList<IElement>(Metaclasses.Relationship_relatedElement);
+        IReadOnlyList<IElement> IRelationship.Source => ReadList<IElement>(Metaclasses.Relationship_source);
+        IReadOnlyList<IElement> IRelationship.Target => ReadList<IElement>(Metaclasses.Relationship_target);
+    }
+
     /// <summary>An element of exactly metaclass <c>IncludeUseCaseUsage</c>. Its properties are read through <see cref="IIncludeUseCaseUsage"/>, which it implements explicitly.</summary>
     public sealed class IncludeUseCaseUsage : MetamodelElement, IIncludeUseCaseUsage
     {
@@ -10522,6 +10887,96 @@ namespace OpenMBEE.OpenSysML.Metamodel.Elements
         IReadOnlyList<IElement> INamespace.OwnedMember => ReadList<IElement>(Metaclasses.Namespace_ownedMember);
         IReadOnlyList<IMembership> INamespace.OwnedMembership => ReadList<IMembership>(Metaclasses.Namespace_ownedMembership);
         string? IOperatorExpression.Operator => ReadText(Metaclasses.OperatorExpression_operator);
+        IReadOnlyList<IBehavior> IStep.Behavior => ReadList<IBehavior>(Metaclasses.Step_behavior);
+        IReadOnlyList<IFeature> IStep.Parameter => ReadList<IFeature>(Metaclasses.Step_parameter);
+        IReadOnlyList<IType> IType.DifferencingType => ReadList<IType>(Metaclasses.Type_differencingType);
+        IReadOnlyList<IFeature> IType.DirectedFeature => ReadList<IFeature>(Metaclasses.Type_directedFeature);
+        IReadOnlyList<IFeature> IType.EndFeature => ReadList<IFeature>(Metaclasses.Type_endFeature);
+        IReadOnlyList<IFeature> IType.Feature => ReadList<IFeature>(Metaclasses.Type_feature);
+        IReadOnlyList<IFeatureMembership> IType.FeatureMembership => ReadList<IFeatureMembership>(Metaclasses.Type_featureMembership);
+        IReadOnlyList<IFeature> IType.InheritedFeature => ReadList<IFeature>(Metaclasses.Type_inheritedFeature);
+        IReadOnlyList<IMembership> IType.InheritedMembership => ReadList<IMembership>(Metaclasses.Type_inheritedMembership);
+        IReadOnlyList<IFeature> IType.Input => ReadList<IFeature>(Metaclasses.Type_input);
+        IReadOnlyList<IType> IType.IntersectingType => ReadList<IType>(Metaclasses.Type_intersectingType);
+        bool? IType.IsAbstract => ReadValue<bool>(Metaclasses.Type_isAbstract);
+        bool? IType.IsConjugated => ReadValue<bool>(Metaclasses.Type_isConjugated);
+        bool? IType.IsSufficient => ReadValue<bool>(Metaclasses.Type_isSufficient);
+        IMultiplicity? IType.Multiplicity => ReadReference<IMultiplicity>(Metaclasses.Type_multiplicity);
+        IReadOnlyList<IFeature> IType.Output => ReadList<IFeature>(Metaclasses.Type_output);
+        IConjugation? IType.OwnedConjugator => ReadReference<IConjugation>(Metaclasses.Type_ownedConjugator);
+        IReadOnlyList<IDifferencing> IType.OwnedDifferencing => ReadList<IDifferencing>(Metaclasses.Type_ownedDifferencing);
+        IReadOnlyList<IDisjoining> IType.OwnedDisjoining => ReadList<IDisjoining>(Metaclasses.Type_ownedDisjoining);
+        IReadOnlyList<IFeature> IType.OwnedEndFeature => ReadList<IFeature>(Metaclasses.Type_ownedEndFeature);
+        IReadOnlyList<IFeature> IType.OwnedFeature => ReadList<IFeature>(Metaclasses.Type_ownedFeature);
+        IReadOnlyList<IFeatureMembership> IType.OwnedFeatureMembership => ReadList<IFeatureMembership>(Metaclasses.Type_ownedFeatureMembership);
+        IReadOnlyList<IIntersecting> IType.OwnedIntersecting => ReadList<IIntersecting>(Metaclasses.Type_ownedIntersecting);
+        IReadOnlyList<ISpecialization> IType.OwnedSpecialization => ReadList<ISpecialization>(Metaclasses.Type_ownedSpecialization);
+        IReadOnlyList<IUnioning> IType.OwnedUnioning => ReadList<IUnioning>(Metaclasses.Type_ownedUnioning);
+        IReadOnlyList<IType> IType.UnioningType => ReadList<IType>(Metaclasses.Type_unioningType);
+    }
+
+    /// <summary>An element read as abstract metaclass <c>InstantiationExpression</c>, which its document types as <c>InstantiationExpression</c> or as a type the reader maps to it. Its properties are read through <see cref="IInstantiationExpression"/>, which it implements explicitly.</summary>
+    internal sealed class InstantiationExpression : MetamodelElement, IInstantiationExpression
+    {
+        internal InstantiationExpression(string id, string jsonType)
+            : base(Metaclasses.InstantiationExpression, id, jsonType)
+        {
+        }
+
+        IReadOnlyList<string> IElement.AliasIds => ReadList<string>(Metaclasses.Element_aliasIds);
+        string? IElement.DeclaredName => ReadText(Metaclasses.Element_declaredName);
+        string? IElement.DeclaredShortName => ReadText(Metaclasses.Element_declaredShortName);
+        IReadOnlyList<IDocumentation> IElement.Documentation => ReadList<IDocumentation>(Metaclasses.Element_documentation);
+        string? IElement.ElementId => ReadText(Metaclasses.Element_elementId);
+        bool? IElement.IsImpliedIncluded => ReadValue<bool>(Metaclasses.Element_isImpliedIncluded);
+        bool? IElement.IsLibraryElement => ReadValue<bool>(Metaclasses.Element_isLibraryElement);
+        string? IElement.Name => ReadText(Metaclasses.Element_name);
+        IReadOnlyList<IAnnotation> IElement.OwnedAnnotation => ReadList<IAnnotation>(Metaclasses.Element_ownedAnnotation);
+        IReadOnlyList<IElement> IElement.OwnedElement => ReadList<IElement>(Metaclasses.Element_ownedElement);
+        IReadOnlyList<IRelationship> IElement.OwnedRelationship => ReadList<IRelationship>(Metaclasses.Element_ownedRelationship);
+        IElement? IElement.Owner => ReadReference<IElement>(Metaclasses.Element_owner);
+        IOwningMembership? IElement.OwningMembership => ReadReference<IOwningMembership>(Metaclasses.Element_owningMembership);
+        INamespace? IElement.OwningNamespace => ReadReference<INamespace>(Metaclasses.Element_owningNamespace);
+        IRelationship? IElement.OwningRelationship => ReadReference<IRelationship>(Metaclasses.Element_owningRelationship);
+        string? IElement.QualifiedName => ReadText(Metaclasses.Element_qualifiedName);
+        string? IElement.ShortName => ReadText(Metaclasses.Element_shortName);
+        IReadOnlyList<ITextualRepresentation> IElement.TextualRepresentation => ReadList<ITextualRepresentation>(Metaclasses.Element_textualRepresentation);
+        IFunction? IExpression.Function => ReadReference<IFunction>(Metaclasses.Expression_function);
+        bool? IExpression.IsModelLevelEvaluable => ReadValue<bool>(Metaclasses.Expression_isModelLevelEvaluable);
+        IFeature? IExpression.Result => ReadReference<IFeature>(Metaclasses.Expression_result);
+        IReadOnlyList<IFeature> IFeature.ChainingFeature => ReadList<IFeature>(Metaclasses.Feature_chainingFeature);
+        IFeature? IFeature.CrossFeature => ReadReference<IFeature>(Metaclasses.Feature_crossFeature);
+        FeatureDirectionKind? IFeature.Direction => ReadValue<FeatureDirectionKind>(Metaclasses.Feature_direction);
+        IType? IFeature.EndOwningType => ReadReference<IType>(Metaclasses.Feature_endOwningType);
+        IFeature? IFeature.FeatureTarget => ReadReference<IFeature>(Metaclasses.Feature_featureTarget);
+        IReadOnlyList<IType> IFeature.FeaturingType => ReadList<IType>(Metaclasses.Feature_featuringType);
+        bool? IFeature.IsComposite => ReadValue<bool>(Metaclasses.Feature_isComposite);
+        bool? IFeature.IsConstant => ReadValue<bool>(Metaclasses.Feature_isConstant);
+        bool? IFeature.IsDerived => ReadValue<bool>(Metaclasses.Feature_isDerived);
+        bool? IFeature.IsEnd => ReadValue<bool>(Metaclasses.Feature_isEnd);
+        bool? IFeature.IsOrdered => ReadValue<bool>(Metaclasses.Feature_isOrdered);
+        bool? IFeature.IsPortion => ReadValue<bool>(Metaclasses.Feature_isPortion);
+        bool? IFeature.IsUnique => ReadValue<bool>(Metaclasses.Feature_isUnique);
+        bool? IFeature.IsVariable => ReadValue<bool>(Metaclasses.Feature_isVariable);
+        ICrossSubsetting? IFeature.OwnedCrossSubsetting => ReadReference<ICrossSubsetting>(Metaclasses.Feature_ownedCrossSubsetting);
+        IReadOnlyList<IFeatureChaining> IFeature.OwnedFeatureChaining => ReadList<IFeatureChaining>(Metaclasses.Feature_ownedFeatureChaining);
+        IReadOnlyList<IFeatureInverting> IFeature.OwnedFeatureInverting => ReadList<IFeatureInverting>(Metaclasses.Feature_ownedFeatureInverting);
+        IReadOnlyList<IRedefinition> IFeature.OwnedRedefinition => ReadList<IRedefinition>(Metaclasses.Feature_ownedRedefinition);
+        IReferenceSubsetting? IFeature.OwnedReferenceSubsetting => ReadReference<IReferenceSubsetting>(Metaclasses.Feature_ownedReferenceSubsetting);
+        IReadOnlyList<ISubsetting> IFeature.OwnedSubsetting => ReadList<ISubsetting>(Metaclasses.Feature_ownedSubsetting);
+        IReadOnlyList<ITypeFeaturing> IFeature.OwnedTypeFeaturing => ReadList<ITypeFeaturing>(Metaclasses.Feature_ownedTypeFeaturing);
+        IReadOnlyList<IFeatureTyping> IFeature.OwnedTyping => ReadList<IFeatureTyping>(Metaclasses.Feature_ownedTyping);
+        IFeatureMembership? IFeature.OwningFeatureMembership => ReadReference<IFeatureMembership>(Metaclasses.Feature_owningFeatureMembership);
+        IType? IFeature.OwningType => ReadReference<IType>(Metaclasses.Feature_owningType);
+        IReadOnlyList<IType> IFeature.Type => ReadList<IType>(Metaclasses.Feature_type);
+        IReadOnlyList<IExpression> IInstantiationExpression.Argument => ReadList<IExpression>(Metaclasses.InstantiationExpression_argument);
+        IType? IInstantiationExpression.InstantiatedType => ReadReference<IType>(Metaclasses.InstantiationExpression_instantiatedType);
+        IReadOnlyList<IMembership> INamespace.ImportedMembership => ReadList<IMembership>(Metaclasses.Namespace_importedMembership);
+        IReadOnlyList<IElement> INamespace.Member => ReadList<IElement>(Metaclasses.Namespace_member);
+        IReadOnlyList<IMembership> INamespace.Membership => ReadList<IMembership>(Metaclasses.Namespace_membership);
+        IReadOnlyList<IImport> INamespace.OwnedImport => ReadList<IImport>(Metaclasses.Namespace_ownedImport);
+        IReadOnlyList<IElement> INamespace.OwnedMember => ReadList<IElement>(Metaclasses.Namespace_ownedMember);
+        IReadOnlyList<IMembership> INamespace.OwnedMembership => ReadList<IMembership>(Metaclasses.Namespace_ownedMembership);
         IReadOnlyList<IBehavior> IStep.Behavior => ReadList<IBehavior>(Metaclasses.Step_behavior);
         IReadOnlyList<IFeature> IStep.Parameter => ReadList<IFeature>(Metaclasses.Step_parameter);
         IReadOnlyList<IType> IType.DifferencingType => ReadList<IType>(Metaclasses.Type_differencingType);
@@ -11992,6 +12447,134 @@ namespace OpenMBEE.OpenSysML.Metamodel.Elements
         IReadOnlyList<ISpecialization> IType.OwnedSpecialization => ReadList<ISpecialization>(Metaclasses.Type_ownedSpecialization);
         IReadOnlyList<IUnioning> IType.OwnedUnioning => ReadList<IUnioning>(Metaclasses.Type_ownedUnioning);
         IReadOnlyList<IType> IType.UnioningType => ReadList<IType>(Metaclasses.Type_unioningType);
+    }
+
+    /// <summary>An element read as abstract metaclass <c>LoopActionUsage</c>, which its document types as <c>LoopActionUsage</c> or as a type the reader maps to it. Its properties are read through <see cref="ILoopActionUsage"/>, which it implements explicitly.</summary>
+    internal sealed class LoopActionUsage : MetamodelElement, ILoopActionUsage
+    {
+        internal LoopActionUsage(string id, string jsonType)
+            : base(Metaclasses.LoopActionUsage, id, jsonType)
+        {
+        }
+
+        IReadOnlyList<IBehavior> IActionUsage.ActionDefinition => ReadList<IBehavior>(Metaclasses.ActionUsage_actionDefinition);
+        IReadOnlyList<string> IElement.AliasIds => ReadList<string>(Metaclasses.Element_aliasIds);
+        string? IElement.DeclaredName => ReadText(Metaclasses.Element_declaredName);
+        string? IElement.DeclaredShortName => ReadText(Metaclasses.Element_declaredShortName);
+        IReadOnlyList<IDocumentation> IElement.Documentation => ReadList<IDocumentation>(Metaclasses.Element_documentation);
+        string? IElement.ElementId => ReadText(Metaclasses.Element_elementId);
+        bool? IElement.IsImpliedIncluded => ReadValue<bool>(Metaclasses.Element_isImpliedIncluded);
+        bool? IElement.IsLibraryElement => ReadValue<bool>(Metaclasses.Element_isLibraryElement);
+        string? IElement.Name => ReadText(Metaclasses.Element_name);
+        IReadOnlyList<IAnnotation> IElement.OwnedAnnotation => ReadList<IAnnotation>(Metaclasses.Element_ownedAnnotation);
+        IReadOnlyList<IElement> IElement.OwnedElement => ReadList<IElement>(Metaclasses.Element_ownedElement);
+        IReadOnlyList<IRelationship> IElement.OwnedRelationship => ReadList<IRelationship>(Metaclasses.Element_ownedRelationship);
+        IElement? IElement.Owner => ReadReference<IElement>(Metaclasses.Element_owner);
+        IOwningMembership? IElement.OwningMembership => ReadReference<IOwningMembership>(Metaclasses.Element_owningMembership);
+        INamespace? IElement.OwningNamespace => ReadReference<INamespace>(Metaclasses.Element_owningNamespace);
+        IRelationship? IElement.OwningRelationship => ReadReference<IRelationship>(Metaclasses.Element_owningRelationship);
+        string? IElement.QualifiedName => ReadText(Metaclasses.Element_qualifiedName);
+        string? IElement.ShortName => ReadText(Metaclasses.Element_shortName);
+        IReadOnlyList<ITextualRepresentation> IElement.TextualRepresentation => ReadList<ITextualRepresentation>(Metaclasses.Element_textualRepresentation);
+        IReadOnlyList<IFeature> IFeature.ChainingFeature => ReadList<IFeature>(Metaclasses.Feature_chainingFeature);
+        IFeature? IFeature.CrossFeature => ReadReference<IFeature>(Metaclasses.Feature_crossFeature);
+        FeatureDirectionKind? IFeature.Direction => ReadValue<FeatureDirectionKind>(Metaclasses.Feature_direction);
+        IType? IFeature.EndOwningType => ReadReference<IType>(Metaclasses.Feature_endOwningType);
+        IFeature? IFeature.FeatureTarget => ReadReference<IFeature>(Metaclasses.Feature_featureTarget);
+        IReadOnlyList<IType> IFeature.FeaturingType => ReadList<IType>(Metaclasses.Feature_featuringType);
+        bool? IFeature.IsComposite => ReadValue<bool>(Metaclasses.Feature_isComposite);
+        bool? IFeature.IsConstant => ReadValue<bool>(Metaclasses.Feature_isConstant);
+        bool? IFeature.IsDerived => ReadValue<bool>(Metaclasses.Feature_isDerived);
+        bool? IFeature.IsEnd => ReadValue<bool>(Metaclasses.Feature_isEnd);
+        bool? IFeature.IsOrdered => ReadValue<bool>(Metaclasses.Feature_isOrdered);
+        bool? IFeature.IsPortion => ReadValue<bool>(Metaclasses.Feature_isPortion);
+        bool? IFeature.IsUnique => ReadValue<bool>(Metaclasses.Feature_isUnique);
+        bool? IFeature.IsVariable => ReadValue<bool>(Metaclasses.Feature_isVariable);
+        ICrossSubsetting? IFeature.OwnedCrossSubsetting => ReadReference<ICrossSubsetting>(Metaclasses.Feature_ownedCrossSubsetting);
+        IReadOnlyList<IFeatureChaining> IFeature.OwnedFeatureChaining => ReadList<IFeatureChaining>(Metaclasses.Feature_ownedFeatureChaining);
+        IReadOnlyList<IFeatureInverting> IFeature.OwnedFeatureInverting => ReadList<IFeatureInverting>(Metaclasses.Feature_ownedFeatureInverting);
+        IReadOnlyList<IRedefinition> IFeature.OwnedRedefinition => ReadList<IRedefinition>(Metaclasses.Feature_ownedRedefinition);
+        IReferenceSubsetting? IFeature.OwnedReferenceSubsetting => ReadReference<IReferenceSubsetting>(Metaclasses.Feature_ownedReferenceSubsetting);
+        IReadOnlyList<ISubsetting> IFeature.OwnedSubsetting => ReadList<ISubsetting>(Metaclasses.Feature_ownedSubsetting);
+        IReadOnlyList<ITypeFeaturing> IFeature.OwnedTypeFeaturing => ReadList<ITypeFeaturing>(Metaclasses.Feature_ownedTypeFeaturing);
+        IReadOnlyList<IFeatureTyping> IFeature.OwnedTyping => ReadList<IFeatureTyping>(Metaclasses.Feature_ownedTyping);
+        IFeatureMembership? IFeature.OwningFeatureMembership => ReadReference<IFeatureMembership>(Metaclasses.Feature_owningFeatureMembership);
+        IType? IFeature.OwningType => ReadReference<IType>(Metaclasses.Feature_owningType);
+        IReadOnlyList<IType> IFeature.Type => ReadList<IType>(Metaclasses.Feature_type);
+        IActionUsage? ILoopActionUsage.BodyAction => ReadReference<IActionUsage>(Metaclasses.LoopActionUsage_bodyAction);
+        IReadOnlyList<IMembership> INamespace.ImportedMembership => ReadList<IMembership>(Metaclasses.Namespace_importedMembership);
+        IReadOnlyList<IElement> INamespace.Member => ReadList<IElement>(Metaclasses.Namespace_member);
+        IReadOnlyList<IMembership> INamespace.Membership => ReadList<IMembership>(Metaclasses.Namespace_membership);
+        IReadOnlyList<IImport> INamespace.OwnedImport => ReadList<IImport>(Metaclasses.Namespace_ownedImport);
+        IReadOnlyList<IElement> INamespace.OwnedMember => ReadList<IElement>(Metaclasses.Namespace_ownedMember);
+        IReadOnlyList<IMembership> INamespace.OwnedMembership => ReadList<IMembership>(Metaclasses.Namespace_ownedMembership);
+        IOccurrenceDefinition? IOccurrenceUsage.IndividualDefinition => ReadReference<IOccurrenceDefinition>(Metaclasses.OccurrenceUsage_individualDefinition);
+        bool? IOccurrenceUsage.IsIndividual => ReadValue<bool>(Metaclasses.OccurrenceUsage_isIndividual);
+        IReadOnlyList<IClass> IOccurrenceUsage.OccurrenceDefinition => ReadList<IClass>(Metaclasses.OccurrenceUsage_occurrenceDefinition);
+        PortionKind? IOccurrenceUsage.PortionKind => ReadValue<PortionKind>(Metaclasses.OccurrenceUsage_portionKind);
+        IReadOnlyList<IBehavior> IStep.Behavior => ReadList<IBehavior>(Metaclasses.Step_behavior);
+        IReadOnlyList<IFeature> IStep.Parameter => ReadList<IFeature>(Metaclasses.Step_parameter);
+        IReadOnlyList<IType> IType.DifferencingType => ReadList<IType>(Metaclasses.Type_differencingType);
+        IReadOnlyList<IFeature> IType.DirectedFeature => ReadList<IFeature>(Metaclasses.Type_directedFeature);
+        IReadOnlyList<IFeature> IType.EndFeature => ReadList<IFeature>(Metaclasses.Type_endFeature);
+        IReadOnlyList<IFeature> IType.Feature => ReadList<IFeature>(Metaclasses.Type_feature);
+        IReadOnlyList<IFeatureMembership> IType.FeatureMembership => ReadList<IFeatureMembership>(Metaclasses.Type_featureMembership);
+        IReadOnlyList<IFeature> IType.InheritedFeature => ReadList<IFeature>(Metaclasses.Type_inheritedFeature);
+        IReadOnlyList<IMembership> IType.InheritedMembership => ReadList<IMembership>(Metaclasses.Type_inheritedMembership);
+        IReadOnlyList<IFeature> IType.Input => ReadList<IFeature>(Metaclasses.Type_input);
+        IReadOnlyList<IType> IType.IntersectingType => ReadList<IType>(Metaclasses.Type_intersectingType);
+        bool? IType.IsAbstract => ReadValue<bool>(Metaclasses.Type_isAbstract);
+        bool? IType.IsConjugated => ReadValue<bool>(Metaclasses.Type_isConjugated);
+        bool? IType.IsSufficient => ReadValue<bool>(Metaclasses.Type_isSufficient);
+        IMultiplicity? IType.Multiplicity => ReadReference<IMultiplicity>(Metaclasses.Type_multiplicity);
+        IReadOnlyList<IFeature> IType.Output => ReadList<IFeature>(Metaclasses.Type_output);
+        IConjugation? IType.OwnedConjugator => ReadReference<IConjugation>(Metaclasses.Type_ownedConjugator);
+        IReadOnlyList<IDifferencing> IType.OwnedDifferencing => ReadList<IDifferencing>(Metaclasses.Type_ownedDifferencing);
+        IReadOnlyList<IDisjoining> IType.OwnedDisjoining => ReadList<IDisjoining>(Metaclasses.Type_ownedDisjoining);
+        IReadOnlyList<IFeature> IType.OwnedEndFeature => ReadList<IFeature>(Metaclasses.Type_ownedEndFeature);
+        IReadOnlyList<IFeature> IType.OwnedFeature => ReadList<IFeature>(Metaclasses.Type_ownedFeature);
+        IReadOnlyList<IFeatureMembership> IType.OwnedFeatureMembership => ReadList<IFeatureMembership>(Metaclasses.Type_ownedFeatureMembership);
+        IReadOnlyList<IIntersecting> IType.OwnedIntersecting => ReadList<IIntersecting>(Metaclasses.Type_ownedIntersecting);
+        IReadOnlyList<ISpecialization> IType.OwnedSpecialization => ReadList<ISpecialization>(Metaclasses.Type_ownedSpecialization);
+        IReadOnlyList<IUnioning> IType.OwnedUnioning => ReadList<IUnioning>(Metaclasses.Type_ownedUnioning);
+        IReadOnlyList<IType> IType.UnioningType => ReadList<IType>(Metaclasses.Type_unioningType);
+        IReadOnlyList<IClassifier> IUsage.Definition => ReadList<IClassifier>(Metaclasses.Usage_definition);
+        IReadOnlyList<IUsage> IUsage.DirectedUsage => ReadList<IUsage>(Metaclasses.Usage_directedUsage);
+        bool? IUsage.IsReference => ReadValue<bool>(Metaclasses.Usage_isReference);
+        bool? IUsage.IsVariation => ReadValue<bool>(Metaclasses.Usage_isVariation);
+        bool? IUsage.MayTimeVary => ReadValue<bool>(Metaclasses.Usage_mayTimeVary);
+        IReadOnlyList<IActionUsage> IUsage.NestedAction => ReadList<IActionUsage>(Metaclasses.Usage_nestedAction);
+        IReadOnlyList<IAllocationUsage> IUsage.NestedAllocation => ReadList<IAllocationUsage>(Metaclasses.Usage_nestedAllocation);
+        IReadOnlyList<IAnalysisCaseUsage> IUsage.NestedAnalysisCase => ReadList<IAnalysisCaseUsage>(Metaclasses.Usage_nestedAnalysisCase);
+        IReadOnlyList<IAttributeUsage> IUsage.NestedAttribute => ReadList<IAttributeUsage>(Metaclasses.Usage_nestedAttribute);
+        IReadOnlyList<ICalculationUsage> IUsage.NestedCalculation => ReadList<ICalculationUsage>(Metaclasses.Usage_nestedCalculation);
+        IReadOnlyList<ICaseUsage> IUsage.NestedCase => ReadList<ICaseUsage>(Metaclasses.Usage_nestedCase);
+        IReadOnlyList<IConcernUsage> IUsage.NestedConcern => ReadList<IConcernUsage>(Metaclasses.Usage_nestedConcern);
+        IReadOnlyList<IConnectorAsUsage> IUsage.NestedConnection => ReadList<IConnectorAsUsage>(Metaclasses.Usage_nestedConnection);
+        IReadOnlyList<IConstraintUsage> IUsage.NestedConstraint => ReadList<IConstraintUsage>(Metaclasses.Usage_nestedConstraint);
+        IReadOnlyList<IEnumerationUsage> IUsage.NestedEnumeration => ReadList<IEnumerationUsage>(Metaclasses.Usage_nestedEnumeration);
+        IReadOnlyList<IFlowUsage> IUsage.NestedFlow => ReadList<IFlowUsage>(Metaclasses.Usage_nestedFlow);
+        IReadOnlyList<IInterfaceUsage> IUsage.NestedInterface => ReadList<IInterfaceUsage>(Metaclasses.Usage_nestedInterface);
+        IReadOnlyList<IItemUsage> IUsage.NestedItem => ReadList<IItemUsage>(Metaclasses.Usage_nestedItem);
+        IReadOnlyList<IMetadataUsage> IUsage.NestedMetadata => ReadList<IMetadataUsage>(Metaclasses.Usage_nestedMetadata);
+        IReadOnlyList<IOccurrenceUsage> IUsage.NestedOccurrence => ReadList<IOccurrenceUsage>(Metaclasses.Usage_nestedOccurrence);
+        IReadOnlyList<IPartUsage> IUsage.NestedPart => ReadList<IPartUsage>(Metaclasses.Usage_nestedPart);
+        IReadOnlyList<IPortUsage> IUsage.NestedPort => ReadList<IPortUsage>(Metaclasses.Usage_nestedPort);
+        IReadOnlyList<IReferenceUsage> IUsage.NestedReference => ReadList<IReferenceUsage>(Metaclasses.Usage_nestedReference);
+        IReadOnlyList<IRenderingUsage> IUsage.NestedRendering => ReadList<IRenderingUsage>(Metaclasses.Usage_nestedRendering);
+        IReadOnlyList<IRequirementUsage> IUsage.NestedRequirement => ReadList<IRequirementUsage>(Metaclasses.Usage_nestedRequirement);
+        IReadOnlyList<IStateUsage> IUsage.NestedState => ReadList<IStateUsage>(Metaclasses.Usage_nestedState);
+        IReadOnlyList<ITransitionUsage> IUsage.NestedTransition => ReadList<ITransitionUsage>(Metaclasses.Usage_nestedTransition);
+        IReadOnlyList<IUsage> IUsage.NestedUsage => ReadList<IUsage>(Metaclasses.Usage_nestedUsage);
+        IReadOnlyList<IUseCaseUsage> IUsage.NestedUseCase => ReadList<IUseCaseUsage>(Metaclasses.Usage_nestedUseCase);
+        IReadOnlyList<IVerificationCaseUsage> IUsage.NestedVerificationCase => ReadList<IVerificationCaseUsage>(Metaclasses.Usage_nestedVerificationCase);
+        IReadOnlyList<IViewUsage> IUsage.NestedView => ReadList<IViewUsage>(Metaclasses.Usage_nestedView);
+        IReadOnlyList<IViewpointUsage> IUsage.NestedViewpoint => ReadList<IViewpointUsage>(Metaclasses.Usage_nestedViewpoint);
+        IDefinition? IUsage.OwningDefinition => ReadReference<IDefinition>(Metaclasses.Usage_owningDefinition);
+        IUsage? IUsage.OwningUsage => ReadReference<IUsage>(Metaclasses.Usage_owningUsage);
+        IReadOnlyList<IUsage> IUsage.Usage => ReadList<IUsage>(Metaclasses.Usage_usage);
+        IReadOnlyList<IUsage> IUsage.Variant => ReadList<IUsage>(Metaclasses.Usage_variant);
+        IReadOnlyList<IVariantMembership> IUsage.VariantMembership => ReadList<IVariantMembership>(Metaclasses.Usage_variantMembership);
     }
 
     /// <summary>An element of exactly metaclass <c>Membership</c>. Its properties are read through <see cref="IMembership"/>, which it implements explicitly.</summary>
@@ -14505,6 +15088,40 @@ namespace OpenMBEE.OpenSysML.Metamodel.Elements
         IReadOnlyList<IUsage> IUsage.Usage => ReadList<IUsage>(Metaclasses.Usage_usage);
         IReadOnlyList<IUsage> IUsage.Variant => ReadList<IUsage>(Metaclasses.Usage_variant);
         IReadOnlyList<IVariantMembership> IUsage.VariantMembership => ReadList<IVariantMembership>(Metaclasses.Usage_variantMembership);
+    }
+
+    /// <summary>An element read as abstract metaclass <c>Relationship</c>, which its document types as <c>Relationship</c> or as a type the reader maps to it. Its properties are read through <see cref="IRelationship"/>, which it implements explicitly.</summary>
+    internal sealed class Relationship : MetamodelElement, IRelationship
+    {
+        internal Relationship(string id, string jsonType)
+            : base(Metaclasses.Relationship, id, jsonType)
+        {
+        }
+
+        IReadOnlyList<string> IElement.AliasIds => ReadList<string>(Metaclasses.Element_aliasIds);
+        string? IElement.DeclaredName => ReadText(Metaclasses.Element_declaredName);
+        string? IElement.DeclaredShortName => ReadText(Metaclasses.Element_declaredShortName);
+        IReadOnlyList<IDocumentation> IElement.Documentation => ReadList<IDocumentation>(Metaclasses.Element_documentation);
+        string? IElement.ElementId => ReadText(Metaclasses.Element_elementId);
+        bool? IElement.IsImpliedIncluded => ReadValue<bool>(Metaclasses.Element_isImpliedIncluded);
+        bool? IElement.IsLibraryElement => ReadValue<bool>(Metaclasses.Element_isLibraryElement);
+        string? IElement.Name => ReadText(Metaclasses.Element_name);
+        IReadOnlyList<IAnnotation> IElement.OwnedAnnotation => ReadList<IAnnotation>(Metaclasses.Element_ownedAnnotation);
+        IReadOnlyList<IElement> IElement.OwnedElement => ReadList<IElement>(Metaclasses.Element_ownedElement);
+        IReadOnlyList<IRelationship> IElement.OwnedRelationship => ReadList<IRelationship>(Metaclasses.Element_ownedRelationship);
+        IElement? IElement.Owner => ReadReference<IElement>(Metaclasses.Element_owner);
+        IOwningMembership? IElement.OwningMembership => ReadReference<IOwningMembership>(Metaclasses.Element_owningMembership);
+        INamespace? IElement.OwningNamespace => ReadReference<INamespace>(Metaclasses.Element_owningNamespace);
+        IRelationship? IElement.OwningRelationship => ReadReference<IRelationship>(Metaclasses.Element_owningRelationship);
+        string? IElement.QualifiedName => ReadText(Metaclasses.Element_qualifiedName);
+        string? IElement.ShortName => ReadText(Metaclasses.Element_shortName);
+        IReadOnlyList<ITextualRepresentation> IElement.TextualRepresentation => ReadList<ITextualRepresentation>(Metaclasses.Element_textualRepresentation);
+        bool? IRelationship.IsImplied => ReadValue<bool>(Metaclasses.Relationship_isImplied);
+        IReadOnlyList<IElement> IRelationship.OwnedRelatedElement => ReadList<IElement>(Metaclasses.Relationship_ownedRelatedElement);
+        IElement? IRelationship.OwningRelatedElement => ReadReference<IElement>(Metaclasses.Relationship_owningRelatedElement);
+        IReadOnlyList<IElement> IRelationship.RelatedElement => ReadList<IElement>(Metaclasses.Relationship_relatedElement);
+        IReadOnlyList<IElement> IRelationship.Source => ReadList<IElement>(Metaclasses.Relationship_source);
+        IReadOnlyList<IElement> IRelationship.Target => ReadList<IElement>(Metaclasses.Relationship_target);
     }
 
     /// <summary>An element of exactly metaclass <c>RenderingDefinition</c>. Its properties are read through <see cref="IRenderingDefinition"/>, which it implements explicitly.</summary>

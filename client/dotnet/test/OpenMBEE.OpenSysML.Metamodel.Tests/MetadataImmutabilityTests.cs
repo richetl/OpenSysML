@@ -43,10 +43,13 @@ public sealed class MetadataImmutabilityTests
     [Fact]
     public void InitializationCopiesInputCollections()
     {
-        var root = new MetaclassInfo("Root", true, typeof(IElement), null, null);
+        Assert.Throws<ArgumentNullException>(() => new MetaclassInfo("Root", true, typeof(IElement), null, null!));
+        Assert.Throws<ArgumentException>(() => new MetaclassInfo("Root", false, typeof(IElement), null, NeverCreated));
+        Assert.Throws<ArgumentException>(() => new MetaclassInfo("Root", true, typeof(IElement), typeof(Elements.Comment), NeverCreated));
+        var root = new MetaclassInfo("Root", true, typeof(IElement), null, NeverCreated);
         var rootProperty = TextProperty(root, "text");
         root.Initialize([], [], [rootProperty]);
-        var child = new MetaclassInfo("Child", true, typeof(IElement), null, null);
+        var child = new MetaclassInfo("Child", true, typeof(IElement), null, NeverCreated);
         var childProperty = TextProperty(child, "name");
         MetaclassInfo[] parents = [root];
         MetaclassInfo[] ancestors = [root];
@@ -91,6 +94,9 @@ public sealed class MetadataImmutabilityTests
         Assert.Equal(FeatureDirectionKind.In, value);
         Assert.False(enumeration.TryParse("changed", out _));
     }
+
+    private static MetamodelElement NeverCreated(string id, string jsonType) =>
+        throw new InvalidOperationException($"no element {id} of {jsonType} is created here");
 
     private static MetaProperty TextProperty(MetaclassInfo owner, string key) =>
         new(owner, key, char.ToUpperInvariant(key[0]) + key[1..], PropertyRangeKind.Primitive,

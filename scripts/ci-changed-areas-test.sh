@@ -63,6 +63,7 @@ case_ python-only python client/python/opensysml/connection.py
 case_ signed-release-fixture dotnet,python client/python/tests/fixtures/signed_release/SHA256SUMS.txt.bundle
 # The .NET generator's committed goldens are generated from the Python client's multi-file model too.
 case_ generator-fixture dotnet,python client/python/tests/fixtures/multifile/lib.sysml
+case_ metamodel-reader-fixture dotnet,python client/python/tests/fixtures/metamodel/bigger.full.json
 # The .NET metamodel tests hold the generated types against the metamodel table and hierarchy.
 case_ metamodel-table docs,dotnet,go,java,julia,jupyterlab,matlab,mdk,node,python,rust,syson,vscode internal/translate/rdf/ontology/table.go
 case_ rust-only rust client/rust/opensysml/src/connection.rs
@@ -139,6 +140,7 @@ quick_case_ dotnet-gates dotnet client/dotnet/scripts/dotnet-gates.py
 quick_case_ dotnet-sdk-pin dotnet global.json
 quick_case_ signed-release-fixture dotnet,python client/python/tests/fixtures/signed_release/SHA256SUMS.txt.bundle
 quick_case_ generator-fixture dotnet,python client/python/tests/fixtures/multifile/top.sysml
+quick_case_ metamodel-reader-fixture dotnet,python client/python/tests/fixtures/metamodel/bigger.full.json
 quick_case_ dotnet-guide docs,dotnet docs/clients/dotnet.md
 quick_case_ metamodel-table dotnet,go internal/translate/rdf/ontology/table.go
 quick_case_ metamodel-hierarchy dotnet,go internal/translate/rdf/ontology/sysml-metaclasses.ttl

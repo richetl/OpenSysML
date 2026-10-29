@@ -13,7 +13,7 @@ namespace OpenMBEE.OpenSysML.Metamodel;
 /// </summary>
 public sealed class MetaclassInfo
 {
-    private readonly Func<string, string, MetamodelElement>? factory;
+    private readonly Func<string, string, MetamodelElement> factory;
     private IReadOnlyList<MetaclassInfo>? parents;
     private IReadOnlyList<MetaclassInfo>? ancestors;
     private IReadOnlyList<MetaProperty>? declared;
@@ -22,18 +22,18 @@ public sealed class MetaclassInfo
     private FrozenDictionary<string, MetaProperty>? byJsonKey;
     private FrozenDictionary<string, MetaProperty>? byName;
 
-    internal MetaclassInfo(string name, bool isAbstract, Type interfaceType, Type? elementType, Func<string, string, MetamodelElement>? factory)
+    internal MetaclassInfo(string name, bool isAbstract, Type interfaceType, Type? elementType, Func<string, string, MetamodelElement> factory)
     {
-        if (isAbstract != (elementType is null) || (elementType is null) != (factory is null))
+        if (isAbstract != (elementType is null))
         {
-            throw new ArgumentException($"{name}: a concrete metaclass has an element class and a factory, an abstract one neither");
+            throw new ArgumentException($"{name}: a concrete metaclass has a public element class, an abstract one none");
         }
 
         Name = name;
         IsAbstract = isAbstract;
         InterfaceType = interfaceType;
         ElementType = elementType;
-        this.factory = factory;
+        this.factory = factory ?? throw new ArgumentNullException(nameof(factory));
     }
 
     /// <summary>The metaclass name, for example <c>PartUsage</c>: the local name of its IRI and the <c>@type</c> a document writes.</summary>
@@ -45,7 +45,11 @@ public sealed class MetaclassInfo
     /// <summary>The generated interface, for example <c>IPartUsage</c>, that every element conforming to the metaclass implements.</summary>
     public Type InterfaceType { get; }
 
-    /// <summary>The generated sealed class of elements of exactly this metaclass; null when the metaclass is abstract.</summary>
+    /// <summary>
+    /// The generated sealed class of elements of exactly this metaclass; null when the metaclass is abstract,
+    /// whose elements, those a document types as the abstract metaclass itself or as a type the reader maps
+    /// to it, are of an internal class read through <see cref="InterfaceType"/>.
+    /// </summary>
     public Type? ElementType { get; }
 
     /// <summary>The direct superclasses, in the order the metamodel declares them.</summary>
@@ -87,6 +91,14 @@ public sealed class MetaclassInfo
         ArgumentNullException.ThrowIfNull(jsonKey);
         return (byJsonKey ?? throw Uninitialized()).TryGetValue(jsonKey, out property);
     }
+
+    /// <summary>The property of an element of this metaclass with a JSON key, for example <c>ownedFeature</c>.</summary>
+    /// <param name="jsonKey">The key.</param>
+    /// <returns>The property, declared or inherited.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="jsonKey"/> is null.</exception>
+    /// <exception cref="UnknownJsonKeyException">The metaclass has no property with that key.</exception>
+    public MetaProperty GetProperty(string jsonKey) =>
+        TryGetProperty(jsonKey, out var property) ? property : throw new UnknownJsonKeyException(this, jsonKey);
 
     /// <summary>Finds a property of an element of this metaclass by its C# property name, for example <c>OwnedFeature</c>.</summary>
     /// <param name="name">The C# name.</param>
@@ -142,12 +154,12 @@ public sealed class MetaclassInfo
         byName = properties.Values.ToFrozenDictionary(property => property.Name, StringComparer.Ordinal);
     }
 
-    /// <summary>Creates an element of exactly this metaclass, with nothing supplied yet.</summary>
-    /// <exception cref="InvalidOperationException">The metaclass is abstract.</exception>
-    internal MetamodelElement CreateElement(string id, string jsonType) =>
-        factory is null
-            ? throw new InvalidOperationException($"{Name} is abstract; no element is exactly an instance of it")
-            : factory(id, jsonType);
+    /// <summary>
+    /// Creates an element read as this metaclass, with nothing supplied yet: of exactly this metaclass when
+    /// it is concrete; when it is abstract, one whose document types it as the metaclass itself or as a type
+    /// the reader maps to it.
+    /// </summary>
+    internal MetamodelElement CreateElement(string id, string jsonType) => factory(id, jsonType);
 
     private InvalidOperationException Uninitialized() => new($"{Name} is not initialized");
 }

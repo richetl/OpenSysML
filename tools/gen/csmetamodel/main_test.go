@@ -37,15 +37,22 @@ func TestGeneratedMetamodel(t *testing.T) {
 		"        IMetaclass? Metaclass { get; }\n",
 		"    public sealed class PartUsage : MetamodelElement, IPartUsage\n",
 		"        string? IElement.DeclaredName => ReadText(Metaclasses.Element_declaredName);\n",
-		"        public static MetaclassInfo Element { get; } = new(\"Element\", true, typeof(IElement), null, null);\n",
+		"        public static MetaclassInfo Element { get; } = new(\"Element\", true, typeof(IElement), null, static (id, jsonType) => new global::OpenMBEE.OpenSysML.Metamodel.Elements.Element(id, jsonType));\n",
+		"        public static MetaclassInfo PartUsage { get; } = new(\"PartUsage\", false, typeof(IPartUsage), typeof(global::OpenMBEE.OpenSysML.Metamodel.Elements.PartUsage), static (id, jsonType) => new global::OpenMBEE.OpenSysML.Metamodel.Elements.PartUsage(id, jsonType));\n",
+		"    internal sealed class Element : MetamodelElement, IElement\n",
+		"    internal sealed class Relationship : MetamodelElement, IRelationship\n",
 		"            PartUsage.Initialize([ItemUsage], [ItemUsage, OccurrenceUsage, Usage, Feature, Type, Namespace, Element], [PartUsage_partDefinition]);\n",
 	} {
 		if !strings.Contains(source, want) {
 			t.Errorf("generated metamodel lacks %q", want)
 		}
 	}
-	if strings.Contains(source, "public sealed class Element ") {
-		t.Error("abstract metaclass Element has an element class")
+	for _, class := range ontology.Classes() {
+		public := strings.Contains(source, "    public sealed class "+class.Name+" : ")
+		internal := strings.Contains(source, "    internal sealed class "+class.Name+" : ")
+		if public == class.Abstract || internal != class.Abstract {
+			t.Errorf("metaclass %s (abstract %t): public element class %t, internal %t", class.Name, class.Abstract, public, internal)
+		}
 	}
 	if strings.Index(source, "            Type.Initialize(") > strings.Index(source, "            PartUsage.Initialize(") {
 		t.Error("metaclasses are not initialized parents first")
@@ -98,6 +105,7 @@ func TestCheckRejectsModifiedOutputAndWritesCurrentOne(t *testing.T) {
 func syntheticTable() ([]ontology.Class, []ontology.Property, []ontology.Enumeration) {
 	classes := []ontology.Class{
 		{Name: "Element", Abstract: true},
+		{Name: "Namespace", Parents: []string{"Element"}},
 		{Name: "Definition", Parents: []string{"Element"}},
 		{Name: "PartDefinition", Parents: []string{"Definition"}},
 		{Name: "Base", Abstract: true, Parents: []string{"Element"}},
@@ -161,13 +169,15 @@ func TestSyntheticGolden(t *testing.T) {
 		"            Leaf.Initialize([Left, Right], [Left, Right, Base, Element], []);\n",
 		"            Narrower_definition.Link([Narrow_definition], [], null);\n",
 		"            Element_owner.Link([], [], Element_ownedElement);\n",
+		"    internal sealed class Base : MetamodelElement, IBase\n",
+		"    public sealed class Leaf : MetamodelElement, ILeaf\n",
 	} {
 		if !strings.Contains(source, want) {
 			t.Errorf("synthetic output lacks %q", want)
 		}
 	}
-	if strings.Count(source, "Direction? IBase.Direction =>") != 5 {
-		t.Error("every concrete subclass of Base, the diamond's Leaf included, implements IBase.Direction exactly once")
+	if strings.Count(source, "Direction? IBase.Direction =>") != 6 {
+		t.Error("Base's own class and every concrete subclass of it, the diamond's Leaf included, implement IBase.Direction exactly once")
 	}
 	root, err := repo.Root()
 	if err != nil {
@@ -190,6 +200,7 @@ func TestSyntheticGolden(t *testing.T) {
 
 func TestGeneratorRejectsUnsoundTables(t *testing.T) {
 	element := ontology.Class{Name: "Element"}
+	namespace := ontology.Class{Name: "Namespace", Parents: []string{"Element"}}
 	node := ontology.Class{Name: "Node", Parents: []string{"Element"}}
 	child := ontology.Class{Name: "Child", Parents: []string{"Node"}}
 	redefining := func(class, name, rangeClass string, many bool, redefines ...string) ontology.Property {
@@ -205,13 +216,13 @@ func TestGeneratorRejectsUnsoundTables(t *testing.T) {
 	}{
 		{
 			name:       "related redeclaration without redefinition",
-			classes:    []ontology.Class{element, node, child},
+			classes:    []ontology.Class{element, namespace, node, child},
 			properties: []ontology.Property{testProperty("Node", "feature"), testProperty("Child", "feature")},
 			want:       "property feature is declared by related metaclasses Node and Child without redefining it",
 		},
 		{
 			name:    "redefinition widening the range",
-			classes: []ontology.Class{element, node, child},
+			classes: []ontology.Class{element, namespace, node, child},
 			properties: []ontology.Property{
 				redefining("Node", "target", "Node", false),
 				redefining("Child", "target", "Element", false, "Node::target"),
@@ -220,7 +231,7 @@ func TestGeneratorRejectsUnsoundTables(t *testing.T) {
 		},
 		{
 			name:    "redefinition changing multiplicity",
-			classes: []ontology.Class{element, node, child},
+			classes: []ontology.Class{element, namespace, node, child},
 			properties: []ontology.Property{
 				redefining("Node", "target", "Node", false),
 				redefining("Child", "target", "Node", true, "Node::target"),
@@ -229,7 +240,7 @@ func TestGeneratorRejectsUnsoundTables(t *testing.T) {
 		},
 		{
 			name:    "redefinition changing a datatype",
-			classes: []ontology.Class{element, node, child},
+			classes: []ontology.Class{element, namespace, node, child},
 			properties: []ontology.Property{
 				testProperty("Node", "label"),
 				{Name: "label", DefiningClass: "Child", Kind: ontology.DatatypeProperty, Range: xsdNS + "int", Redefines: []string{"Node::label"}},
@@ -239,7 +250,7 @@ func TestGeneratorRejectsUnsoundTables(t *testing.T) {
 		{
 			name: "unrelated declarations meeting",
 			classes: []ontology.Class{
-				element,
+				element, namespace,
 				{Name: "Left", Parents: []string{"Element"}},
 				{Name: "Right", Parents: []string{"Element"}},
 				{Name: "Leaf", Parents: []string{"Left", "Right"}},
@@ -249,138 +260,160 @@ func TestGeneratorRejectsUnsoundTables(t *testing.T) {
 		},
 		{
 			name:       "keys differing only in case",
-			classes:    []ontology.Class{element, node},
+			classes:    []ontology.Class{element, namespace, node},
 			properties: []ontology.Property{testProperty("Node", "xValue"), testProperty("Node", "XValue")},
 			want:       "Node has property keys XValue and xValue with the same C# name XValue",
 		},
 		{
 			name:       "keys meeting in case across generations",
-			classes:    []ontology.Class{element, node, child},
+			classes:    []ontology.Class{element, namespace, node, child},
 			properties: []ontology.Property{testProperty("Node", "xValue"), testProperty("Child", "XValue")},
 			want:       "Child has property keys XValue and xValue with the same C# name XValue",
 		},
 		{
 			name:       "runtime member",
-			classes:    []ontology.Class{element, node},
+			classes:    []ontology.Class{element, namespace, node},
 			properties: []ontology.Property{testProperty("Node", "metaclassInfo")},
 			want:       "Node::metaclassInfo collides with runtime member MetaclassInfo",
 		},
 		{
+			name:       "runtime method",
+			classes:    []ontology.Class{element, namespace, node},
+			properties: []ontology.Property{testProperty("Node", "getValue")},
+			want:       "Node::getValue collides with runtime member GetValue",
+		},
+		{
+			name:       "runtime extensions",
+			classes:    []ontology.Class{element, namespace, node},
+			properties: []ontology.Property{testProperty("Node", "extensions")},
+			want:       "Node::extensions collides with runtime member Extensions",
+		},
+		{
 			name:       "object member",
-			classes:    []ontology.Class{element, node},
+			classes:    []ontology.Class{element, namespace, node},
 			properties: []ontology.Property{testProperty("Node", "toString")},
 			want:       "Node::toString collides with runtime member ToString",
 		},
 		{
 			name:       "interface's own name",
-			classes:    []ontology.Class{element, node},
+			classes:    []ontology.Class{element, namespace, node},
 			properties: []ontology.Property{testProperty("Node", "iNode")},
 			want:       "Node::iNode takes the name of its interface INode",
 		},
 		{
 			name:       "key that is no identifier",
-			classes:    []ontology.Class{element, node},
+			classes:    []ontology.Class{element, namespace, node},
 			properties: []ontology.Property{testProperty("Node", "owned-feature")},
 			want:       "Node::owned-feature does not produce a C# identifier",
 		},
 		{
 			name:       "unsupported range",
-			classes:    []ontology.Class{element, node},
+			classes:    []ontology.Class{element, namespace, node},
 			properties: []ontology.Property{{Name: "when", DefiningClass: "Node", Kind: ontology.DatatypeProperty, Range: xsdNS + "dateTime"}},
 			want:       "Node::when has unsupported range",
 		},
 		{
 			name:       "dangling redefinition",
-			classes:    []ontology.Class{element, node},
+			classes:    []ontology.Class{element, namespace, node},
 			properties: []ontology.Property{redefining("Node", "target", "Node", false, "Gone::target")},
 			want:       "Node::target names Gone::target, which no metaclass declares",
 		},
 		{
 			name:       "undeclared owner",
-			classes:    []ontology.Class{element},
+			classes:    []ontology.Class{element, namespace},
 			properties: []ontology.Property{testProperty("Ghost", "label")},
 			want:       "Ghost::label has no declaring metaclass",
 		},
 		{
 			name:    "lower-case metaclass",
-			classes: []ontology.Class{element, {Name: "node", Parents: []string{"Element"}}},
+			classes: []ontology.Class{element, namespace, {Name: "node", Parents: []string{"Element"}}},
 			want:    `metaclass name "node" is not a PascalCase C# identifier`,
 		},
 		{
 			name:    "underscored metaclass",
-			classes: []ontology.Class{element, {Name: "Part_Usage", Parents: []string{"Element"}}},
+			classes: []ontology.Class{element, namespace, {Name: "Part_Usage", Parents: []string{"Element"}}},
 			want:    `metaclass name "Part_Usage" is not a PascalCase C# identifier`,
 		},
 		{
 			name:    "element class hiding an interface",
-			classes: []ontology.Class{element, node, {Name: "INode", Parents: []string{"Element"}}},
+			classes: []ontology.Class{element, namespace, node, {Name: "INode", Parents: []string{"Element"}}},
 			want:    "the element class of metaclass INode would hide the interface of metaclass Node",
 		},
 		{
 			name:    "element class hiding a runtime type",
-			classes: []ontology.Class{element, {Name: "Metaclasses", Parents: []string{"Element"}}},
+			classes: []ontology.Class{element, namespace, {Name: "Metaclasses", Parents: []string{"Element"}}},
 			want:    "the element class of metaclass Metaclasses would hide the runtime type Metaclasses",
 		},
 		{
+			name:    "abstract metaclass's element class hiding a runtime type",
+			classes: []ontology.Class{element, namespace, {Name: "MetamodelGraph", Abstract: true, Parents: []string{"Element"}}},
+			want:    "the element class of metaclass MetamodelGraph would hide the runtime type MetamodelGraph",
+		},
+		{
 			name:    "registry member",
-			classes: []ontology.Class{element, {Name: "All", Parents: []string{"Element"}}},
+			classes: []ontology.Class{element, namespace, {Name: "All", Parents: []string{"Element"}}},
 			want:    "metaclass All collides with the registry member Metaclasses.All",
 		},
 		{
 			name:    "metaclass and enumeration sharing a name",
-			classes: []ontology.Class{element, node},
+			classes: []ontology.Class{element, namespace, node},
 			enums:   []ontology.Enumeration{{Name: "INode", Literals: []string{"a"}}},
 			want:    "enumeration INode and the interface of metaclass Node share the generated name INode",
 		},
 		{
 			name:    "enumeration shadowing a runtime type",
-			classes: []ontology.Class{element},
+			classes: []ontology.Class{element, namespace},
 			enums:   []ontology.Enumeration{{Name: "MetaProperty", Literals: []string{"a"}}},
 			want:    "the runtime type MetaProperty and enumeration MetaProperty share the generated name MetaProperty",
 		},
 		{
 			name:    "literals meeting in case",
-			classes: []ontology.Class{element},
+			classes: []ontology.Class{element, namespace},
 			enums:   []ontology.Enumeration{{Name: "Direction", Literals: []string{"in", "In"}}},
 			want:    `enum Direction has literals "in" and "In" with the same C# member In`,
 		},
 		{
 			name:    "literal that is no identifier",
-			classes: []ontology.Class{element},
+			classes: []ontology.Class{element, namespace},
 			enums:   []ontology.Enumeration{{Name: "Direction", Literals: []string{"bad-literal"}}},
 			want:    `enum literal "bad-literal" in Direction does not produce a C# identifier`,
 		},
 		{
 			name:    "literal taking the enumeration's name",
-			classes: []ontology.Class{element},
+			classes: []ontology.Class{element, namespace},
 			enums:   []ontology.Enumeration{{Name: "Kind", Literals: []string{"kind"}}},
 			want:    `enum literal "kind" in Kind takes the enumeration's own name`,
 		},
 		{
 			name:    "empty enumeration",
-			classes: []ontology.Class{element},
+			classes: []ontology.Class{element, namespace},
 			enums:   []ontology.Enumeration{{Name: "Direction"}},
 			want:    "enumeration Direction has no literals",
 		},
 		{
 			name:    "missing Element",
 			classes: []ontology.Class{node},
-			want:    "metaclass Element is not declared",
+			want:    "metaclass Element is not declared; the runtime names it",
+		},
+		{
+			name:    "missing Namespace",
+			classes: []ontology.Class{element, node},
+			want:    "metaclass Namespace is not declared; the runtime names it",
 		},
 		{
 			name:    "repeated metaclass",
-			classes: []ontology.Class{element, node, node},
+			classes: []ontology.Class{element, namespace, node, node},
 			want:    "metaclass Node is declared more than once",
 		},
 		{
 			name:    "unknown parent",
-			classes: []ontology.Class{element, {Name: "Node", Parents: []string{"Missing"}}},
+			classes: []ontology.Class{element, namespace, {Name: "Node", Parents: []string{"Missing"}}},
 			want:    "Node has unknown metaclass parent Missing",
 		},
 		{
 			name: "inconsistent C3 order",
 			classes: []ontology.Class{
-				element,
+				element, namespace,
 				{Name: "O", Parents: []string{"Element"}},
 				{Name: "X", Parents: []string{"O"}},
 				{Name: "Y", Parents: []string{"O"}},
@@ -402,12 +435,16 @@ func TestGeneratorRejectsUnsoundTables(t *testing.T) {
 }
 
 func TestGeneratorRejectsFrameworkTypeNames(t *testing.T) {
-	classes := []ontology.Class{{Name: "Element", Abstract: true}}
+	classes := []ontology.Class{{Name: "Element", Abstract: true}, {Name: "Namespace", Parents: []string{"Element"}}}
 	for _, name := range []string{
 		"ArgumentException", "ArgumentNullException", "ArgumentOutOfRangeException", "Array",
-		"Dictionary", "Enum", "Exception", "FrozenDictionary", "FrozenSet", "Func",
-		"IEnumerable", "InvalidOperationException", "KeyValuePair", "NotNullWhen", "NotNullWhenAttribute",
-		"StringComparer", "Type",
+		"ArrayBufferWriter", "BindingFlags", "ConcurrentDictionary", "Dictionary", "Enum", "Exception", "File",
+		"FrozenDictionary", "FrozenSet", "Func", "HashSet", "IEnumerable", "IEnumerator",
+		"IReadOnlyCollection", "IReadOnlyDictionary", "InvalidOperationException", "JsonDocument",
+		"JsonDocumentOptions", "JsonElement", "JsonException", "JsonMarshal", "JsonProperty", "JsonValueKind",
+		"KeyNotFoundException", "KeyValuePair", "List", "NotNullWhen", "NotNullWhenAttribute",
+		"ObjectDisposedException", "ReadOnlyDictionary", "Stack", "Stream", "StringComparer", "Type",
+		"Utf8", "Utf8JsonReader", "Utf8JsonWriter",
 	} {
 		t.Run(name, func(t *testing.T) {
 			_, err := generate(classes, nil, []ontology.Enumeration{{Name: name, Literals: []string{"value"}}}, "v", "t", "c")
@@ -428,7 +465,7 @@ func TestGeneratorRejectsFrameworkTypeNames(t *testing.T) {
 func TestGeneratorRejectsInheritedRegistryMembers(t *testing.T) {
 	for _, name := range []string{"Equals", "Finalize", "GetHashCode", "GetType", "MemberwiseClone", "ReferenceEquals", "ToString"} {
 		t.Run(name, func(t *testing.T) {
-			classes := []ontology.Class{{Name: "Element", Abstract: true}, {Name: name, Parents: []string{"Element"}}}
+			classes := []ontology.Class{{Name: "Element", Abstract: true}, {Name: "Namespace", Parents: []string{"Element"}}, {Name: name, Parents: []string{"Element"}}}
 			_, err := generate(classes, nil, nil, "v", "t", "c")
 			if err == nil || !strings.Contains(err.Error(), "collides with the registry member Metaclasses."+name) {
 				t.Fatalf("generate error = %v, want a registry member collision", err)
@@ -438,7 +475,7 @@ func TestGeneratorRejectsInheritedRegistryMembers(t *testing.T) {
 }
 
 func TestPropertyKindsMatchTheirRanges(t *testing.T) {
-	classes := []ontology.Class{{Name: "Element", Abstract: true}, {Name: "Node", Parents: []string{"Element"}}}
+	classes := []ontology.Class{{Name: "Element", Abstract: true}, {Name: "Namespace", Parents: []string{"Element"}}, {Name: "Node", Parents: []string{"Element"}}}
 	enums := []ontology.Enumeration{{Name: "Direction", Literals: []string{"in", "out"}}}
 	for _, rangeIRI := range []string{xsdNS + "boolean", xsdNS + "string", xsdNS + "int", owlNS + "real", sysmlNS + "Direction", sysmlNS + "Element"} {
 		for _, kind := range []ontology.PropertyKind{ontology.ObjectProperty, ontology.DatatypeProperty, -1, 2} {

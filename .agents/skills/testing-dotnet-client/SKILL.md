@@ -64,6 +64,19 @@ test declares `Category` `Unit`, `Integration` or `Interop`; focus with
   `go test -C tools ./gen/csmetamodel -run TestSyntheticGolden -update` rewrites after a generator
   change. Changing a property in `table.go` must fail both checks; changing an edge in the `.ttl` must
   fail `HierarchyTests`. Restore both by digest afterwards.
+- **Metamodel reader.** `MetamodelGraph.ReadJson` is tested by `ReaderInputTests`, `ReaderValueTests`,
+  `ReaderExtensionTests` and `MetamodelGraphTests` in the same project, which read the Python client's
+  `client/python/tests/fixtures/metamodel/bigger.full.json` in place; `MetamodelExportTests` in the
+  library's tests reads a live `api-json` export over all three wires (set `OPENSYSML_REQUIRE_SERVICE=1`,
+  or it skips). `make dotnet-test` runs `samples/MetamodelReader` over that fixture through
+  `dotnet-gates.py metamodel-sample`. A real export is the load-bearing check: `bin/sysml -convert
+  api-json -stdlib` (about 136 MB, 112,031 elements) must read whole; with `CheckRanges` on about
+  3,600 derived references are malformed only when read, and 30 values of `@type`s the metamodel lacks
+  (`BooleanUsage`, `StructureUsage`, …) are malformed with checks off too. A read that throws on that
+  file means a value failure escaped its property. With `KeepExtensions` the same read keeps about
+  139,000 members (25,901 elements carry `sysx:sourceText`) for about 34 MB more retained memory. Negative controls worth repeating: make
+  `GraphReader` throw on a malformed value (the theory and the stdlib read fail), drop the `@ref`
+  branch (`UnresolvedReferencesFailOnlyTheirProperty` fails), and stop normalizing `Supertypes` keys.
 
 ## Conformance
 

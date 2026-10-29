@@ -31,7 +31,8 @@ of this repository and consumed by `ProjectReference`. It is not published to Nu
 > signature, so a release it pins no digest for is refused. Its [generator](#typed-model-classes)
 > writes typed C# interfaces and classes over a model's definitions, which read instances through
 > the library. A separate, standalone assembly holds [the SysML metamodel as C#
-> types](#metamodel-types); the reader that loads exported JSON into them is not yet in this tree.
+> types](#metamodel-types) and [reads an exported model's JSON](#reading-exported-json) into
+> them, without a service.
 
 For a task-oriented walkthrough, see the [.NET client guide](../../docs/clients/dotnet.md); the
 [.NET API reference](../../docs/reference/dotnet-api.md) lists the surface by area.
@@ -1101,8 +1102,9 @@ alone: a reference outside them and the standard library is refused rather than 
 ## Metamodel types
 
 [`src/OpenMBEE.OpenSysML.Metamodel`](src/OpenMBEE.OpenSysML.Metamodel/) is the SysML v2 metamodel
-as C# types, an assembly of its own: it references neither this library nor any package at run
-time, so a project that reads exported model JSON needs a `ProjectReference` to it alone.
+as C# types, and a reader of exported model JSON into them, in an assembly of its own: it references
+neither this library nor any package at run time, so a project that reads exported model JSON needs a
+`ProjectReference` to it alone, and no service.
 
 - One interface per metaclass, `IPartUsage` for `PartUsage`, extending the interfaces of the
   metaclass's superclasses, so `element is IFeature` and `elements.OfType<IPartUsage>()` select
@@ -1111,8 +1113,9 @@ time, so a project that reads exported model JSON needs a `ProjectReference` to 
   single value as a nullable (`string?`, `bool?`, `int?`, `double?`, an enum or another
   metaclass's interface), a many-valued one as an `IReadOnlyList<T>`.
 - One sealed class per concrete metaclass, in `OpenMBEE.OpenSysML.Metamodel.Elements`, implementing
-  every property it inherits explicitly; abstract metaclasses such as `Element` have none. Only a
-  reader creates them, so a project reads elements through the interfaces.
+  every property it inherits explicitly. An abstract metaclass such as `Element` has an internal one,
+  for the elements a document types as the abstract metaclass itself or as a type the reader maps to
+  it. Only the reader creates them, so a project reads elements through the interfaces.
 - One enum per enumeration, its members the literals PascalCased (`inout` is
   `FeatureDirectionKind.Inout`); `EnumerationInfo` maps members and literals both ways.
 - `Metaclasses` describes them: a `MetaclassInfo` per metaclass (`Metaclasses.PartUsage`, or by
@@ -1130,6 +1133,78 @@ export of owned properties omits, from an owned one. A property supplied as null
 as empty when many-valued. `MetamodelException` derives from `Exception`, not
 `OpenSysMLException`: the assembly does not depend on the client library.
 
+### Reading exported JSON
+
+`MetamodelGraph.ReadJson` reads a JSON export, the SysML v2 API's element array as `ToApiJsonAsync`
+or `sysml -convert api-json` writes it, or sysml-toolkit's `full-json`, into the generated types.
+[`samples/MetamodelReader`](samples/MetamodelReader/) references the metamodel project alone and reads
+the file it is given:
+
+```csharp
+var graph = MetamodelGraph.ReadJson("vehicle.json");   // a path, never JSON text
+foreach (var definition in graph.All<IPartDefinition>())
+{
+    Console.WriteLine($"{definition.DeclaredName}: {string.Join(", ", definition.OwnedFeature.Select(f => f.DeclaredName))}");
+}
+```
+
+```bash
+dotnet run --project client/dotnet/samples/MetamodelReader -c Release -- client/python/tests/fixtures/metamodel/bigger.full.json
+# OpenMBEE.OpenSysML.Metamodel <version> (.NETCoreApp,Version=v10.0)
+# 87 elements, 1 root namespace(s), metamodel 20250201
+# part def Base owns mass
+# part def Vehicle owns mass2, wheel, p, cargo, a, c, s
+# part wheel : (none)
+# part v : Vehicle
+```
+
+- **Sources.** A file path, a `Stream` (read to its end and left open), a parsed `JsonDocument`
+  (left undisposed) or a sequence of `JsonElement`s, each with or without `ReadOptions`. A document is
+  an element object, an array of them, a DataVersion (`identity` and `payload`, a null payload holding
+  no element), an array of DataVersions, or a Commit whose `change` array holds them.
+- **Complete and immutable.** Every element is created, every value converted and every reference
+  resolved before `ReadJson` returns; the graph keeps none of the source's JSON, which the caller may
+  dispose, and any number of threads may read it.
+- **The graph.** `Elements` in document order, `this[id]`, `TryGet` and `Contains` by `@id`,
+  `All<T>()` selecting by metamodel ancestry (`All<IFeature>()` holds every part usage), and `Roots`,
+  the namespaces the document records no owner for and no element's `ownedRelationship` or
+  `ownedRelatedElement` refers to. An element is one object however it is reached.
+- **Types.** `@type` is matched with a `sysml:` prefix or the SysML namespace IRI, unversioned or
+  versioned, removed, and kept as written in `JsonType`. A type the metamodel lacks is read as the first
+  metaclass along `ReadOptions.Supertypes`, and as `Element` without one; a type naming an abstract
+  metaclass is read as that metaclass.
+- **Keys.** A key the element's metaclass has no property for, an exporter's `sysx:` annotations
+  among them, is not converted. With `ReadOptions.KeepExtensions` every element keeps those members, as
+  written, in `Extensions`, a dictionary of `JsonElement`s copied out of the source, so they outlive
+  it; without it, reading `Extensions` throws. The keys of a type the metamodel lacks beyond those of
+  the metaclass it is read as are kept the same way. `GetValue(jsonKey)` reads a property untyped, and
+  throws `UnknownJsonKeyException` for such a key, as `MetaclassInfo.GetProperty` does.
+- **Failures.** A document that is not an element graph fails the read with
+  `MalformedDocumentException`: not JSON, an item that is no object, an element without a string `@id`
+  or `@type`, two elements with one `@id`, invalid UTF-8, an undecodable Unicode property name,
+  `@id` or `@type`, a key twice in any object (including ignored extensions and envelope metadata),
+  or supertypes that form a cycle. These checks apply to every source overload.
+  A value that does not fit its property, of the wrong JSON kind, a literal its enumeration lacks, an
+  integer beyond 32 bits, a real that is not finite, an undecodable Unicode string (including a
+  reference target) or a null in an array, fails only reads of that
+  property, every time, with `MalformedValueException`. So does a reference to an element outside the
+  property's metaclass, unless `ReadOptions.CheckRanges` is off: then the typed property, which cannot
+  hold it, still throws, and `GetValue` returns it as written. Only range checks are off. A reference
+  to an `@id` the document does not include, such as a standard-library element, or any `@ref`, fails
+  only reads of its property with `UnresolvedReferenceException`.
+
+OpenSysML's `api-json` export carries the owned properties it writes and some derived ones
+(`ownedFeature`, `owner`, `qualifiedName`, `ownedMember`, `type` on a typed usage, …), but no
+`feature`, `inheritedFeature` or `definition`, so those reads throw `NotSuppliedException` with
+`IsDerived` until the engine serves derived properties; sysml-toolkit's `full-json` carries derived
+properties as well. Both write some derived values outside their range: sysml-toolkit a requirement
+definition's `result` as the definition itself, OpenSysML a constructor expression's `function` as
+the attribute definition it constructs; read with `CheckRanges` off to reach them through
+`GetValue`. OpenSysML also types some standard-library usages with metaclass names the metamodel
+lacks (`BooleanUsage`, `StructureUsage`, …), read as `Element` unless `Supertypes` maps them. The
+compact form ([`api-json-compact/1`](../../docs/reference/api-json-compact.md)) is not read: ask for
+the element array.
+
 `Generated.cs` is written by [`tools/gen/csmetamodel`](../../tools/gen/csmetamodel/) from the
 metamodel table [`internal/translate/rdf/ontology`](../../internal/translate/rdf/ontology/) holds,
 the same table the Python client's metamodel classes are generated from:
@@ -1142,8 +1217,9 @@ make dotnet-metamodel-check    # fail when the committed file is stale, as CI do
 The generator refuses a table the C# types could not carry soundly, naming the properties or
 metaclasses behind each problem: a property a subclass redeclares without redefining it, or redefines
 with a wider range or another multiplicity; one inherited from unrelated metaclasses; two keys with
-one C# name; a name every element already has (`Id`, `JsonType`, `MetaclassInfo`, `ToString`, …);
-and type names that would collide with the runtime or its framework types. Metaclass names cannot
+one C# name; a name every element already has (`Id`, `JsonType`, `MetaclassInfo`, `GetValue`,
+`Extensions`, `ToString`, …); type names that would collide with the runtime or its framework types; and a table
+without `Element` or `Namespace`, which the reader names. Metaclass names cannot
 hide inherited registry members, and primitive and enumeration ranges require datatype properties,
 while metaclass ranges require object properties. A redefinition that keeps a property's name narrows
 its type in the subclass's interface (`new`), and every interface of the chain reads the most specific value.
@@ -1195,7 +1271,7 @@ the reviewed requests the API cannot express.
 ## Building and testing
 
 ```bash
-make dotnet-test       # preflight, locked restore, build, format check, tests, sample
+make dotnet-test       # preflight, locked restore, build, format check, tests, samples
 make dotnet-coverage   # the tests under coverlet: Cobertura and JUnit in bin/dotnet/coverage
 make conformance-dotnet conformance-dotnet-check   # the conformance suite; see Conformance
 ```
@@ -1222,7 +1298,8 @@ start it as a private service, shared, isolated, killed and stopped. Unit tests 
 every protocol shares run over all three wires too. They skip without a binary; set
 `OPENSYSML_REQUIRE_SERVICE=1` to turn that skip into a failure, as CI does. `make
 dotnet-test` also runs the Vehicle sample against such a service, and with the binary alone,
-which it starts privately, under the same rule:
+which it starts privately, under the same rule; the MetamodelReader sample it runs over the Python
+client's sysml-toolkit fixture with neither named, since it needs no service:
 
 ```bash
 OPENSYSML_GRPC_BINARY="$PWD/bin/sysml-grpc" OPENSYSML_REQUIRE_SERVICE=1 make dotnet-test
@@ -1251,6 +1328,15 @@ the generator's Go tests keep it current, and these tests compile it with the ru
 missing documentation as errors, and read it.
 They also prove that public metadata lists refuse mutation and copy the arrays used to initialize
 them, keeping enumeration round trips and property and ancestry lookups consistent.
+
+The reader's tests, in the same project, port the Python client's reader and toolkit tests: every
+source and envelope, type normalization and supertypes, abstract and unknown types, references
+resolved, unresolved and cyclic, ranges with checks on and off, absent, null and malformed values,
+the documents refused, extension keys kept as written and outliving every source, and the
+sysml-toolkit `full-json` fixture the Python client reads, in place.
+They read a value for every property of every metaclass, select by every interface over an element of
+every metaclass, and read a graph after disposing its source. `MetamodelExportTests`, among the
+library's integration tests, reads what a real service exports as `api-json` over every protocol.
 
 Unit tests drive every way a private service starts and stops against
 [`test/FakeService`](test/FakeService/), a stand-in the solution builds and the tests copy,

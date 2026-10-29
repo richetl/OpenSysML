@@ -76,7 +76,7 @@ emit rust "$( { [[ "$fanout" = true ]] || matches "$rust_pattern"; } && echo tru
 # The .NET suite serves the Python client's signed-release fixtures as a release
 # it must refuse, so a change to them runs it too, as does one to the metamodel
 # table and hierarchy its metamodel tests hold the generated types against.
-emit dotnet "$( { [[ "$fanout" = true ]] || matches "$dotnet_pattern" || matches '^client/python/tests/fixtures/signed_release/' || matches '^client/python/tests/fixtures/multifile/' || matches '^internal/translate/rdf/ontology/(table\.go|sysml-metaclasses\.ttl)$' || matches '^docs/clients/dotnet\.md$'; } && echo true || echo false)"
+emit dotnet "$( { [[ "$fanout" = true ]] || matches "$dotnet_pattern" || matches '^client/python/tests/fixtures/signed_release/' || matches '^client/python/tests/fixtures/multifile/' || matches '^client/python/tests/fixtures/metamodel/' || matches '^internal/translate/rdf/ontology/(table\.go|sysml-metaclasses\.ttl)$' || matches '^docs/clients/dotnet\.md$'; } && echo true || echo false)"
 emit julia "$( { [[ "$fanout" = true ]] || matches "$julia_pattern"; } && echo true || echo false)"
 emit matlab "$( { [[ "$fanout" = true ]] || matches "$matlab_pattern"; } && echo true || echo false)"
 emit vscode "$( { [[ "$fanout" = true ]] || matches "$vscode_pattern"; } && echo true || echo false)"

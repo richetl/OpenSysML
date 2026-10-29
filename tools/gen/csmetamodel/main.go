@@ -1,6 +1,7 @@
 // Command csmetamodel writes the generated C# view of the SysML metamodel: an
-// interface per metaclass, a sealed element class per concrete metaclass, an
-// enum per enumeration and the Metaclasses registry describing them.
+// interface per metaclass, a sealed element class per concrete metaclass (and
+// an internal one per abstract metaclass, for elements a document types as it),
+// an enum per enumeration and the Metaclasses registry describing them.
 //
 //	go run -C tools ./gen/csmetamodel [-check] [-out FILE]
 package main
@@ -37,13 +38,19 @@ var objectMembers = []string{
 
 // runtimeMembers are the names a generated property may not take: the members
 // of IMetamodelElement, which every root interface extends, and of object.
-var runtimeMembers = append([]string{"Id", "JsonType", "MetaclassInfo"}, objectMembers...)
+var runtimeMembers = append([]string{"Id", "JsonType", "MetaclassInfo", "GetValue", "Extensions"}, objectMembers...)
+
+// runtimeMetaclasses are the metaclasses the handwritten runtime names: the
+// reader reads an unrecognized @type as Element, and its roots are Namespaces.
+var runtimeMetaclasses = []string{"Element", "Namespace"}
 
 // runtimeTypes are the handwritten types of the root namespace, and the
 // framework types the generated bodies name without qualification.
 var runtimeTypes = []string{
-	"EnumerationInfo", "IMetamodelElement", "MetaProperty", "MetaclassInfo", "Metaclasses",
-	"MetamodelElement", "MetamodelException", "NotSuppliedException", "PropertyRangeKind",
+	"EnumerationInfo", "GraphReader", "IMetamodelElement", "MalformedDocumentException",
+	"MalformedValueException", "MetaProperty", "MetaclassInfo", "Metaclasses", "MetamodelElement",
+	"MetamodelException", "MetamodelGraph", "NotSuppliedException", "PropertyRangeKind", "ReadOptions",
+	"TypedList", "UnknownJsonKeyException", "UnresolvedReferenceException",
 	"IReadOnlyList", elementsName,
 }
 
@@ -51,9 +58,13 @@ var runtimeTypes = []string{
 // hide the framework types the handwritten runtime names without qualification.
 var frameworkTypes = []string{
 	"ArgumentException", "ArgumentNullException", "ArgumentOutOfRangeException", "Array",
-	"Dictionary", "Enum", "Exception", "FrozenDictionary", "FrozenSet", "Func",
-	"IEnumerable", "InvalidOperationException", "KeyValuePair", "NotNullWhen", "NotNullWhenAttribute",
-	"StringComparer", "Type",
+	"ArrayBufferWriter", "BindingFlags", "ConcurrentDictionary", "Dictionary", "Enum", "Exception", "File",
+	"FrozenDictionary", "FrozenSet", "Func", "HashSet", "IEnumerable", "IEnumerator",
+	"IReadOnlyCollection", "IReadOnlyDictionary", "InvalidOperationException", "JsonDocument",
+	"JsonDocumentOptions", "JsonElement", "JsonException", "JsonMarshal", "JsonProperty", "JsonValueKind",
+	"KeyNotFoundException", "KeyValuePair", "List", "NotNullWhen", "NotNullWhenAttribute",
+	"ObjectDisposedException", "ReadOnlyDictionary", "Stack", "Stream", "StringComparer", "Type",
+	"Utf8", "Utf8JsonReader", "Utf8JsonWriter",
 }
 
 // registryMembers are the members of the Metaclasses class besides its one
@@ -156,15 +167,10 @@ namespace %s
 		return nil, err
 	}
 	fmt.Fprintf(&b, "}\n\nnamespace %s.%s\n{\n", rootNamespace, elementsName)
-	first := true
-	for _, class := range m.sortedClasses() {
-		if class.Abstract {
-			continue
-		}
-		if !first {
+	for i, class := range m.sortedClasses() {
+		if i > 0 {
 			b.WriteString("\n")
 		}
-		first = false
 		if err := m.writeElementClass(&b, class); err != nil {
 			return nil, err
 		}
@@ -267,11 +273,10 @@ func (m *model) writeRegistry(b *strings.Builder, version, tag, commit string) e
         public const string SourceCommit = %q;
 `, version, tag, commit)
 	for _, class := range m.sortedClasses() {
-		elementType, factory := "null", "null"
+		qualified := "global::" + rootNamespace + "." + elementsName + "." + class.Name
+		elementType, factory := "null", "static (id, jsonType) => new "+qualified+"(id, jsonType)"
 		if !class.Abstract {
-			qualified := "global::" + rootNamespace + "." + elementsName + "." + class.Name
 			elementType = "typeof(" + qualified + ")"
-			factory = "static (id, jsonType) => new " + qualified + "(id, jsonType)"
 		}
 		fmt.Fprintf(b, "\n        /// <summary>Metaclass <c>%s</c>.</summary>\n", class.Name)
 		fmt.Fprintf(b, "        public static MetaclassInfo %s { get; } = new(%q, %t, typeof(%s), %s, %s);\n",
@@ -369,10 +374,20 @@ func propertyField(qualified string) string {
 
 func enumerationField(name string) string { return "Enumeration_" + name }
 
+// writeElementClass writes the class of class's elements: public for a concrete
+// metaclass; internal for an abstract one, whose elements are those a document
+// types as the metaclass itself or as a type the reader maps to it.
 func (m *model) writeElementClass(b *strings.Builder, class ontology.Class) error {
-	fmt.Fprintf(b, "    /// <summary>An element of exactly metaclass <c>%s</c>. Its properties are read through <see cref=\"%s\"/>, which it implements explicitly.</summary>\n",
-		class.Name, interfaceName(class.Name))
-	fmt.Fprintf(b, "    public sealed class %s : MetamodelElement, %s\n    {\n", class.Name, interfaceName(class.Name))
+	access := "public"
+	if class.Abstract {
+		access = "internal"
+		fmt.Fprintf(b, "    /// <summary>An element read as abstract metaclass <c>%s</c>, which its document types as <c>%s</c> or as a type the reader maps to it. Its properties are read through <see cref=\"%s\"/>, which it implements explicitly.</summary>\n",
+			class.Name, class.Name, interfaceName(class.Name))
+	} else {
+		fmt.Fprintf(b, "    /// <summary>An element of exactly metaclass <c>%s</c>. Its properties are read through <see cref=\"%s\"/>, which it implements explicitly.</summary>\n",
+			class.Name, interfaceName(class.Name))
+	}
+	fmt.Fprintf(b, "    %s sealed class %s : MetamodelElement, %s\n    {\n", access, class.Name, interfaceName(class.Name))
 	fmt.Fprintf(b, "        internal %s(string id, string jsonType)\n            : base(Metaclasses.%s, id, jsonType)\n        {\n        }\n",
 		class.Name, class.Name)
 	var members []ontology.Property
@@ -500,8 +515,10 @@ func (m *model) indexTypes(classes []ontology.Class, enums []ontology.Enumeratio
 		}
 		m.classBy[class.Name] = class
 	}
-	if _, ok := m.classBy["Element"]; !ok {
-		return fmt.Errorf("metaclass Element is not declared")
+	for _, name := range runtimeMetaclasses {
+		if _, ok := m.classBy[name]; !ok {
+			return fmt.Errorf("metaclass %s is not declared; the runtime names it", name)
+		}
 	}
 	m.enums = slices.Clone(enums)
 	sort.Slice(m.enums, func(i, j int) bool { return m.enums[i].Name < m.enums[j].Name })

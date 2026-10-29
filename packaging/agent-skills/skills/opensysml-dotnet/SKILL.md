@@ -114,5 +114,8 @@ Everything derives from `OpenSysMLException`, except `OperationCanceledException
   host; do not suggest them.
 - `Connection.CallAsync` reaches any RPC with the generated `OpenMBEE.OpenSysML.Wire` messages when
   the typed surface does not cover a field.
+- To read an exported JSON model without a service, reference
+  `client/dotnet/src/OpenMBEE.OpenSysML.Metamodel` alone and call `MetamodelGraph.ReadJson`; a property
+  the export omits throws `NotSuppliedException`, never a default.
 - Write models with the `sysml-v2-modeling` skill; `sysml -validate` reports the same diagnostics as
   `model.ParseDiagnostics`.
