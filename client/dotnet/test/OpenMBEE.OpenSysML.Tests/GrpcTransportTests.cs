@@ -104,7 +104,7 @@ public sealed class GrpcTransportTests
             new HttpProtocolException(1, "PROTOCOL_ERROR", null));
         var error = new RpcException(new Status(Grpc.Core.StatusCode.Internal, "Error starting gRPC call.", cause));
 
-        var mapped = Assert.IsType<TransportException>(GrpcTransport.Map(error, serverStatus: null, GetSymbol, Address, CancellationToken.None));
+        var mapped = Assert.IsType<TransportException>(GrpcTransport.Map(error, serverStatus: null, GetSymbol, Address, CredentialSource.None, CancellationToken.None));
 
         Assert.Equal(StatusCode.Internal, mapped.StatusCode);
         Assert.Same(cause, mapped.InnerException);
@@ -123,7 +123,7 @@ public sealed class GrpcTransportTests
             "An HTTP/2 connection could not be established because the server did not complete the HTTP/2 handshake.");
         var error = new RpcException(new Status(status, "Error starting gRPC call.", cause));
 
-        var mapped = Assert.IsType<TransportException>(GrpcTransport.Map(error, serverStatus: null, GetSymbol, Address, CancellationToken.None));
+        var mapped = Assert.IsType<TransportException>(GrpcTransport.Map(error, serverStatus: null, GetSymbol, Address, CredentialSource.None, CancellationToken.None));
 
         Assert.Equal(StatusCode.Internal, mapped.StatusCode);
         Assert.Equal(GetSymbol, mapped.Method);
@@ -139,7 +139,7 @@ public sealed class GrpcTransportTests
         var cause = new HttpRequestException(HttpRequestError.Unknown, "reset", new SocketException((int)SocketError.ConnectionReset));
         var error = new RpcException(new Status(Grpc.Core.StatusCode.Unavailable, "Error starting gRPC call.", cause));
 
-        var mapped = Assert.IsType<TransportException>(GrpcTransport.Map(error, serverStatus: null, GetSymbol, Address, CancellationToken.None));
+        var mapped = Assert.IsType<TransportException>(GrpcTransport.Map(error, serverStatus: null, GetSymbol, Address, CredentialSource.None, CancellationToken.None));
 
         Assert.Equal(StatusCode.Unavailable, mapped.StatusCode);
         Assert.DoesNotContain("HTTP/1.1", mapped.Message, StringComparison.Ordinal);
@@ -151,8 +151,8 @@ public sealed class GrpcTransportTests
     {
         var error = new RpcException(new Status(Grpc.Core.StatusCode.Internal, "decode", new InvalidOperationException("local")));
 
-        Assert.IsType<TransportException>(GrpcTransport.Map(error, serverStatus: 13, GetSymbol, Address, CancellationToken.None));
-        Assert.IsType<ServiceException>(GrpcTransport.Map(new RpcException(new Status(Grpc.Core.StatusCode.Internal, "x")), 13, GetSymbol, Address, CancellationToken.None));
-        Assert.IsType<TransportException>(GrpcTransport.Map(new RpcException(new Status(Grpc.Core.StatusCode.Internal, "x")), 0, GetSymbol, Address, CancellationToken.None));
+        Assert.IsType<TransportException>(GrpcTransport.Map(error, serverStatus: 13, GetSymbol, Address, CredentialSource.None, CancellationToken.None));
+        Assert.IsType<ServiceException>(GrpcTransport.Map(new RpcException(new Status(Grpc.Core.StatusCode.Internal, "x")), 13, GetSymbol, Address, CredentialSource.None, CancellationToken.None));
+        Assert.IsType<TransportException>(GrpcTransport.Map(new RpcException(new Status(Grpc.Core.StatusCode.Internal, "x")), 0, GetSymbol, Address, CredentialSource.None, CancellationToken.None));
     }
 }

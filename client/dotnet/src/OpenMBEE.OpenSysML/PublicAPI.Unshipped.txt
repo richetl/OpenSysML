@@ -81,6 +81,7 @@ const OpenMBEE.OpenSysML.ConnectionOptions.DefaultGithubRepo = "Open-MBEE/OpenSy
 const OpenMBEE.OpenSysML.ConnectionOptions.DefaultMaxMessageSize = 536870912 -> int
 const OpenMBEE.OpenSysML.ConnectionOptions.GithubRepoVariable = "OPENSYSML_GITHUB_REPO" -> string!
 const OpenMBEE.OpenSysML.ConnectionOptions.ServiceVariable = "OPENSYSML_SERVICE" -> string!
+const OpenMBEE.OpenSysML.ConnectionOptions.TokenVariable = "OPENSYSML_GRPC_TOKEN" -> string!
 const OpenMBEE.OpenSysML.ConnectionOptions.VersionVariable = "OPENSYSML_GRPC_VERSION" -> string!
 OpenMBEE.OpenSysML.AttributeInfo
 OpenMBEE.OpenSysML.AttributeInfo.<Clone>$() -> OpenMBEE.OpenSysML.AttributeInfo!
@@ -90,6 +91,10 @@ OpenMBEE.OpenSysML.AttributeInfo.Name.get -> string!
 OpenMBEE.OpenSysML.AttributeInfo.Type.get -> string!
 OpenMBEE.OpenSysML.AttributeInfo.Unit.get -> string!
 OpenMBEE.OpenSysML.AttributeInfo.Value.get -> OpenMBEE.OpenSysML.Value?
+OpenMBEE.OpenSysML.AuthenticationException
+OpenMBEE.OpenSysML.AuthenticationException.AuthenticationException(string! serviceMessage, string! method, bool credentialsSent, string! remedy, System.Exception? innerException = null) -> void
+OpenMBEE.OpenSysML.AuthenticationException.CredentialsSent.get -> bool
+OpenMBEE.OpenSysML.AuthenticationException.Remedy.get -> string!
 OpenMBEE.OpenSysML.BinaryNotFoundException
 OpenMBEE.OpenSysML.BinaryNotFoundException.BinaryNotFoundException(string! message, System.Collections.Generic.IEnumerable<string!>! searchedLocations) -> void
 OpenMBEE.OpenSysML.BinaryNotFoundException.BinaryNotFoundException(string! message, System.Collections.Generic.IEnumerable<string!>! searchedLocations, System.Exception? innerException) -> void
@@ -159,6 +164,8 @@ OpenMBEE.OpenSysML.ConnectionOptions.ShutdownTimeout.get -> System.TimeSpan
 OpenMBEE.OpenSysML.ConnectionOptions.ShutdownTimeout.init -> void
 OpenMBEE.OpenSysML.ConnectionOptions.StartupTimeout.get -> System.TimeSpan
 OpenMBEE.OpenSysML.ConnectionOptions.StartupTimeout.init -> void
+OpenMBEE.OpenSysML.ConnectionOptions.Token.get -> string?
+OpenMBEE.OpenSysML.ConnectionOptions.Token.init -> void
 OpenMBEE.OpenSysML.ConnectionOptions.Version.get -> string?
 OpenMBEE.OpenSysML.ConnectionOptions.Version.init -> void
 OpenMBEE.OpenSysML.Diagnostic
@@ -599,6 +606,7 @@ OpenMBEE.OpenSysML.ValueList<T>.IsEmpty.get -> bool
 OpenMBEE.OpenSysML.ValueList<T>.this[int index].get -> T
 OpenMBEE.OpenSysML.ValueList<T>.ValueList() -> void
 OpenMBEE.OpenSysML.ValueList<T>.ValueList(System.Collections.Generic.IEnumerable<T>! items) -> void
+override OpenMBEE.OpenSysML.AuthenticationException.Message.get -> string!
 override abstract OpenMBEE.OpenSysML.Value.GetHashCode() -> int
 override abstract OpenMBEE.OpenSysML.Value.ToString() -> string!
 override OpenMBEE.OpenSysML.AttributeInfo.Equals(object? obj) -> bool

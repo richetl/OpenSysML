@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Net.Http;
@@ -23,14 +22,15 @@ internal sealed class GrpcTransport : ITransport
 {
     private readonly GrpcChannel channel;
     private readonly CallInvoker invoker;
-    private readonly KeyValuePair<string, string>[] headers;
+    private readonly CallHeaders headers;
     private int disposed;
 
     /// <summary>Creates the transport for a connection.</summary>
     /// <param name="address">The service's base URL.</param>
     /// <param name="options">The connection's options, already validated.</param>
-    internal GrpcTransport(Uri address, ConnectionOptions options)
-        : this(address, options.HttpMessageHandler ?? CreateHandler(), ownsHandler: options.HttpMessageHandler is null, options)
+    /// <param name="headers">The headers every call carries.</param>
+    internal GrpcTransport(Uri address, ConnectionOptions options, CallHeaders headers)
+        : this(address, options.HttpMessageHandler ?? CreateHandler(), ownsHandler: options.HttpMessageHandler is null, options, headers)
     {
     }
 
@@ -39,10 +39,11 @@ internal sealed class GrpcTransport : ITransport
     /// <param name="handler">The handler to send through.</param>
     /// <param name="ownsHandler">Whether disposing the transport disposes the handler; a borrowed one is left alone.</param>
     /// <param name="options">The connection's options, already validated.</param>
-    internal GrpcTransport(Uri address, HttpMessageHandler handler, bool ownsHandler, ConnectionOptions options)
+    /// <param name="headers">The headers every call carries.</param>
+    internal GrpcTransport(Uri address, HttpMessageHandler handler, bool ownsHandler, ConnectionOptions options, CallHeaders headers)
     {
         Address = address;
-        headers = [.. options.Headers.Select(header => KeyValuePair.Create(header.Key.ToLowerInvariant(), header.Value))];
+        this.headers = headers;
         var observer = new ResponseObserver { InnerHandler = ownsHandler ? handler : new BorrowedHandler(handler) };
         try
         {
@@ -85,7 +86,7 @@ internal sealed class GrpcTransport : ITransport
         where TResponse : class, IMessage<TResponse>
     {
         var metadata = new Metadata();
-        foreach (var (name, value) in headers)
+        foreach (var (name, value) in headers.Entries)
         {
             metadata.Add(name, value);
         }
@@ -99,7 +100,7 @@ internal sealed class GrpcTransport : ITransport
         }
         catch (RpcException error)
         {
-            throw Map(error, observation.ServerStatus, method.Untyped.QualifiedName, Address, cancellationToken);
+            throw Map(error, observation.ServerStatus, method.Untyped.QualifiedName, Address, headers.Credentials, cancellationToken);
         }
         finally
         {
@@ -127,9 +128,10 @@ internal sealed class GrpcTransport : ITransport
     /// <param name="serverStatus">The grpc-status the response carried, if one was read.</param>
     /// <param name="method">The method called.</param>
     /// <param name="address">The service's base URL.</param>
+    /// <param name="credentials">Where the credentials the call carried came from.</param>
     /// <param name="cancellationToken">The call's token.</param>
     /// <returns>The exception to raise.</returns>
-    internal static Exception Map(RpcException error, int? serverStatus, string method, Uri address, CancellationToken cancellationToken)
+    internal static Exception Map(RpcException error, int? serverStatus, string method, Uri address, CredentialSource credentials, CancellationToken cancellationToken)
     {
         var raw = (int)error.StatusCode;
         var status = Enum.IsDefined((StatusCode)raw) ? (StatusCode)raw : StatusCode.Unknown;
@@ -142,7 +144,7 @@ internal sealed class GrpcTransport : ITransport
         var fromService = cause is null && raw != 0 && serverStatus == raw;
         if (fromService && status != StatusCode.DeadlineExceeded)
         {
-            return new ServiceException(status, error.Status.Detail, method, error);
+            return ServiceErrors.FromService(status, error.Status.Detail, method, credentials, error);
         }
 
         var requestFailure = Causes.Find<HttpRequestException>(cause);

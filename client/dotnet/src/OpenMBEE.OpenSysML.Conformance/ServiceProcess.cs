@@ -19,6 +19,9 @@ internal sealed class ServiceProcess : IAsyncDisposable
     /// <summary>The service's test-only switch withholding capabilities it would otherwise advertise and honor.</summary>
     internal const string WithholdVariable = "OPENSYSML_TEST_WITHHOLD_CAPABILITIES";
 
+    /// <summary>The variable the service reads the bearer token it requires from.</summary>
+    internal const string TokenVariable = "OPENSYSML_GRPC_TOKEN";
+
     private static readonly TimeSpan StartupTimeout = TimeSpan.FromSeconds(30);
     private static readonly TimeSpan ShutdownGrace = TimeSpan.FromSeconds(10);
 
@@ -52,7 +55,9 @@ internal sealed class ServiceProcess : IAsyncDisposable
     /// <param name="cancellationToken">Cancels the start.</param>
     /// <param name="withheld">Capabilities the service is to withhold, comma-separated, through its test-only switch; null for none.</param>
     /// <param name="cacheSize">How many parsed models the service is to hold; null for its default.</param>
-    internal static async Task<ServiceProcess> StartAsync(string binary, string transport, CancellationToken cancellationToken, string? withheld = null, int? cacheSize = null)
+    /// <param name="token">The bearer token the service is to require, given in its environment rather than on its command line; null to leave its environment as it is.</param>
+    internal static async Task<ServiceProcess> StartAsync(
+        string binary, string transport, CancellationToken cancellationToken, string? withheld = null, int? cacheSize = null, string? token = null)
     {
         var start = new ProcessStartInfo(binary)
         {
@@ -62,6 +67,11 @@ internal sealed class ServiceProcess : IAsyncDisposable
             UseShellExecute = false,
         };
         start.Environment[WithholdVariable] = withheld ?? string.Empty;
+        if (token is not null)
+        {
+            start.Environment[TokenVariable] = token;
+        }
+
         foreach (var argument in new[] { "-port", "0", "-health-port", "0", "-report-address", "-exit-with-parent", "-transport", transport, "-log-level", "warn" })
         {
             start.ArgumentList.Add(argument);

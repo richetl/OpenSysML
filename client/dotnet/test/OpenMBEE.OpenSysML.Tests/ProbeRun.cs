@@ -51,7 +51,15 @@ internal sealed class ProbeRun : IAsyncDisposable
     /// <param name="probe"><see cref="Orphan"/>, <see cref="LoadContext"/> or <see cref="Cache"/>.</param>
     /// <param name="arguments">Its arguments.</param>
     /// <returns>The run, which the caller disposes.</returns>
-    internal static ProbeRun Start(string probe, params string[] arguments)
+    internal static ProbeRun Start(string probe, params string[] arguments) =>
+        Start(probe, new Dictionary<string, string>(), arguments);
+
+    /// <summary>Starts a probe with arguments, with no service named in its environment and these variables set in it.</summary>
+    /// <param name="probe"><see cref="Orphan"/>, <see cref="LoadContext"/> or <see cref="Cache"/>.</param>
+    /// <param name="environment">Variables to set in the probe's environment alone, by name.</param>
+    /// <param name="arguments">Its arguments.</param>
+    /// <returns>The run, which the caller disposes.</returns>
+    internal static ProbeRun Start(string probe, IReadOnlyDictionary<string, string> environment, params string[] arguments)
     {
         FakeChild.EnsureRuntimeIsFound();
         var launcher = Repository.PathOf(
@@ -73,6 +81,11 @@ internal sealed class ProbeRun : IAsyncDisposable
             CreateNoWindow = true,
         };
         start.Environment.Remove("OPENSYSML_SERVICE");
+        foreach (var (name, value) in environment)
+        {
+            start.Environment[name] = value;
+        }
+
         foreach (var argument in arguments)
         {
             start.ArgumentList.Add(argument);

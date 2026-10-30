@@ -103,6 +103,13 @@ starts a private child, shared by the connections of one copy of the client (one
 context) that agree on its binary and timeouts; `IsolatedService` gives a connection its own.
 The child exits when its input closes, so it ends with the process however the process ends.
 
+A service that serves an address other machines reach requires a bearer token. Give it as
+`ConnectionOptions.Token`, or set `OPENSYSML_GRPC_TOKEN`, which the client reads when `Token` is
+null; every call then carries `authorization: Bearer <token>`. A missing or wrong token is an
+`AuthenticationException` saying which. The private child is started without the variable, so it
+never demands the token meant for a remote service. See
+[Service transports](../reference/service-transports.md#authentication).
+
 A connection speaks the one protocol it is given, never retries a call and never falls back to
 another protocol:
 

@@ -46,6 +46,13 @@ public sealed class ConnectionOptions
     /// </summary>
     public const string AllowUnpinnedDownloadVariable = "OPENSYSML_ALLOW_UNPINNED_DOWNLOAD";
 
+    /// <summary>
+    /// The environment variable naming the bearer token every call carries when <see cref="Token"/> does not, and
+    /// <see cref="Headers"/> holds no <c>authorization</c> of its own. A blank value is no token. The service reads
+    /// the same variable to require one, so a private service is started without it.
+    /// </summary>
+    public const string TokenVariable = "OPENSYSML_GRPC_TOKEN";
+
     /// <summary>The repository releases are downloaded from unless another is named: <c>Open-MBEE/OpenSysML</c>.</summary>
     public const string DefaultGithubRepo = "Open-MBEE/OpenSysML";
 
@@ -179,7 +186,8 @@ public sealed class ConnectionOptions
     /// without regard to case and are sent in lower case. A name is ASCII letters, digits, <c>-</c>,
     /// <c>_</c> and <c>.</c>, and a value printable ASCII. A header the protocol controls (content
     /// type and encoding, timeouts, the host, and any <c>grpc-</c> or <c>connect-</c> header) and a
-    /// binary <c>-bin</c> header are refused. Values are never logged.
+    /// binary <c>-bin</c> header are refused. Values are never logged. An <c>authorization</c> header
+    /// here takes the place of <see cref="TokenVariable"/>, and is refused alongside <see cref="Token"/>.
     /// </summary>
     public IReadOnlyDictionary<string, string> Headers
     {
@@ -195,6 +203,17 @@ public sealed class ConnectionOptions
             headers = value.ToFrozenDictionary(StringComparer.Ordinal);
         }
     }
+
+    /// <summary>
+    /// The bearer token every call carries, as <c>authorization: Bearer</c>, for a service that requires one: one
+    /// started with <c>-token</c>, <c>-token-file</c> or <see cref="TokenVariable"/>, as a service other machines
+    /// reach is. When null, <see cref="TokenVariable"/> names it, unless <see cref="Headers"/> holds an
+    /// <c>authorization</c> of its own. A token is letters, digits and <c>-._~+/</c> with trailing <c>=</c> only
+    /// (RFC 6750 <c>b64token</c>), which is all the service accepts. A private service requires none, and ignores
+    /// one sent. Sent over cleartext <c>http</c> to another machine, it crosses the network unencrypted, which is
+    /// logged as a warning. It is never logged and never written into a message.
+    /// </summary>
+    public string? Token { get; init; }
 
     /// <summary>
     /// Capabilities the service must advertise, checked once the connection has asked it what it
@@ -306,7 +325,33 @@ public sealed class ConnectionOptions
         }
 
         RequestHeaders.Validate(Headers);
+        ValidateToken();
         ValidatePrivateService();
+    }
+
+    private void ValidateToken()
+    {
+        if (Token is null)
+        {
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(Token))
+        {
+            throw new InvalidRequestException(
+                $"ConnectionOptions.Token is blank; give the service's bearer token, or leave it null for the one ${TokenVariable} names.");
+        }
+
+        if (!BearerToken.IsValid(Token))
+        {
+            throw new InvalidRequestException($"ConnectionOptions.Token is not a bearer token: {BearerToken.Rule}.");
+        }
+
+        if (Headers.Keys.Any(name => string.Equals(name, BearerToken.Header, StringComparison.OrdinalIgnoreCase)))
+        {
+            throw new InvalidRequestException(
+                "ConnectionOptions.Token and the authorization header in ConnectionOptions.Headers both give the calls' credentials; set one or the other.");
+        }
     }
 
     private void ValidatePrivateService()

@@ -43,6 +43,7 @@ service; it is idempotent and never throws.
 | `Protocol`, `Encoding` | `Grpc` (default) or `Connect`; `Protobuf` (default) or `Json`, which only `Connect` carries |
 | `RequestTimeout` | Each call's deadline, 60 seconds by default |
 | `Headers` | Sent with every call; protocol-controlled headers are refused and values are never logged |
+| `Token` | The bearer token every call carries, else the one `OPENSYSML_GRPC_TOKEN` names unless `Headers` holds an `authorization`; refused beside one, and never logged |
 | `MaxRequestSize`, `MaxResponseSize` | 512 MiB each by default, a response measured after decompression |
 | `Logger` | An `ILogger`, `NullLogger` by default |
 | `HttpMessageHandler` | A handler to borrow, never disposed by the connection |
@@ -56,7 +57,9 @@ service; it is idempotent and never throws.
 The private-service options are refused alongside `Address` or with `AutoStart` false. Every
 option is checked before anything is sent; an invalid one is an `InvalidRequestException`.
 `ConnectionOptions` also names the environment variables as constants: `ServiceVariable`,
-`BinaryVariable`, `VersionVariable`, `GithubRepoVariable` and `AllowUnpinnedDownloadVariable`.
+`BinaryVariable`, `VersionVariable`, `GithubRepoVariable`, `AllowUnpinnedDownloadVariable` and
+`TokenVariable`. A private service is started without `OPENSYSML_GRPC_TOKEN`, and requires no
+token; credentials sent over cleartext `http` to another machine are logged as a warning.
 
 | `Connection` member | Answers |
 | --- | --- |
@@ -305,6 +308,7 @@ OpenSysMLException
 │   └── StaleServiceException
 ├── ServiceStopException           Failures
 ├── ServiceException               a status the service sent; StatusCode, ServiceMessage, Method
+│   ├── AuthenticationException       Unauthenticated: no token, or a refused one; CredentialsSent, Remedy
 │   ├── ModelNotFoundException
 │   └── ModelFileNotFoundException
 ├── ModelException                 the service answered a failure about the model; Diagnostics
@@ -333,7 +337,8 @@ MetamodelException
 ```
 
 A `ServiceException` is only ever a status the service itself sent. A status the transport made
-up, a malformed answer, an over-limit response and a passed deadline are `TransportException`s.
+up, a malformed answer, an over-limit response and a passed deadline are `TransportException`s;
+so is a proxy's HTTP 401 page, which is not an `AuthenticationException`.
 A failure that kept a partial result carries it: a check's or an analysis's `Partial`, a run's
 `Trace`, a refused edit's `Referrers`.
 

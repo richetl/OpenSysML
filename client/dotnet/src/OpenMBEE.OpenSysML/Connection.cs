@@ -80,7 +80,7 @@ public sealed partial class Connection : IAsyncDisposable
     /// <param name="options">How to reach the service; null for <see cref="ConnectionOptions.Default"/>.</param>
     /// <param name="cancellationToken">Cancels the open, and the start of a private service no other open waits for.</param>
     /// <returns>The open connection, which the caller disposes.</returns>
-    /// <exception cref="InvalidRequestException">An option is invalid.</exception>
+    /// <exception cref="InvalidRequestException">An option is invalid, or <see cref="ConnectionOptions.TokenVariable"/> names no bearer token.</exception>
     /// <exception cref="BinaryNotFoundException">No service is named, no binary was found to start one, and no release could be downloaded.</exception>
     /// <exception cref="ChecksumMismatchException">
     /// The binary does not have <see cref="ConnectionOptions.ExpectedBinarySha256"/>, or a release does not have the digest pinned or required for it.
@@ -94,6 +94,7 @@ public sealed partial class Connection : IAsyncDisposable
     /// <exception cref="StaleServiceException">The service is not the <see cref="ConnectionOptions.Version"/> asked for.</exception>
     /// <exception cref="CapabilityException">The service lacks a required capability.</exception>
     /// <exception cref="TransportException">The service could not be reached.</exception>
+    /// <exception cref="AuthenticationException">The service requires a bearer token the connection does not carry, or refused the one it carries.</exception>
     /// <exception cref="ServiceException">The service refused GetServerInfo.</exception>
     public static Task<Connection> OpenAsync(ConnectionOptions? options = null, CancellationToken cancellationToken = default) =>
         OpenAsync(options, Environment.GetEnvironmentVariable, cancellationToken);
@@ -240,6 +241,7 @@ public sealed partial class Connection : IAsyncDisposable
         options.Validate();
         var address = ResolveAddress(options, environment);
         cancellationToken.ThrowIfCancellationRequested();
+        var headers = CallHeaders.Resolve(options, environment);
         if (address is not null)
         {
             if (options.BinaryPath is not null || options.ExpectedBinarySha256 is not null || options.IsolatedService
@@ -248,7 +250,12 @@ public sealed partial class Connection : IAsyncDisposable
                 LogPrivateOptionsUnused(options.Logger, address);
             }
 
-            return await OpenAsync(CreateTransport(address, options), address, options, null, cancellationToken).ConfigureAwait(false);
+            if (headers.Credentials != CredentialSource.None && address.Scheme == Uri.UriSchemeHttp && !address.IsLoopback)
+            {
+                LogCleartextCredentials(options.Logger, address);
+            }
+
+            return await OpenAsync(CreateTransport(address, options, headers), address, options, null, cancellationToken).ConfigureAwait(false);
         }
 
         var binary = await BinaryResolver.ResolveAsync(options, environment, releases, cancellationToken).ConfigureAwait(false);
@@ -256,7 +263,7 @@ public sealed partial class Connection : IAsyncDisposable
         ITransport transport;
         try
         {
-            transport = CreateTransport(lease.Address, options);
+            transport = CreateTransport(lease.Address, options, headers);
         }
         catch
         {
@@ -327,8 +334,8 @@ public sealed partial class Connection : IAsyncDisposable
             + $"name a running sysml-grpc with ConnectionOptions.Address or ${ConnectionOptions.ServiceVariable}, or allow a private one.");
     }
 
-    private static ITransport CreateTransport(Uri address, ConnectionOptions options) =>
-        options.Protocol == Protocol.Connect ? new ConnectTransport(address, options) : new GrpcTransport(address, options);
+    private static ITransport CreateTransport(Uri address, ConnectionOptions options, CallHeaders headers) =>
+        options.Protocol == Protocol.Connect ? new ConnectTransport(address, options, headers) : new GrpcTransport(address, options, headers);
 
     private async Task<ServerInfo> AskServerInfoAsync(CancellationToken cancellationToken)
     {
@@ -461,6 +468,9 @@ public sealed partial class Connection : IAsyncDisposable
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Connecting to {Address}, which ${Variable} names: the options describing a private service are not used")]
     private static partial void LogPrivateOptionsUnused(ILogger logger, Uri address, string variable = ConnectionOptions.ServiceVariable);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Calls to {Address} carry credentials over cleartext HTTP to another machine: they cross the network unencrypted unless the network itself is protected; reach the service over https to keep them private")]
+    private static partial void LogCleartextCredentials(ILogger logger, Uri address);
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Closed the connection to {Address}")]
     private static partial void LogClosed(ILogger logger, Uri address);

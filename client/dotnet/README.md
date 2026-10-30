@@ -114,6 +114,27 @@ refused, and header values are never logged. A handler given as `HttpMessageHand
 borrowed, never disposed, so it can serve several connections; otherwise the connection
 makes its own and disposes it.
 
+A service serving an address other machines reach requires a bearer token on every call (see
+[Service transports](../../docs/reference/service-transports.md#authentication)).
+`ConnectionOptions.Token` gives it, and every call then carries `authorization: Bearer <token>`
+over each protocol; when it is null, the `OPENSYSML_GRPC_TOKEN` environment variable
+(`ConnectionOptions.TokenVariable`) names it, trimmed, a blank value being none. A token is
+what the service accepts, RFC 6750's `b64token`: letters, digits and `-._~+/` with trailing `=`
+only; anything else, from the option or the variable, is refused with `InvalidRequestException`
+before anything is sent. An `authorization` entry in `Headers` takes the place of the variable,
+and is refused beside `Token`, since a call carries one set of credentials. A token is never
+logged nor written into a message. Credentials sent over cleartext `http` to a host other than
+this machine cross the network unencrypted, which the open logs as a warning; it does not
+refuse, since the network between may itself be protected.
+
+```csharp
+await using var connection = await Connection.OpenAsync(new ConnectionOptions
+{
+    Address = "https://sysml.example.org:50051",
+    Token = Environment.GetEnvironmentVariable("SYSML_SERVICE_TOKEN"),
+});
+```
+
 The client never retries a call, hedges it or falls back to another protocol: a call that
 failed in transport may still have run.
 
@@ -132,6 +153,11 @@ pipe, so it exits with this process however this process ends, a kill included; 
 handler is involved. Its output is read for as long as it runs, so a chatty child never
 blocks, and its last 20 lines, each cut at 1,024 characters, are kept for error messages. With
 `AutoStart` false, a connection that names no service fails with `ServiceStartException`.
+
+The child is started without `OPENSYSML_GRPC_TOKEN` in its environment (on Windows, under any
+case of the name), so a token set for a remote service is never one the child demands. It
+binds loopback and requires no token; one the connection carries anyway, from `Token` or the
+variable, is ignored, as the other clients' private children ignore theirs.
 
 The binary is, in order, the one `ConnectionOptions.BinaryPath` names, the one the
 `OPENSYSML_GRPC_BINARY` environment variable names, the release asked for in the shared cache
@@ -381,7 +407,7 @@ use after disposal, which are the standard exceptions:
 
 | What happened | Exception |
 | --- | --- |
-| An option, address, header or raw method/message pairing is invalid, or `OPENSYSML_GRPC_VERSION` or `OPENSYSML_GITHUB_REPO` names no release or repository | `InvalidRequestException`, before anything is sent |
+| An option, address, header or raw method/message pairing is invalid, or `OPENSYSML_GRPC_VERSION`, `OPENSYSML_GITHUB_REPO` or `OPENSYSML_GRPC_TOKEN` names no release, repository or bearer token | `InvalidRequestException`, before anything is sent |
 | No service is named and `AutoStart` is false, or the private service did not start | `ServiceStartException` |
 | The shared cache stayed locked by another client or process for two minutes | `ServiceStartException` naming the lock |
 | A release asked for could not be downloaded or installed, or `latest` could not be resolved | `ServiceStartException`, with the cause as `InnerException` |
@@ -394,6 +420,7 @@ use after disposal, which are the standard exceptions:
 | The service is not the `Version` asked for | `StaleServiceException` |
 | The service lacks a required capability | `CapabilityException`, with `Capability` and `Remedy` |
 | The service answered with a status other than OK, `Unavailable` included | `ServiceException`, with `StatusCode`, `ServiceMessage` and `Method` |
+| The service wants a bearer token the call did not carry, or refused the one it carried | `AuthenticationException`, a `ServiceException` with `Unauthenticated`, `CredentialsSent` and the `Remedy` its message ends with |
 | The service no longer holds the model a call named | `ModelNotFoundException`, a `ServiceException` with `NotFound` |
 | The service could not read a file a parse named | `ModelFileNotFoundException`, a `ServiceException` with `NotFound` |
 | The service answered, reporting a failure about the model: an expression that did not evaluate, a symbol that is not there, an object that could not be built | `ModelException`, with `Method` and the answer's `Diagnostics`; `SymbolNotFoundException`, with `Name` and `Suggestions`, for a symbol; `ModelErrorsException` from `RequireNoErrors` |
@@ -417,7 +444,8 @@ Any other refusal, such as a proxy's HTML page or the plain 404 an HTTP router a
 method it does not have, is a `TransportException` whose status is inferred from the HTTP
 status as the Connect protocol specifies, quoting up to 200 characters of what was answered
 with control characters blanked. So over Connect, a service too old to have `GetServerInfo`
-fails to open rather than answering `Unimplemented`.
+fails to open rather than answering `Unimplemented`, and a proxy's 401 page is a
+`TransportException` with `Unauthenticated`, never an `AuthenticationException`.
 
 A deadline is always a `TransportException` with `DeadlineExceeded`, whether the client or the
 service saw it pass. When both the caller's token and the deadline fired, the caller's

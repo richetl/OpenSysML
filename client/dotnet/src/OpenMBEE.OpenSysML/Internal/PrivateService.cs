@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -172,7 +173,24 @@ internal sealed partial class PrivateService : IServiceProcess
             start.ArgumentList.Add(argument);
         }
 
+        // The child serves loopback for this process alone: a token meant for a named service must not become one it demands.
+        RemoveToken(start.Environment, OperatingSystem.IsWindows());
         return start;
+    }
+
+    /// <summary>
+    /// Removes <see cref="ConnectionOptions.TokenVariable"/> from a child's environment: on Windows under any case,
+    /// since names are matched that way there and the service reads the variable so, elsewhere only the exact name.
+    /// </summary>
+    /// <param name="environment">The child's environment, which a <see cref="ProcessStartInfo"/> fills from this process's.</param>
+    /// <param name="windows">Whether the child runs on Windows.</param>
+    internal static void RemoveToken(IDictionary<string, string?> environment, bool windows)
+    {
+        var comparison = windows ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+        foreach (var name in environment.Keys.Where(name => string.Equals(name, ConnectionOptions.TokenVariable, comparison)).ToList())
+        {
+            environment.Remove(name);
+        }
     }
 
     /// <inheritdoc/>

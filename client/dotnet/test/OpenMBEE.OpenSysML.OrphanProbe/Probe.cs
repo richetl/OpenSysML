@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using OpenMBEE.OpenSysML.Internal;
@@ -61,7 +62,8 @@ internal static class Probe
         }
 
         var ids = string.Join(',', siblings.Select(sibling => sibling.Id.ToString(CultureInfo.InvariantCulture)));
-        await Console.Out.WriteLineAsync(FormattableString.Invariant($"{{\"probe\":{Environment.ProcessId},\"service\":{service},\"siblings\":[{ids}]}}")).ConfigureAwait(false);
+        var address = JsonSerializer.Serialize(held.Address.ToString());
+        await Console.Out.WriteLineAsync(FormattableString.Invariant($"{{\"probe\":{Environment.ProcessId},\"service\":{service},\"address\":{address},\"siblings\":[{ids}]}}")).ConfigureAwait(false);
         await Console.Out.FlushAsync().ConfigureAwait(false);
         await Task.Delay(Timeout.Infinite).ConfigureAwait(false);
         return 0;

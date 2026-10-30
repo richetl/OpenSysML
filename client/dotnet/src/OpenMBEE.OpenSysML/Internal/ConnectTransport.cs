@@ -61,7 +61,7 @@ internal sealed class ConnectTransport : ITransport
     }.ToFrozenDictionary(StringComparer.Ordinal);
 
     private readonly HttpMessageInvoker invoker;
-    private readonly KeyValuePair<string, string>[] headers;
+    private readonly CallHeaders headers;
     private readonly string mediaType;
     private readonly int maxRequestSize;
     private readonly int maxResponseSize;
@@ -70,8 +70,9 @@ internal sealed class ConnectTransport : ITransport
     /// <summary>Creates the transport for a connection.</summary>
     /// <param name="address">The service's base URL.</param>
     /// <param name="options">The connection's options, already validated.</param>
-    internal ConnectTransport(Uri address, ConnectionOptions options)
-        : this(address, options.HttpMessageHandler ?? CreateHandler(), ownsHandler: options.HttpMessageHandler is null, options)
+    /// <param name="headers">The headers every call carries.</param>
+    internal ConnectTransport(Uri address, ConnectionOptions options, CallHeaders headers)
+        : this(address, options.HttpMessageHandler ?? CreateHandler(), ownsHandler: options.HttpMessageHandler is null, options, headers)
     {
     }
 
@@ -80,12 +81,13 @@ internal sealed class ConnectTransport : ITransport
     /// <param name="handler">The handler to send through.</param>
     /// <param name="ownsHandler">Whether disposing the transport disposes the handler; a borrowed one is left alone.</param>
     /// <param name="options">The connection's options, already validated.</param>
-    internal ConnectTransport(Uri address, HttpMessageHandler handler, bool ownsHandler, ConnectionOptions options)
+    /// <param name="headers">The headers every call carries.</param>
+    internal ConnectTransport(Uri address, HttpMessageHandler handler, bool ownsHandler, ConnectionOptions options, CallHeaders headers)
     {
         Address = address;
         Encoding = options.Encoding;
         mediaType = Encoding == MessageEncoding.Json ? JsonBodies.MediaType : ProtobufMediaType;
-        headers = [.. options.Headers.Select(header => KeyValuePair.Create(header.Key.ToLowerInvariant(), header.Value))];
+        this.headers = headers;
         maxRequestSize = options.MaxRequestSize;
         maxResponseSize = options.MaxResponseSize;
         invoker = new HttpMessageInvoker(handler, disposeHandler: ownsHandler);
@@ -345,7 +347,7 @@ internal sealed class ConnectTransport : ITransport
             Content = new ByteArrayContent(body),
         };
         request.Content.Headers.ContentType = new MediaTypeHeaderValue(mediaType);
-        foreach (var (name, value) in headers)
+        foreach (var (name, value) in headers.Entries)
         {
             if (!request.Headers.TryAddWithoutValidation(name, value))
             {
@@ -414,7 +416,7 @@ internal sealed class ConnectTransport : ITransport
                 {
                     return code == StatusCode.DeadlineExceeded
                         ? new TransportException(code, $"{method}: the service at {Address} reports that the call outlived its deadline: {message}", method)
-                        : new ServiceException(code, message, method);
+                        : ServiceErrors.FromService(code, message, method, headers.Credentials);
                 }
 
                 detail = body.Length == 0 ? "an empty body" : $"\"{Excerpt(body.Span)}\"";

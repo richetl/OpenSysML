@@ -40,7 +40,9 @@ public sealed class TransportContractTests
         }
         else
         {
-            var service = Assert.IsType<ServiceException>(error);
+            // Unauthenticated is the one status with a type of its own, which says what the call carried.
+            Assert.IsType(status == StatusCode.Unauthenticated ? typeof(AuthenticationException) : typeof(ServiceException), error);
+            var service = (ServiceException)error;
             Assert.Equal(status, service.StatusCode);
             Assert.Equal("said the service", service.ServiceMessage);
             Assert.Equal(GetSymbol, service.Method);
@@ -147,8 +149,8 @@ public sealed class TransportContractTests
 
     private static ITransport Transport(FakeServiceHandler handler, bool ownsHandler, ConnectionOptions options) =>
         handler.Wire == ClientWire.Grpc
-            ? new GrpcTransport(Address, handler, ownsHandler, options)
-            : new ConnectTransport(Address, handler, ownsHandler, options);
+            ? new GrpcTransport(Address, handler, ownsHandler, options, CallHeaders.None)
+            : new ConnectTransport(Address, handler, ownsHandler, options, CallHeaders.None);
 
     // Each 'x' adds one byte to the encoded message in either encoding, except where a protobuf length prefix grows.
     private static Wire.SymbolResponse ResponseOfSize(FakeServiceHandler handler, int size)

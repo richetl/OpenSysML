@@ -276,7 +276,7 @@ public sealed class ConnectTransportTests
     public async Task ACallWhoseDeadlineHasPassedIsNotSent(ClientWire wire)
     {
         using var handler = new FakeServiceHandler(wire);
-        await using var transport = new ConnectTransport(Address, handler, ownsHandler: false, new ConnectionOptions { Protocol = wire.Protocol(), Encoding = wire.Encoding() });
+        await using var transport = new ConnectTransport(Address, handler, ownsHandler: false, new ConnectionOptions { Protocol = wire.Protocol(), Encoding = wire.Encoding() }, CallHeaders.None);
         Assert.True(RpcMethods.TryResolve<Wire.GetSymbolRequest, Wire.SymbolResponse>("GetSymbol", out var method, out _));
 
         var error = await Assert.ThrowsAsync<TransportException>(() =>
@@ -323,7 +323,7 @@ public sealed class ConnectTransportTests
     [Fact]
     public void FailuresAreClassifiedByTheirCauses()
     {
-        var transport = new ConnectTransport(Address, new FakeServiceHandler(ClientWire.ConnectProto), ownsHandler: true, new ConnectionOptions { Protocol = Protocol.Connect });
+        var transport = new ConnectTransport(Address, new FakeServiceHandler(ClientWire.ConnectProto), ownsHandler: true, new ConnectionOptions { Protocol = Protocol.Connect }, CallHeaders.None);
         var none = CancellationToken.None;
         StatusCode Status(Exception error, bool answered = false) =>
             Assert.IsType<TransportException>(transport.Map(error, GetSymbol, answered, none, none)).StatusCode;
@@ -350,7 +350,7 @@ public sealed class ConnectTransportTests
     [Fact]
     public async Task ACancelledOrLateCallIsSoUnlessItsAnswerDidNotDecode()
     {
-        var transport = new ConnectTransport(Address, new FakeServiceHandler(ClientWire.ConnectProto), ownsHandler: true, new ConnectionOptions { Protocol = Protocol.Connect });
+        var transport = new ConnectTransport(Address, new FakeServiceHandler(ClientWire.ConnectProto), ownsHandler: true, new ConnectionOptions { Protocol = Protocol.Connect }, CallHeaders.None);
         using var cancelled = new CancellationTokenSource();
         await cancelled.CancelAsync();
         var aborted = new HttpRequestException(HttpRequestError.Unknown, "aborted", new IOException("io", new SocketException((int)SocketError.OperationAborted)));
