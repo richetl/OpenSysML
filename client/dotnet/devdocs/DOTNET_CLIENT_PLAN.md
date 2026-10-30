@@ -10,8 +10,8 @@ The baseline has **31 service RPCs, 23 Value arms, and 17 EditOperation arms**. 
 observations, not permanent constants. A schema change must fail the classification tests
 until the inventory and implementation status are explicitly reconciled.
 
-Read [AGENTS.md](AGENTS.md), [CONTRIBUTING.md](CONTRIBUTING.md), and
-[architecture](docs/internals/architecture.md) before implementing. Do not modify the Go
+Read [AGENTS.md](../../../AGENTS.md), [CONTRIBUTING.md](../../../CONTRIBUTING.md), and
+[architecture](../../../docs/internals/architecture.md) before implementing. Do not modify the Go
 service or its protocol to accommodate a client shortcut.
 
 ## 1. Scope and decision register
@@ -255,12 +255,12 @@ recorded only as input to a future support decision.
 
 The schema and scenarios, not a language client's README, define the service contract:
 
-- [Service schema](api/proto/sysml.proto): request/response fields, oneofs, presence, comments.
-- [Conformance contract](conformance/README.md) and [scenarios](conformance/scenarios/).
-- [Reference runner](tools/cmd/conformance/main.go) and its neighboring tests/renderers.
-- [Java model facade](client/java/opensysml-client/src/main/java/org/openmbee/opensysml/Model.java)
-  and [converters](client/java/opensysml-client/src/main/java/org/openmbee/opensysml/internal/Protos.java).
-- [Rust client](client/rust/opensysml/src/) and [Python client](client/python/opensysml/)
+- [Service schema](../../../api/proto/sysml.proto): request/response fields, oneofs, presence, comments.
+- [Conformance contract](../../../conformance/README.md) and [scenarios](../../../conformance/scenarios/).
+- [Reference runner](../../../tools/cmd/conformance/main.go) and its neighboring tests/renderers.
+- [Java model facade](../../../client/java/opensysml-client/src/main/java/org/openmbee/opensysml/Model.java)
+  and [converters](../../../client/java/opensysml-client/src/main/java/org/openmbee/opensysml/internal/Protos.java).
+- [Rust client](../../../client/rust/opensysml/src/) and [Python client](../../../client/python/opensysml/)
   for independent evidence where behavior is unclear.
 
 In the table below, method names return `Task<Result>` and take the standard final
@@ -620,9 +620,9 @@ not part of this release's support claim.
 ### 3.7 Cache transaction, downloads, and trust
 
 Use the exact shared paths/metadata format of the
-[Python binary implementation](client/python/opensysml/binary.py),
-[Java binary implementation](client/java/opensysml-client/src/main/java/org/openmbee/opensysml/internal/),
-and [Rust binary implementation](client/rust/opensysml/src/binary.rs):
+[Python binary implementation](../../../client/python/opensysml/binary.py),
+[Java binary implementation](../../../client/java/opensysml-client/src/main/java/org/openmbee/opensysml/internal/),
+and [Rust binary implementation](../../../client/rust/opensysml/src/binary.rs):
 `sysml-grpc.json` with version/sha256/repo, the executable, and digest-named executable
 `sysml-grpc-<16 hex>`. Read their actual lock path/range before coding; do not invent a
 parallel cache layout or lock.
@@ -681,8 +681,8 @@ fallback and unlocked-cache reads. The sole unpinned opt-out is
 and a warning; an opt-out must not excuse a contradictory supplied pin/signature.
 
 Signer policy must match
-[Java SignedManifest](client/java/opensysml-client/src/main/java/org/openmbee/opensysml/internal/SignedManifest.java)
-and [Python signing](client/python/opensysml/signing.py):
+[Java SignedManifest](../../../client/java/opensysml-client/src/main/java/org/openmbee/opensysml/internal/SignedManifest.java)
+and [Python signing](../../../client/python/opensysml/signing.py):
 issuer `https://oidc.circleci.com/org/1169df8b-0b59-400f-82d2-c9d8e98bdb62`;
 URI SAN naming a valid pipeline-definition UUID under
 `https://circleci.com/api/v2/projects/eeb0dddd-237f-4f02-9e51-8e24caef589d/pipeline-definitions/`.
@@ -691,7 +691,7 @@ Verify certificate validity at authenticated signing/log time: an expired-today 
 can be valid historically; a certificate invalid at that authenticated time must fail.
 Trusted-root, transparency-log, artifact-binding and identity checks belong to the library,
 not a custom verifier. Use the
-[existing fixture generator](client/python/scripts/make_signed_release_fixture.py).
+[existing fixture generator](../../../client/python/scripts/make_signed_release_fixture.py).
 
 ### 3.8 File-writing contract
 
@@ -725,7 +725,7 @@ if its contract cannot be reviewed independently. Do not merge placeholder types
 
 Branch from origin/develop; draft PRs target develop. Use Conventional Commits, changelog
 fragments, and the required co-author trailer when committing. Inspect and preserve the
-[PR template](.github/pull_request_template.md). Private package labels in this plan must
+[PR template](../../../.github/pull_request_template.md). Private package labels in this plan must
 not appear in public docs, PR prose, changelogs or diagnostics.
 
 Tests precede or accompany behavior. Every package updates README coverage, inventory,
@@ -884,7 +884,7 @@ marker is not complete, whatever its branch state.
   run: AOT on x64 RIDs, and transport probes on Linux/Windows; the latter are covered by G2/G3.
 - **Outcome/prerequisites:** settle section 1.2 against the baseline; no code prerequisites.
 - **Read first:** signing/fixture references in 3.7, binary implementations, transport
-  evaluation in [the design note](docs/internals/design/transport-evaluation.md).
+  evaluation in [the design note](../../../docs/internals/design/transport-evaluation.md).
 - **Owned surface:** this decision register and disposable scratch probes outside the tree.
 - **Tests:** verify real release plus tamper/wrong-project/wrong-issuer/invalid-at-signing-time
   fixtures and valid historically expired fixture; both-direction Python/Java/Rust locks;
@@ -943,8 +943,8 @@ marker is not complete, whatever its branch state.
   the Homebrew Python here has a protobuf runtime older than the committed gencode, so run the
   Python suite in a venv.
 - **Outcome/prerequisites:** root-invoked, net10, CI-gated checkout builds; decisions.
-- **Read first:** version checker in [Python scripts](client/python/scripts/), current
-  [CI routing](scripts/ci-changed-areas.sh), [PR workflow](.github/workflows/pr.yml).
+- **Read first:** version checker in [Python scripts](../../../client/python/scripts/), current
+  [CI routing](../../../scripts/ci-changed-areas.sh), [PR workflow](../../../.github/workflows/pr.yml).
 - **Owned surface:** root global.json, solution/build/package/lock files, main/test projects,
   minimal Vehicle ProjectReference build consumer, .gitignore, initial README, version/digest plumbing,
   CI Linux skeleton and shared Make targets.
@@ -1028,7 +1028,7 @@ marker is not complete, whatever its branch state.
   `DOTNET_MIN_TESTS` with every added test.
 - **Outcome/prerequisites:** reproducible protocol classes/registry and exhaustive inventory;
   scaffold.
-- **Read first:** schema, [buf template](api/proto/buf.gen.yaml), reference runner descriptors,
+- **Read first:** schema, [buf template](../../../api/proto/buf.gen.yaml), reference runner descriptors,
   Java/Rust mappings; reconcile every conditional gate in section 2.
 - **Owned surface:** separate buf.gen.csharp.yaml, committed Wire output, method registry,
   parity.json and inventory/API boundary tests; proto-csharp integration.
@@ -1229,8 +1229,8 @@ marker is not complete, whatever its branch state.
   envelope carries the same `not_found` code and message text as gRPC); lifecycle-local keeps
   `Protocol`/`Encoding` connection-local (they do not split a child's identity).
 - **Outcome/prerequisites:** Connect protobuf and JSON behind the same Connection; grpc.
-- **Read first:** [Java ConnectTransport](client/java/opensysml-client/src/main/java/org/openmbee/opensysml/internal/ConnectTransport.java),
-  [wire JSON rules](docs/reference/wire-contract.md), response-compression tests in Python.
+- **Read first:** [Java ConnectTransport](../../../client/java/opensysml-client/src/main/java/org/openmbee/opensysml/internal/ConnectTransport.java),
+  [wire JSON rules](../../../docs/reference/wire-contract.md), response-compression tests in Python.
 - **Owned surface:** ConnectTransport/JsonBodies and protocol-specific tests/README.
 - **Tests:** exact URL/headers/bodies, gzip, timeout header, HTTP fallback/error details,
   truncated/invalid bodies, bounded decompression, JSON int64/bytes/oneof/defaults/enums;
@@ -2864,7 +2864,7 @@ marker is not complete, whatever its branch state.
 - **Outcome/prerequisites:** complete service parity and reproducible repository delivery;
   execution, verification, sampling, conversion, query-docs, editing, graph-data,
   lifecycle-safety, downloads.
-- **Read first:** [release process](docs/project/releasing.md), digest synchronizer,
+- **Read first:** [release process](../../../docs/project/releasing.md), digest synchronizer,
   version checker and current CI aggregate/release jobs.
 - **Owned surface:** final CI/plumbing integration, release checklist, API promotion,
   coverage table and inventory status.
@@ -3036,8 +3036,8 @@ marker is not complete, whatever its branch state.
 
 - **Outcome/prerequisites:** typed model classes, TypedObject runtime and checkout console;
   model, values, connect. Independent of metamodel work and not required for service parity.
-- **Read first:** [Python golden contract](client/python/tests/test_generate_golden.py),
-  [Python typed tests](client/python/tests/test_typed.py), Node generator/typed implementation.
+- **Read first:** [Python golden contract](../../../client/python/tests/test_generate_golden.py),
+  [Python typed tests](../../../client/python/tests/test_typed.py), Node generator/typed implementation.
 - **Owned surface:** Generate project, main-library TypedObject/decoders, C# golden fixtures/
   consumer projects, dotnet-generate target, README/reference extension.
 - **Contract:** one interface per definition, class inherits the first base in model-declared
@@ -3160,7 +3160,7 @@ marker is not complete, whatever its branch state.
   is built, per the 1.2 decision; the plan's "dual-TFM" consumer reduces to the net10 test project.
 - **Outcome/prerequisites:** standalone generated interfaces/classes/enums; scaffold.
   Independent of the client, generator and service lifecycle.
-- **Read first:** [Python metamodel generator](tools/gen/pymetamodel/main.go), ontology
+- **Read first:** [Python metamodel generator](../../../tools/gen/pymetamodel/main.go), ontology
   classes/properties/enums and Python metamodel typing/toolkit tests.
 - **Owned surface:** tools/gen/csmetamodel, Metamodel project/Generated.cs, metamodel tests,
   dotnet-metamodel and dotnet-metamodel-check; exact generated analyzer exclusions.
@@ -3283,9 +3283,9 @@ marker is not complete, whatever its branch state.
   generated class to fall back to as Python does). Adding a runtime member such as `Graph` to
   `IMetamodelElement` must also add it to `runtimeMembers` in `tools/gen/csmetamodel`.
 - **Outcome/prerequisites:** complete standalone graph JSON reader/toolkit; metamodel-generate.
-- **Read first:** [reader tests](client/python/tests/test_metamodel_reader.py),
-  [typing tests](client/python/tests/test_metamodel_typing.py),
-  [toolkit tests](client/python/tests/test_metamodel_toolkit.py) and their fixtures.
+- **Read first:** [reader tests](../../../client/python/tests/test_metamodel_reader.py),
+  [typing tests](../../../client/python/tests/test_metamodel_typing.py),
+  [toolkit tests](../../../client/python/tests/test_metamodel_toolkit.py) and their fixtures.
 - **Owned surface:** MetamodelGraph/reader/runtime, immutable public graph APIs, exceptions,
   standalone samples, docs reference section and compatibility notes.
 - **Contract:** ReadJson(path/Stream/JsonDocument/IEnumerable<JsonElement>, ReadOptions)
@@ -3385,26 +3385,26 @@ Future files are shown as code, existing authoritative files as links.
 | Surface | Required change | Owner |
 | --- | --- | --- |
 | Root global.json; client build/lock files | Exact SDK/root discovery, net10 target, MTP runner opt-in, version, package pins and locks | scaffold |
-| [Makefile](Makefile) | dotnet-test/coverage; proto-csharp in proto; conformance-dotnet/check; later generate/metamodel/check; .PHONY/help | owning package, integration |
-| [.gitignore](.gitignore) | client bin/obj/TestResults and generated test reports, narrowly scoped | scaffold |
-| [CI routing](scripts/ci-changed-areas.sh) and [tests](scripts/ci-changed-areas-test.sh) | dotnet area plus known_pattern; direct-client quick-tier/full-tier fanout; root SDK pin recognized; Python version-lockstep trigger for Directory.Build.props | scaffold |
-| [PR workflow](.github/workflows/pr.yml) | changes output; Linux job; native Windows/macOS lifecycle/cache jobs; all aggregate needs/results/status checks; artifact upload on failure | scaffold, lifecycle-safety, release |
-| [CircleCI](.circleci/config.yml) | digest-pinned SDK executor, approved runtimes, dotnet-test in build-test only; reports/coverage/conformance artifacts | scaffold, release |
-| [Digest synchronizer](scripts/sync-release-digests.py) | main library embedded digest copy included; byte equality gate | scaffold |
-| [Python version checker](client/python/scripts/check_version.py) and tests | --dotnet reads Directory.Build.props Version in SemVer spelling; lockstep pytest runs whenever that file changes | scaffold |
-| [Sonar properties](sonar-project.properties) | approved exclusion of client/dotnet from generic C# scan, reason comment; generated code not counted as handwritten coverage | scaffold, release |
-| [Release process](docs/project/releasing.md) | release-branch version checklist, checkout distribution, synced digests/no stamping, no package token/context; no tag publish dependency | release |
+| [Makefile](../../../Makefile) | dotnet-test/coverage; proto-csharp in proto; conformance-dotnet/check; later generate/metamodel/check; .PHONY/help | owning package, integration |
+| [.gitignore](../../../.gitignore) | client bin/obj/TestResults and generated test reports, narrowly scoped | scaffold |
+| [CI routing](../../../scripts/ci-changed-areas.sh) and [tests](../../../scripts/ci-changed-areas-test.sh) | dotnet area plus known_pattern; direct-client quick-tier/full-tier fanout; root SDK pin recognized; Python version-lockstep trigger for Directory.Build.props | scaffold |
+| [PR workflow](../../../.github/workflows/pr.yml) | changes output; Linux job; native Windows/macOS lifecycle/cache jobs; all aggregate needs/results/status checks; artifact upload on failure | scaffold, lifecycle-safety, release |
+| [CircleCI](../../../.circleci/config.yml) | digest-pinned SDK executor, approved runtimes, dotnet-test in build-test only; reports/coverage/conformance artifacts | scaffold, release |
+| [Digest synchronizer](../../../scripts/sync-release-digests.py) | main library embedded digest copy included; byte equality gate | scaffold |
+| [Python version checker](../../../client/python/scripts/check_version.py) and tests | --dotnet reads Directory.Build.props Version in SemVer spelling; lockstep pytest runs whenever that file changes | scaffold |
+| [Sonar properties](../../../sonar-project.properties) | approved exclusion of client/dotnet from generic C# scan, reason comment; generated code not counted as handwritten coverage | scaffold, release |
+| [Release process](../../../docs/project/releasing.md) | release-branch version checklist, checkout distribution, synced digests/no stamping, no package token/context; no tag publish dependency | release |
 | `client/dotnet/README.md` | install, runnable Vehicle, protocols, dependency footprint, lifecycle scope/identity, coverage, binary/trust, support/limitations | every package |
 | `docs/clients/dotnet.md`; `docs/reference/dotnet-api.md` | guide walkthrough versus exhaustive reference; checkout/not NuGet; generated/metamodel sections only when delivered | docs, later extensions |
-| [Client guide](docs/guide/09-clients.md) | eight ways/table, checkout prose, C# install/parse tabs, From C#/.NET | docs |
-| [Client reference](docs/reference/clients.md) | transport/distribution table, .NET host choice, lifecycle scope, provisioning/verification, conformance commands and coverage | docs |
-| [Client landing](docs/clients.md), [downloads](docs/downloads.md), [MkDocs](mkdocs.yml) | card, checkout entry, nav and site_description | docs |
-| [README](README.md), [CONTRIBUTING](CONTRIBUTING.md), [architecture](docs/internals/architecture.md), [roadmap](docs/project/roadmap.md) | client lists, trees/status and integrations entry | docs |
-| [Service transports](docs/reference/service-transports.md) | default gRPC, explicit Connect protobuf/JSON | docs |
-| [Self-model surfaces](examples/self-model/surfaces.sysml) | DotnetClient, part and ArtifactChannel; generated outputs and ratcheted RDF gate | docs |
-| [Packaged agent skills](packaging/agent-skills/README.md) | opensysml-dotnet skill and table row; no unsupported feature claims | docs |
+| [Client guide](../../../docs/guide/09-clients.md) | eight ways/table, checkout prose, C# install/parse tabs, From C#/.NET | docs |
+| [Client reference](../../../docs/reference/clients.md) | transport/distribution table, .NET host choice, lifecycle scope, provisioning/verification, conformance commands and coverage | docs |
+| [Client landing](../../../docs/clients.md), [downloads](../../../docs/downloads.md), [MkDocs](../../../mkdocs.yml) | card, checkout entry, nav and site_description | docs |
+| [README](../../../README.md), [CONTRIBUTING](../../../CONTRIBUTING.md), [architecture](../../../docs/internals/architecture.md), [roadmap](../../../docs/project/roadmap.md) | client lists, trees/status and integrations entry | docs |
+| [Service transports](../../../docs/reference/service-transports.md) | default gRPC, explicit Connect protobuf/JSON | docs |
+| [Self-model surfaces](../../../examples/self-model/surfaces.sysml) | DotnetClient, part and ArtifactChannel; generated outputs and ratcheted RDF gate | docs |
+| [Packaged agent skills](../../../packaging/agent-skills/README.md) | opensysml-dotnet skill and table row; no unsupported feature claims | docs |
 | `.agents/skills/testing-dotnet-client/SKILL.md` | reproducible required-service, orphan/sibling/ALC, lock interop, trust fixture and conformance mutation recipes | docs |
-| [Changelog checker](scripts/changelog.py) | one focused changes/unreleased fragment per PR, never edit CHANGELOG.md | every package |
+| [Changelog checker](../../../scripts/changelog.py) | one focused changes/unreleased fragment per PR, never edit CHANGELOG.md | every package |
 
 CI details: use the existing service binary artifact on Linux, build a native service on
 Windows/macOS, install buf at the chosen pin with checksum verification, restore locked,
