@@ -1578,6 +1578,26 @@ jobs:
 
       - checkout
 
+      # This image has no Go toolchain yet, so buf comes from the official release
+      # rather than `go run`, pinned by digest so a substituted asset is not run.
+      - run:
+          name: Install buf
+          command: |
+            curl -fsSL -o /tmp/buf \
+              https://github.com/bufbuild/buf/releases/download/v1.57.2/buf-Linux-x86_64
+            echo "644e6fa4a62afc2b0d425d3ac9538d2f512947c0f2e82fc95c41a5eab6729414  /tmp/buf" | sha256sum --check --strict
+            install -m 0755 /tmp/buf /usr/local/bin/buf
+            buf --version
+
+      # Committed stubs must be what buf generates, or the checked-in client and
+      # the schema can drift apart silently.
+      - run:
+          name: Verify the committed C# stubs are current
+          command: |
+            make proto-csharp BUF=buf
+            git add -N client/dotnet/src/OpenMBEE.OpenSysML/Wire
+            git diff --exit-code client/dotnet/src/OpenMBEE.OpenSysML/Wire
+
       - run:
           name: Check the SDK and runtime
           command: |
@@ -1592,12 +1612,13 @@ jobs:
           name: Build sysml-grpc
           command: make build-grpc
 
-      # A test that needs the service fails rather than skips without one.
+      # A test that needs the service or buf fails rather than skips without one.
       - run:
           name: Run .NET client tests
           command: |
             OPENSYSML_GRPC_BINARY="$PWD/bin/sysml-grpc" \
             OPENSYSML_REQUIRE_SERVICE=1 \
+            OPENSYSML_REQUIRE_BUF=1 \
               make dotnet-test
 
       - run:
@@ -1605,6 +1626,7 @@ jobs:
           command: |
             OPENSYSML_GRPC_BINARY="$PWD/bin/sysml-grpc" \
             OPENSYSML_REQUIRE_SERVICE=1 \
+            OPENSYSML_REQUIRE_BUF=1 \
               make dotnet-coverage
 
       - run:

@@ -78,7 +78,7 @@ internal sealed class InteropGate(Func<string, string?> environment, Func<Foreig
                 break;
             default:
                 var home = environment(OperatingSystem.IsWindows() ? "USERPROFILE" : "HOME");
-                tool = Find("cargo") ?? (home is { Length: > 0 } ? Existing(Path.Combine(home, ".cargo", "bin", Executable("cargo"))) : null);
+                tool = Find("cargo") ?? (home is { Length: > 0 } ? ToolSearch.Existing(Path.Combine(home, ".cargo", "bin", ToolSearch.Executable("cargo"))) : null);
                 reason = "no Rust: neither $PATH nor ~/.cargo/bin has cargo, which builds the Rust lock holder";
                 break;
         }
@@ -143,10 +143,6 @@ internal sealed class InteropGate(Func<string, string?> environment, Func<Foreig
         }
     });
 
-    private static string Executable(string name) => OperatingSystem.IsWindows() && !name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) ? name + ".exe" : name;
-
-    private static string? Existing(string path) => File.Exists(path) ? Path.GetFullPath(path) : null;
-
     private string? JavaFrom(string? directory)
     {
         if (directory is null)
@@ -154,20 +150,12 @@ internal sealed class InteropGate(Func<string, string?> environment, Func<Foreig
             return Find("javac") is null ? null : Find("java");
         }
 
-        return Existing(Path.Combine(directory, Executable("javac"))) is null ? null : Existing(Path.Combine(directory, Executable("java")));
+        return ToolSearch.Existing(Path.Combine(directory, ToolSearch.Executable("javac"))) is null
+            ? null
+            : ToolSearch.Existing(Path.Combine(directory, ToolSearch.Executable("java")));
     }
 
-    // A tool named by a path is that file; a bare name is the first on $PATH.
-    private string? Find(string name)
-    {
-        if (name.IndexOfAny([Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar]) >= 0)
-        {
-            return Existing(name) ?? Existing(Executable(name));
-        }
-
-        var directories = (environment("PATH") ?? string.Empty).Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        return directories.Select(directory => Existing(Path.Combine(directory, Executable(name)))).FirstOrDefault(found => found is not null);
-    }
+    private string? Find(string name) => ToolSearch.Find(name, environment("PATH"));
 
     /// <summary>What the gate decided: run <paramref name="Tool"/>, or skip or fail for <paramref name="Reason"/>.</summary>
     /// <param name="Tool">The full path of the tool, when there is one.</param>

@@ -1288,7 +1288,9 @@ dotnet test --solution client/dotnet/OpenSysML.slnx -c Release --no-build --filt
 `dotnet test` runs on Microsoft.Testing.Platform, which `global.json` selects; the VSTest
 form `dotnet test <solution>` is not supported. Every test declares a `Category` trait,
 `Unit`, `Integration` or `Interop`, and a test enforces that, so a filter never silently
-drops one.
+drops one. `Unit` tests need only the checkout and the runtime; `Integration` tests need the
+service binary, or buf for the one that holds the [protocol code](#protocol-code) to the
+schema; `Interop` tests need the other clients' toolchains.
 
 Integration tests run against the binary `OPENSYSML_GRPC_BINARY` names, which they start
 themselves on ports the kernel chooses and reach by address: once serving its default
@@ -1416,7 +1418,24 @@ into the `OpenMBEE.OpenSysML.Wire` namespace. They are committed, so a checkout 
 neither buf nor network access. Do not edit them; regenerate them after a schema change:
 
 ```bash
-make proto-csharp      # also part of make proto; CI fails when the committed files differ
+make proto-csharp      # also part of make proto
+```
+
+CI regenerates them with the pinned buf before building and fails on any difference. A test,
+`WireSchemaTests.TheCommittedStubsAreTheSchema`, catches the same drift locally: it builds
+the schema with buf and compares its `sysml.proto` with the descriptor compiled into
+`Sysml.cs` on every message, field (name, number, type, label, type name, oneof and proto3
+`optional`), oneof, reserved number and name, enum value and RPC, and names the first
+declaration where they part. Options are not compared, since managed mode rewrites the C#
+namespace in what only the C# plugins see. It runs `$BUF`, read as the Makefile reads it,
+else `buf` on `PATH`, and skips without either; set `OPENSYSML_REQUIRE_BUF=1` to turn that
+skip into a failure, as the Linux CI jobs, which install buf, do. The native macOS and Windows
+jobs have no buf and let it skip: the comparison does not depend on the platform. To run it
+alone with the pinned buf:
+
+```bash
+BUF='go run github.com/bufbuild/buf/cmd/buf@v1.57.2' OPENSYSML_REQUIRE_BUF=1 \
+  dotnet test --project client/dotnet/test/OpenMBEE.OpenSysML.Tests -c Release --filter 'FullyQualifiedName~WireSchemaTests'
 ```
 
 [`api/proto/buf.gen.csharp.yaml`](../../api/proto/buf.gen.csharp.yaml) pins the generators
@@ -1456,6 +1475,9 @@ and the tests hold it to the schema and the [conformance scenarios](../../confor
 The checks compare sets, never counts: an RPC, field, arm or scenario the schema or the
 suite adds, renames or removes fails the tests until the inventory accounts for it, and so
 does a scenario that requires a capability no gate or governed field of its RPC names.
+The schema they read is the descriptor compiled into the committed protocol code, which is
+itself held to `api/proto/sysml.proto` (see [Protocol code](#protocol-code)), so the
+inventory cannot pass against a stale copy of the schema.
 The scenarios are read with the conformance runner's own reader, described next.
 
 ## Conformance runner core

@@ -2511,6 +2511,12 @@
           "keep_derived",
           "include_check_diagnostics"
         ]
+      },
+      {
+        "status": "deferred",
+        "fields": [
+          "include_library_stubs"
+        ]
       }
     ],
     "sysml.ConvertResponse": [
@@ -2531,6 +2537,12 @@
         "test": "ModelConversionTests.AConversionNotMadeIsAConversionExceptionKeepingItsFormatsAndAMalformedAnswerIsRefused",
         "fields": [
           "error"
+        ]
+      },
+      {
+        "status": "deferred",
+        "fields": [
+          "library_references"
         ]
       }
     ],
@@ -3108,6 +3120,16 @@
         ]
       }
     ],
+    "sysml.LibraryReference": [
+      {
+        "status": "deferred",
+        "fields": [
+          "id",
+          "qualified_name",
+          "type"
+        ]
+      }
+    ],
     "sysml.ListEnginesRequest": [
       {
         "status": "typed",
@@ -3425,6 +3447,12 @@
           "select",
           "where"
         ]
+      },
+      {
+        "status": "deferred",
+        "fields": [
+          "order_by"
+        ]
       }
     ],
     "sysml.QueryRequest": [
@@ -3574,6 +3602,12 @@
           "html",
           "file_name"
         ]
+      },
+      {
+        "status": "deferred",
+        "fields": [
+          "asciidoc"
+        ]
       }
     ],
     "sysml.RenderEdge": [
@@ -3628,6 +3662,13 @@
           "geometry",
           "style"
         ]
+      },
+      {
+        "status": "deferred",
+        "fields": [
+          "compartment",
+          "inherited"
+        ]
       }
     ],
     "sysml.RenderNote": [
@@ -3668,6 +3709,12 @@
           "type",
           "direction"
         ]
+      },
+      {
+        "status": "deferred",
+        "fields": [
+          "inherited"
+        ]
       }
     ],
     "sysml.RenderRow": [
@@ -3705,6 +3752,12 @@
           "ports",
           "show",
           "depth"
+        ]
+      },
+      {
+        "status": "deferred",
+        "fields": [
+          "compartments"
         ]
       }
     ],
@@ -4513,6 +4566,22 @@
           "question",
           "status",
           "witness"
+        ]
+      },
+      {
+        "status": "deferred",
+        "fields": [
+          "notes"
+        ]
+      }
+    ],
+    "sysml.VerdictNote": [
+      {
+        "status": "deferred",
+        "fields": [
+          "kind",
+          "subject",
+          "text"
         ]
       }
     ],
