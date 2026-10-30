@@ -269,7 +269,7 @@
       "openmbee.opensysml.conformance": {
         "type": "Project",
         "dependencies": {
-          "OpenMBEE.OpenSysML": "[0.10.1, )"
+          "OpenMBEE.OpenSysML": "[0.11.0, )"
         }
       },
       "openmbee.opensysml.metamodel": {
