@@ -11,7 +11,7 @@ when done; a finished session records its commit and implementation notes under 
 | 1 | Regenerate the C# protocol code and gate it against drift | — | Small–medium | **Done** (`28733b9de`) |
 | 2 | Keep `OPENSYSML_GRPC_TOKEN` out of private services; add first-class token support | — | Medium | **Done** (`d654510ae`) |
 | 3 | Bump the client version to 0.11.0 and resync the embedded release digests | — | Small | **Done** (`f0d664ab4`) |
-| 4 | Implement the missing service features and adjudicate the failing integration tests | **1** (needs the regenerated wire types) | Large | Not started |
+| 4 | Implement the missing service features and adjudicate the failing integration tests | **1** (needs the regenerated wire types) | Large | **Done** (`9bc987de7`); one service bug drafted for upstream |
 
 Sessions 1, 2 and 3 are independent of each other. Session 4 must start from a tree that has
 session 1 merged in. Suggested order: 1 → 3 → 2 → 4 (3 is quick and turns two gates green).
@@ -601,6 +601,80 @@ prints 0.11.0, and the version, digests and lock files change in one commit
 ## Session 4 — Implement the missing service features and adjudicate the failing integration tests
 
 > Before starting: read [`AGENTS.md`](../../../AGENTS.md) and the **Common setup** section above. `AGENTS.md` governs how everything in this session is implemented, tested, committed and documented; where this section and `AGENTS.md` differ, follow `AGENTS.md`.
+
+### Status: done, one service bug left to file
+
+`9bc987de7` *feat(dotnet): order queries, render AsciiDoc and compartments, read verdict notes
+and library references*, on branch `feat/dotnet-service-features`, cut from `feat/dotnet-client`.
+
+Implementation notes:
+
+- **4e was decided first: intended, not a regression.** Bisected by building `sysml-grpc` at
+  each first-parent `develop` commit and sending `EvaluateCalc(Echo::same, 7)` over raw gRPC
+  (the bisect used Python's protobuf stubs directly; the Python *client* reads
+  `$OPENSYSML_BINARY`, not `$OPENSYSML_GRPC_BINARY`, and otherwise silently runs the cached
+  release). The first answer of `sequence { 7 }` is `ac1340353`, PR #1308
+  (`fix/calc-result-effective-multiplicity`): a result or `out` parameter stating no
+  multiplicity is `[0..*]` (SysML §7.6.3, §7.19.2), and its changelog tells clients to write
+  `[1]`. Python decodes the same one-element list, so it was no client bug. That PR also
+  re-pinned the shared conformance scenarios for the shared fixtures (`10-evaluate-calc`,
+  `13-run-analysis`, `14-run-sweep`) as sequences, so editing those fixtures to `[1]` would
+  have undone it. Decided with the maintainer: `ServiceValueTests`' own model says
+  `return r[1] = x` (still a scalar round trip); the four tests over shared fixtures assert
+  the sequence the scenarios pin (`Held(…)` in `ServiceVerificationTests`), and the sweep's
+  cast is gone.
+- **4b.** Names follow Java: `GreaterOrEqual`, `LessOrEqual`, `In`, `InstanceOf` (fixed to
+  `@type`, as the service requires). `In` always prints its operands as a list. `orderBy`
+  is `Query.OrderBy`; its gate is `query.order_by` in `parity.json` (a dotted path).
+  Integration tests pin byte-wise name order, stable ties by `@type`, the inclusive bounds
+  of `>=`/`<=` against `<` on `wheels[4]`, `In`, `InstanceOf` and the refusals of an
+  undeclared metaclass and an unknown sort property.
+- **4c.** `DocumentForm.AsciiDoc` keeps `RenderedDocument`'s one-`Content` design (Java's
+  too); an answer in a second form is malformed. The capability constant is
+  `RenderDocumentAsciidoc` because `CapabilitiesTests` derives names from values.
+  `RenderViewCompartments` mirrors `RenderViewPorts`; no capability guards `compartments`,
+  so the README says an older service ignores it. `ViewWire` also refuses a compartment
+  row with no parent, or under another row: checked first against all 753 renderings of
+  `internal/ir/view/testdata` in the three foldings (412 rows, none violating).
+  `ChildrenOf` lists rows with the boxes.
+- **Verdict notes need a solver.** The .NET CI image had none, so a service-backed test would
+  have been vacuous. `SolverGate` asks the service's own `solve` engine (ListEngines)
+  whether it is ready, and skips with its reason unless `OPENSYSML_REQUIRE_SMT` promised
+  one. Both Linux .NET jobs now install z3 and set it. Proven load-bearing: with z3 hidden
+  from `PATH` the test skips, and fails when the variable is set.
+- **4d.** `IncludeLibraryStubs` is gated between `convert_documents` and `convert_compact`,
+  where the service checks it; a non-api-json target is the service's to refuse, as for the
+  other direction-dependent options. Node is the only peer exposing `libraryReferences`;
+  Python and Java do not yet.
+- **Out of scope, stated:** the `QueryOutcome` error detail is not decoded (no peer decodes it);
+  `docs/reference/dotnet-api.md` lists it under what the client does not do. `parity.json`
+  does not list it, being unreachable from any response.
+- **Gate.** `make dotnet-test` (service, interop, buf and SMT required): 3,383 tests,
+  `DOTNET_MIN_TESTS` 3383, failing only the three below; its later steps (samples, gate
+  self-tests, digests) pass when run alone. `make conformance-dotnet` green;
+  `make conformance-dotnet-check`: 1,128 results agree, no "only the reference run has it".
+  Each `-mutate` run fails. `parity.json`: 1,009 typed, 1 unsupported, none deferred.
+
+### Left failing: a service bug, drafted for upstream
+
+`ServiceQueryDocsTests.EveryViewTheRenderersOwnTestsDeclareIsReadWithItsNodesInOrder` (×3) is
+right and stays failing, not skipped. Compartments were not the cause. Text to file on
+`Open-MBEE/OpenSysML`:
+
+> **RenderView: the mixed rendering emits one node twice, under two parents**
+>
+> `RenderView` of `AbstractViews::familyMixed` in `internal/ir/view/testdata/abstract.sysml`
+> (`render asMixedDiagram`, exposing `Vehicle::**`, `vehicleFamily::**` and `Models::**`)
+> answers `Vehicle::mass` twice with the id `n0`: first as a child of `n1`
+> (`AbstractViews::Vehicle`), then as a root, with or without `show = ["all"]`.
+> Node ids come from `nodeIDs.take()` and edges and `parent` refer to nodes by id, so a
+> repeated id with a different parent leaves a client unable to tell where the node sits; the
+> .NET client refuses the answer as malformed. The goldens captured it:
+> `abstract-mixed.text.golden` lists `attribute AbstractViews::Vehicle::mass` twice, and
+> `abstract-mixed.dot.golden` declares `"n0"` inside `cluster_n1` and again at top level. No
+> other view under `internal/ir/view/testdata` repeats an id. Expected: the member is drawn
+> once, nested in its owner. Worth stating in the comment on `RenderViewResponse.nodes`, for
+> every client, that ids are unique within a rendering.
 
 **Prerequisite:** session 1 merged (the wire types below must exist). Sessions 2 and 3 do not need
 to be merged first, but merge them in if they are done, so the final gate is meaningful.
