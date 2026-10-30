@@ -53,10 +53,15 @@ public sealed class ConformanceQueryDocsRenderingTests
     [Theory]
     [InlineData(DocumentForm.Markdown)]
     [InlineData(DocumentForm.Html)]
+    [InlineData(DocumentForm.AsciiDoc)]
     public void ARenderedDocumentIsRenderedInTheFieldOfItsFormWithItsFileName(DocumentForm form)
     {
-        var sample = form == DocumentForm.Html ? CompleteQueryDocsWire.Html : CompleteQueryDocsWire.Markdown;
-        var content = form == DocumentForm.Html ? sample.Html : sample.Markdown;
+        var (sample, content) = form switch
+        {
+            DocumentForm.Html => (CompleteQueryDocsWire.Html, CompleteQueryDocsWire.Html.Html),
+            DocumentForm.AsciiDoc => (CompleteQueryDocsWire.AsciiDoc, CompleteQueryDocsWire.AsciiDoc.Asciidoc),
+            _ => (CompleteQueryDocsWire.Markdown, CompleteQueryDocsWire.Markdown.Markdown),
+        };
 
         Assert.Equal(sample, Rendering.RenderedDocument(new RenderedDocument(form, content, sample.FileName)));
         Assert.Equal(new Wire.RenderDocumentResponse { Markdown = "# T\n" }, Rendering.RenderedDocument(new RenderedDocument(DocumentForm.Markdown, "# T\n", null)));

@@ -7,7 +7,7 @@ public sealed class RenderViewOptions
 {
     private readonly ValueList<string> show;
 
-    /// <summary>The service's defaults: <see cref="RenderViewPorts.Minimal"/> ports, nothing shown besides the rendering's own, and the view's own depth.</summary>
+    /// <summary>The service's defaults: <see cref="RenderViewPorts.Minimal"/> ports, nothing shown besides the rendering's own, the view's own depth and <see cref="RenderViewCompartments.Positioned"/> compartments.</summary>
     public static RenderViewOptions Default { get; } = new();
 
     /// <summary>Which ports the rendering draws on its nodes' borders.</summary>
@@ -30,4 +30,10 @@ public sealed class RenderViewOptions
     /// null keeps the view's own. A depth is positive.
     /// </summary>
     public int? Depth { get; init; }
+
+    /// <summary>
+    /// How a tree rendering folds a node's owned members into compartment rows; <see cref="RenderViewCompartments.Positioned"/>
+    /// by default. A service older than the field draws every member as a node of its own whatever this asks.
+    /// </summary>
+    public RenderViewCompartments Compartments { get; init; }
 }

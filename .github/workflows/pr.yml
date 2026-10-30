@@ -1561,13 +1561,22 @@ jobs:
           rustup default 1.83.0
           cargo --version
 
-      # A test that needs the service, buf, or another client's toolchain, fails rather than skips without it.
+      # The verdict-notes test asks the service a solver-backed question; the
+      # solver is an external process the service finds on PATH.
+      - name: Install Z3
+        timeout-minutes: 10
+        run: |
+          scripts/ci-apt-install.sh z3
+          z3 --version
+
+      # A test that needs the service, buf, a solver, or another client's toolchain, fails rather than skips without it.
       - name: Run .NET client tests
         env:
           OPENSYSML_GRPC_BINARY: ${{ github.workspace }}/bin/sysml-grpc
           OPENSYSML_REQUIRE_SERVICE: "1"
           OPENSYSML_REQUIRE_INTEROP: "1"
           OPENSYSML_REQUIRE_BUF: "1"
+          OPENSYSML_REQUIRE_SMT: "1"
         run: make dotnet-test
 
       - name: Measure .NET client coverage
@@ -1576,6 +1585,7 @@ jobs:
           OPENSYSML_REQUIRE_SERVICE: "1"
           OPENSYSML_REQUIRE_INTEROP: "1"
           OPENSYSML_REQUIRE_BUF: "1"
+          OPENSYSML_REQUIRE_SMT: "1"
         run: make dotnet-coverage
 
       # Every protocol and the withheld configuration, through the public API, against the

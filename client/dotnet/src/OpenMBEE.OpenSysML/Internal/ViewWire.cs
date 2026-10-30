@@ -7,19 +7,36 @@ namespace OpenMBEE.OpenSysML.Internal;
 internal static class ViewWire
 {
     /// <summary>Reads a rendering.</summary>
-    /// <exception cref="TransportException">A node repeats an id, or names as its parent no node before it.</exception>
+    /// <exception cref="TransportException">
+    /// A node repeats an id, names as its parent no node before it, or is a compartment row with no parent or whose parent
+    /// is itself a row.
+    /// </exception>
     internal static RenderedView Rendered(Wire.RenderViewResponse response, string method)
     {
-        var seen = new HashSet<string>(System.StringComparer.Ordinal);
+        var seen = new Dictionary<string, Wire.RenderNode>(System.StringComparer.Ordinal);
         var nodes = new List<ViewNode>(response.Nodes.Count);
         foreach (var (node, i) in response.Nodes.Select((node, i) => (node, i)))
         {
-            if (node.Parent.Length > 0 && !seen.Contains(node.Parent))
+            Wire.RenderNode? parent = null;
+            if (node.Parent.Length > 0 && !seen.TryGetValue(node.Parent, out parent))
             {
                 throw Malformed(method, $"nodes[{i}] names {ValueText.Quoted(node.Parent)} as its parent, which no node before it is");
             }
 
-            if (!seen.Add(node.Id))
+            if (node.Compartment.Length > 0)
+            {
+                if (parent is null)
+                {
+                    throw Malformed(method, $"nodes[{i}] is a row of the compartment {ValueText.Quoted(node.Compartment)} but names no parent whose box holds it");
+                }
+
+                if (parent.Compartment.Length > 0)
+                {
+                    throw Malformed(method, $"nodes[{i}] is a row of the compartment {ValueText.Quoted(node.Compartment)} of {ValueText.Quoted(node.Parent)}, which is itself a row and has no box");
+                }
+            }
+
+            if (!seen.TryAdd(node.Id, node))
             {
                 throw Malformed(method, $"nodes[{i}] repeats the id {ValueText.Quoted(node.Id)}");
             }
@@ -34,12 +51,14 @@ internal static class ViewWire
                 node.Text,
                 node.StandIn,
                 node.Parent,
-                node.Ports.Select(port => new ViewPort(port.Id, port.Name, port.Type, port.Direction)),
+                node.Ports.Select(port => new ViewPort(port.Id, port.Name, port.Type, port.Direction, port.Inherited)),
                 Span(node.Origin),
                 node.Geometry is { } geometry
                     ? new ViewGeometry(geometry.X, geometry.Y, geometry.Width, geometry.Height, geometry.HasSize, geometry.Collapsed, geometry.Unplaced)
                     : null,
-                Style(node.Style)));
+                Style(node.Style),
+                node.Compartment,
+                node.Inherited));
         }
 
         return new RenderedView(

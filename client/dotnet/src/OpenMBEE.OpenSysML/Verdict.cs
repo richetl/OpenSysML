@@ -26,8 +26,9 @@ public sealed record Verdict
     /// <param name="question">The question answered: <c>evaluate</c>, <c>holds</c> or <c>satisfiable</c>; empty when the service named none.</param>
     /// <param name="status">The answer to it: <c>holds</c>, <c>violated</c>, <c>undecided</c>, <c>satisfiable</c> or <c>unsatisfiable</c>; empty when the service named none.</param>
     /// <param name="witness">The assignment witnessing a violated or satisfiable answer, in the query's order.</param>
+    /// <param name="notes">The assumptions and omissions the answer rests on, in report order.</param>
     /// <exception cref="ArgumentNullException">An argument is null.</exception>
-    /// <exception cref="ArgumentException">An assignment is null.</exception>
+    /// <exception cref="ArgumentException">An assignment or a note is null.</exception>
     public Verdict(
         string kind,
         string elementId,
@@ -43,7 +44,8 @@ public sealed record Verdict
         string instancePath,
         string question,
         string status,
-        IEnumerable<WitnessAssignment> witness)
+        IEnumerable<WitnessAssignment> witness,
+        IEnumerable<VerdictNote> notes)
     {
         ArgumentNullException.ThrowIfNull(kind);
         ArgumentNullException.ThrowIfNull(elementId);
@@ -71,6 +73,7 @@ public sealed record Verdict
         Question = question;
         Status = status;
         Witness = new ValueList<WitnessAssignment>(witness);
+        Notes = new ValueList<VerdictNote>(notes);
     }
 
     /// <summary>
@@ -132,6 +135,13 @@ public sealed record Verdict
 
     /// <summary>The assignment witnessing a violated holds answer or a satisfiable one, in the query's order; empty otherwise.</summary>
     public ValueList<WitnessAssignment> Witness { get; }
+
+    /// <summary>
+    /// What a solver's answer rests on, in report order: the features it read as one value or object while only the
+    /// default <c>0..*</c> governs them, and the object-holding features whose own assertions it does not state.
+    /// Never set for an evaluation, and empty from a service without <see cref="Capabilities.VerdictNotes"/>.
+    /// </summary>
+    public ValueList<VerdictNote> Notes { get; }
 
     /// <summary>Whether the model answered: <see cref="Error"/> is empty, so <see cref="Holds"/> is the model's own answer.</summary>
     public bool Decided => Error.Length == 0;

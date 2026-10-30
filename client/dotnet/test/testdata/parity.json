@@ -388,6 +388,11 @@
           "when": "documents is not empty"
         },
         {
+          "capability": "convert_library_stubs",
+          "field": "include_library_stubs",
+          "when": "include_library_stubs is true"
+        },
+        {
           "capability": "convert_compact",
           "field": "compact",
           "when": "compact or omit_derived is true, or keep_derived is not empty"
@@ -422,7 +427,8 @@
         "ServiceConversionTests.ASyntaxErrorFailsTheConversionUnlessToleratedAndAMappingRefusalIsInBand",
         "ServiceConversionTests.TheWrongVerbAMissingFileAndAnEvictedModelAreRefused",
         "ServiceConversionTests.SavingAModelWritesWhatItConvertsTo",
-        "ServiceConversionTests.AWithheldCapabilityIsRefusedBeforeAnythingIsSent"
+        "ServiceConversionTests.AWithheldCapabilityIsRefusedBeforeAnythingIsSent",
+        "ServiceConversionTests.TheLibraryAModelRefersToIsListedBesideItsElementsAndWrittenAsRootsOnlyWhenAsked"
       ]
     },
     {
@@ -598,7 +604,8 @@
         "ModelVerificationTests.AFailureReasonThisClientDoesNotNameIsKeptAsItsNumber",
         "ServiceVerificationTests.ConstraintsAndRequirementsAnswerHoldingFalseAndUndecidedVerdicts",
         "ServiceVerificationTests.AVerificationTheServiceCannotAnswerIsInBandAndAnUnknownQuestionOrEngineIsRefused",
-        "ServiceVerificationTests.AWithheldCapabilityIsRefusedBeforeAnythingIsSent"
+        "ServiceVerificationTests.AWithheldCapabilityIsRefusedBeforeAnythingIsSent",
+        "ServiceVerificationTests.ASolversAnswerCarriesTheAssumptionItRestsOnAndAnEvaluationCarriesNone"
       ]
     },
     {
@@ -1150,6 +1157,11 @@
           "capability": "oslc_query",
           "field": "oslc_query",
           "when": "oslc_query is set"
+        },
+        {
+          "capability": "query_order_by",
+          "field": "query.order_by",
+          "when": "query.order_by is not empty"
         }
       ],
       "valueFields": [],
@@ -1168,9 +1180,13 @@
         "ModelQueryDocsTests.OslcTextIsSentAloneAndGatedBehindTheQueryCapability",
         "ModelQueryDocsTests.AConstraintCannotBeBuiltWithoutAnOperatorItsOperandsOrItsConstraints",
         "ModelQueryDocsTests.AnElementWithoutItsIdOrTypeIsAMalformedAnswer",
+        "ModelQueryDocsTests.TheOrderedMembershipAndMetaclassOperatorsAreSentAsTheStandardNamesThem",
+        "ModelQueryDocsTests.AnOrderingIsGatedBehindItsCapabilityAndAQueryWithoutOneIsNot",
+        "ModelQueryDocsTests.ACompositeOfOneConstraintIsRefusedAsTheStandardRefusesIt",
         "ServiceQueryDocsTests.QueriesSelectWhatTheServiceEvaluatesInEveryConstraintForm",
         "ServiceQueryDocsTests.EveryElementOfEveryConformanceFixtureIsAnsweredWithItsIdAndType",
-        "ServiceQueryDocsTests.AWithheldCapabilityIsRefusedBeforeAnythingIsSent"
+        "ServiceQueryDocsTests.AWithheldCapabilityIsRefusedBeforeAnythingIsSent",
+        "ServiceQueryDocsTests.AWithheldOrderingOrAsciiDocIsRefusedBeforeAnythingIsSentWhileTheRestIsServed"
       ]
     },
     {
@@ -1239,6 +1255,11 @@
           "capability": "render_document_html",
           "field": "form",
           "when": "form is html"
+        },
+        {
+          "capability": "render_document_asciidoc",
+          "field": "form",
+          "when": "form is asciidoc"
         }
       ],
       "valueFields": [],
@@ -1250,8 +1271,9 @@
       "tests": [
         "ModelQueryDocsTests.RenderDocumentSendsTheFormAndReadsTheContentAndFileName",
         "ModelQueryDocsTests.AMissingModelAMissingDeclarationAndAFaultInTheModelsDeclarationsAreToldApart",
-        "ServiceQueryDocsTests.ADocumentRendersToMarkdownAndHtmlNamingTheFileARenderedSetWrites",
-        "ServiceQueryDocsTests.AMissingModelAMissingDeclarationAWrongBindingAndAFaultInTheModelAreToldApart"
+        "ServiceQueryDocsTests.ADocumentRendersToMarkdownHtmlAndAsciiDocNamingTheFileARenderedSetWrites",
+        "ServiceQueryDocsTests.AMissingModelAMissingDeclarationAWrongBindingAndAFaultInTheModelAreToldApart",
+        "ServiceQueryDocsTests.AWithheldOrderingOrAsciiDocIsRefusedBeforeAnythingIsSentWhileTheRestIsServed"
       ]
     },
     {
@@ -1280,10 +1302,11 @@
       "tests": [
         "ModelQueryDocsTests.RenderViewSendsEveryOptionAndReadsEveryFieldOfTheRendering",
         "ModelQueryDocsTests.AGeometryStyleCanvasOrOriginTheRenderingOmitsStaysAbsentRatherThanZero",
-        "ModelQueryDocsTests.InvalidViewOptionsAreRefusedBeforeSendingAndNodesOutOfOrderAreMalformed",
+        "ModelQueryDocsTests.InvalidViewOptionsAreRefusedBeforeSendingAndNodesOutOfOrderOrRowsWithoutABoxAreMalformed",
         "ServiceQueryDocsTests.AViewRendersWithItsPortsNotationAndDepthAndNothingItOmitsFilledIn",
         "ServiceQueryDocsTests.AViewsLayoutStylesNotesCanvasAndTableAreReadAsTheViewStatesThem",
-        "ServiceQueryDocsTests.EveryViewTheRenderersOwnTestsDeclareIsReadWithItsNodesInOrder"
+        "ServiceQueryDocsTests.EveryViewTheRenderersOwnTestsDeclareIsReadWithItsNodesInOrder",
+        "ServiceQueryDocsTests.CompartmentsFoldMembersIntoRowsOfTheirOwnersBoxAndWhatAnOwnerHasFromItsTypeIsMarkedInherited"
       ]
     },
     {
@@ -1926,7 +1949,9 @@
     "sysml.CompareResultsResponse.strength": "engines",
     "sysml.CompareResultsResponse.bounds": "engines",
     "sysml.DocumentValue.big_int_value": "big_int_values",
-    "sysml.DocumentValue.rational_value": "rational_values"
+    "sysml.DocumentValue.rational_value": "rational_values",
+    "sysml.Verdict.notes": "verdict_notes",
+    "sysml.ConvertResponse.library_references": "convert_library_references"
   },
   "fields": {
     "sysml.AddCommentEdit": [
@@ -2509,12 +2534,7 @@
           "compact",
           "omit_derived",
           "keep_derived",
-          "include_check_diagnostics"
-        ]
-      },
-      {
-        "status": "deferred",
-        "fields": [
+          "include_check_diagnostics",
           "include_library_stubs"
         ]
       }
@@ -2529,7 +2549,8 @@
           "to_format",
           "diagnostics",
           "experimental",
-          "experimental_notice"
+          "experimental_notice",
+          "library_references"
         ]
       },
       {
@@ -2537,12 +2558,6 @@
         "test": "ModelConversionTests.AConversionNotMadeIsAConversionExceptionKeepingItsFormatsAndAMalformedAnswerIsRefused",
         "fields": [
           "error"
-        ]
-      },
-      {
-        "status": "deferred",
-        "fields": [
-          "library_references"
         ]
       }
     ],
@@ -3122,7 +3137,8 @@
     ],
     "sysml.LibraryReference": [
       {
-        "status": "deferred",
+        "status": "typed",
+        "test": "ModelConversionTests.ConvertSendsEverySourceAndOptionAndReadsEveryField",
         "fields": [
           "id",
           "qualified_name",
@@ -3445,12 +3461,7 @@
         "fields": [
           "scope",
           "select",
-          "where"
-        ]
-      },
-      {
-        "status": "deferred",
-        "fields": [
+          "where",
           "order_by"
         ]
       }
@@ -3600,12 +3611,7 @@
         "fields": [
           "markdown",
           "html",
-          "file_name"
-        ]
-      },
-      {
-        "status": "deferred",
-        "fields": [
+          "file_name",
           "asciidoc"
         ]
       }
@@ -3660,12 +3666,7 @@
           "ports",
           "origin",
           "geometry",
-          "style"
-        ]
-      },
-      {
-        "status": "deferred",
-        "fields": [
+          "style",
           "compartment",
           "inherited"
         ]
@@ -3707,12 +3708,7 @@
           "id",
           "name",
           "type",
-          "direction"
-        ]
-      },
-      {
-        "status": "deferred",
-        "fields": [
+          "direction",
           "inherited"
         ]
       }
@@ -3751,12 +3747,7 @@
           "view",
           "ports",
           "show",
-          "depth"
-        ]
-      },
-      {
-        "status": "deferred",
-        "fields": [
+          "depth",
           "compartments"
         ]
       }
@@ -4565,19 +4556,15 @@
           "instance_path",
           "question",
           "status",
-          "witness"
-        ]
-      },
-      {
-        "status": "deferred",
-        "fields": [
+          "witness",
           "notes"
         ]
       }
     ],
     "sysml.VerdictNote": [
       {
-        "status": "deferred",
+        "status": "typed",
+        "test": "ModelVerificationTests.VerifyConstraintSendsEveryOptionAndReadsEveryFieldOfTheVerdict",
         "fields": [
           "kind",
           "subject",

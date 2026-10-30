@@ -100,7 +100,10 @@ public sealed record RenderedView
         return Nodes.FirstOrDefault(node => node.Id == id);
     }
 
-    /// <summary>The nodes nested directly in a node, in order.</summary>
+    /// <summary>
+    /// The nodes nested directly in a node, in order: the rows of its compartments, which name their
+    /// <see cref="ViewNode.Compartment"/>, as well as the boxes drawn inside it.
+    /// </summary>
     /// <param name="node">The node.</param>
     /// <returns>Its children.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="node"/> is null.</exception>

@@ -15,14 +15,14 @@ public sealed partial class Model
     /// states, each absent where the view states none.
     /// </summary>
     /// <param name="view">A view's qualified name, or a <c>#&lt;kind&gt;:&lt;qualified name&gt;</c> pseudo-view.</param>
-    /// <param name="options">The ports drawn, the optional notation shown and the depth drawn; null for <see cref="RenderViewOptions.Default"/>.</param>
+    /// <param name="options">The ports drawn, the optional notation shown, the depth drawn and the compartments folded; null for <see cref="RenderViewOptions.Default"/>.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     /// <returns>Every field the view renderer produced.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="view"/> is null.</exception>
     /// <exception cref="ArgumentException"><paramref name="view"/> is empty.</exception>
     /// <exception cref="InvalidRequestException">
-    /// <see cref="RenderViewOptions.Ports"/> is not a <see cref="RenderViewPorts"/>, or <see cref="RenderViewOptions.Depth"/>
-    /// is not positive; nothing was sent.
+    /// <see cref="RenderViewOptions.Ports"/> is not a <see cref="RenderViewPorts"/>, <see cref="RenderViewOptions.Compartments"/>
+    /// is not a <see cref="RenderViewCompartments"/>, or <see cref="RenderViewOptions.Depth"/> is not positive; nothing was sent.
     /// </exception>
     /// <exception cref="CapabilityException">The service lacks <see cref="Capabilities.RenderView"/>; nothing was sent.</exception>
     /// <exception cref="ModelNotFoundException">The service no longer holds the model.</exception>
@@ -41,6 +41,11 @@ public sealed partial class Model
             throw new InvalidRequestException($"RenderViewOptions.Ports is {options.Ports}, which is not a RenderViewPorts.");
         }
 
+        if (!Enum.IsDefined(options.Compartments))
+        {
+            throw new InvalidRequestException($"RenderViewOptions.Compartments is {options.Compartments}, which is not a RenderViewCompartments.");
+        }
+
         if (options.Depth is <= 0 and var depth)
         {
             throw new InvalidRequestException($"RenderViewOptions.Depth is {depth}, which draws no level; leave it null for the view's own depth.");
@@ -48,7 +53,7 @@ public sealed partial class Model
 
         Connection.Capabilities.Require(Capabilities.RenderView);
 
-        // Minimal ports are the ones an empty selection names, which every service draws.
+        // Minimal ports and positioned compartments are what empty selections name, which every service draws.
         var request = new Wire.RenderViewRequest
         {
             ModelHash = Hash,
@@ -56,6 +61,12 @@ public sealed partial class Model
             Ports = options.Ports == RenderViewPorts.Full ? "full" : string.Empty,
             Show = { options.Show },
             Depth = options.Depth ?? 0,
+            Compartments = options.Compartments switch
+            {
+                RenderViewCompartments.Most => "most",
+                RenderViewCompartments.Ports => "ports",
+                _ => string.Empty,
+            },
         };
         var response = await DeclarationCallAsync<Wire.RenderViewRequest, Wire.RenderViewResponse>(RenderViewMethod, request, modelFaults: false, cancellationToken)
             .ConfigureAwait(false);

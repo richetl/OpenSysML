@@ -614,8 +614,12 @@ A verdict of false is an answer, never an exception: `Verdict.Decided` is true a
 names it. A verdict that could not be evaluated, an unbound feature, a solver that decided
 nothing, or a symbol of another kind, is answered too, with its `Error` and `FailureReason`,
 and `Decided` false. Every verdict carries the `Standing` of the engine that answered, the
-`Question` it answers (`evaluate`, `holds`, `satisfiable`) with its `Status`, and the
-`Witness` assignment that replays a violated or satisfiable answer. Only a request the
+`Question` it answers (`evaluate`, `holds`, `satisfiable`) with its `Status`, the
+`Witness` assignment that replays a violated or satisfiable answer, and a solver's `Notes`:
+each `VerdictNote` an assumption or omission the answer rests on, as the REPL prints it, of
+`Kind` `VerdictNote.AssumedOne` (a feature read as one value while only the default `0..*`
+governs it) or `VerdictNote.Uncovered` (an object-holding feature whose own assertions the
+question does not state), with the `Subject` feature and the sentence as `Text`. Only a request the
 service could not answer at all raises `VerificationException`, whose `Reason` tells a wrong
 request (`FailureReason.WrongKind`) from one that could not be evaluated. A sweep's failed run
 is that row's `Error`, beside what it computed first, and never fails the table; an analysis
@@ -625,7 +629,9 @@ case that failed raises `AnalysisException` keeping its `Partial` run.
 `Arguments` and `NamedArguments` bound to the element's `in` parameters, and the `Engine`; a
 satisfaction is asked about an object of each assertion's own subject, so it takes neither a
 subject nor arguments. `CalcAsync` binds its arguments positionally, which is all the service
-reads. `AnalysisOptions` carries the subject, arguments, schedule and engine, and
+reads. A result or `out` parameter that states no multiplicity is `[0..*]` (SysML §7.6.3), so
+the service answers its one value as a one-element `Value.SequenceValue`; declare it `[1]`
+(`return : Real[1]`) to read the value itself. `AnalysisOptions` carries the subject, arguments, schedule and engine, and
 `SweepOptions` the subject, the arguments every row binds, `Samples` and `Seed`. A run and an
 exploration of a case answer differently, so `RunAnalysisAsync` refuses an exploring schedule
 and the `explore` engine, and `ExploreAnalysisAsync` a schedule that runs once and a tool dry
@@ -640,7 +646,7 @@ the service checks them: `verification`, then `verification_questions` for `hold
 `satisfiable`, `engines` for an engine and `schedule_explore` for the `explore` engine,
 `verification_arguments` for any argument, and the value capabilities of each argument and
 range endpoint; a case run checks `schedule` and `schedule_explore` for its schedule first.
-`ListEnginesAsync` needs `engines`. `verification_verdicts`, `case_evaluations` and the
+`ListEnginesAsync` needs `engines`. `verification_verdicts`, `case_evaluations`, `verdict_notes` and the
 `engines` response fields only say whether the service fills them: they are read whatever it
 advertises, empty from a service without them. A failure reason this client does not name
 is kept as its number.
@@ -703,7 +709,7 @@ await migration.WriteAsync("Model.sysml");                                // and
 
 | Method | Answers |
 | --- | --- |
-| `Connection.ConvertAsync` | A `Conversion` of a `ConvertSource` (a file the service reads, inline content, or a model by hash): the `Content` in the target format, the `FromFormat` and `ToFormat` the service used, canonically named, the `Diagnostics` of tolerated syntax errors and of the semantic check when asked for, and whether the RDF mapping it went through is `Experimental`, with the service's `ExperimentalNotice` |
+| `Connection.ConvertAsync` | A `Conversion` of a `ConvertSource` (a file the service reads, inline content, or a model by hash): the `Content` in the target format, the `FromFormat` and `ToFormat` the service used, canonically named, the `Diagnostics` of tolerated syntax errors and of the semantic check when asked for, whether the RDF mapping it went through is `Experimental`, with the service's `ExperimentalNotice`, and for `api-json` the `LibraryReferences` it refers to |
 | `Model.ConvertAsync`, `ToNotationAsync`, `ToTurtleAsync`, `ToApiJsonAsync` | The same for the source the model was parsed from, which a file edited since does not change |
 | `Model.SaveAsync` | The `Conversion` written to a file, in the format its extension names (`.sysml`, `.kerml`, `.ttl`, `.turtle`, `.json`) unless one is given |
 | `Connection.MigrateAsync` | A `Migration` of a SysML v1 `MigrateSource` (an `.xmi`, `.uml` or `.mdzip` file, or its bytes): the `Content`, its `Report` (the `Summary` and the `Mapped`, `Approximated`, `Unmapped` and `Skipped` counts always, every `MigrationEntry` and the report `Text` with `MigrateOptions.Report`), the tool's stored `Results` with `MigrateOptions.Results`, and the `Files`, such as images, the model refers to |
@@ -715,15 +721,21 @@ directions and options apply is the service's to judge, as is a SysML v1 source 
 the other call. `ConvertOptions` carries the source's `FromFormat` (inline content must name
 it), `TolerateSyntaxErrors`, the `IdForm` of derived ids in a graph, the `Documents` of a
 multi-document model to write, the `Compact` API JSON form with `OmitDerived` and
-`KeepDerived`, and `IncludeCheckDiagnostics`. `MigrateOptions` carries the v1 `FromFormat`,
+`KeepDerived`, `IncludeCheckDiagnostics`, and `IncludeLibraryStubs`. An `api-json` conversion
+lists the standard-library elements it refers to as `LibraryReferences` (each a
+`LibraryReference` with its `Id`, `QualifiedName` and metaclass `Type`) rather than writing them
+as roots of the element array; `IncludeLibraryStubs` writes them as roots too, as conversions
+before 0.11.0 did, and the service refuses it for any other format. A service without
+`convert_library_references` leaves the list empty. `MigrateOptions` carries the v1 `FromFormat`,
 `Report`, `Results`, an MTIP layout as `LayoutPath` or `LayoutContent`, an `ImageBaseUrl` and
 `Strict`. A conversion the service answered but could not make, a source that would not parse
 or a mapping refusal, raises `ConversionException` with its diagnostics and formats; a v1
 model that could not be read raises `MigrationException`. An element with no v2 form is a
 report entry, never an exception. A file the service cannot read is a
 `ModelFileNotFoundException`, a model it no longer holds a `ModelNotFoundException`. Before
-anything is sent the calls need `convert`, then `convert_documents`, `convert_compact` and
-`convert_check_diagnostics` for the options that use them, in that order, or `migrate`.
+anything is sent the calls need `convert`, then `convert_documents`, `convert_library_stubs`,
+`convert_compact` and `convert_check_diagnostics` for the options that use them, in that order,
+or `migrate`.
 
 `MigrateSource.FromFile` requires a fully-qualified path in the client's path syntax, rejecting
 relative, invalid, and (on Windows) drive-relative or root-relative paths with `ArgumentException`.
@@ -761,34 +773,45 @@ var parts = await model.QueryAsync(new Query
     Select = ["name", "owner"],
     Where = QueryConstraint.And(QueryConstraint.Equal("@type", "PartUsage"), QueryConstraint.Less("multiplicityUpper", "5")),
 });                                                                       // Demo::vehicle::wheels (PartUsage)
+var byName = await model.QueryAsync(new Query { Where = QueryConstraint.InstanceOf("Usage"), OrderBy = ["name"] });
 var same = await model.QueryOslcAsync("oslc.where=rdf:type=\"PartUsage\"&oslc.select=sysml:name");
 
 var observatory = (await connection.LoadAsync("document.sysml")).RequireNoErrors();
 var table = await observatory.RunDocumentQueryAsync("Observatory::SubsystemTable",
     [new DocumentBinding("root", DocumentValue.ElementRef("Observatory::telescope"))]);
 var report = await observatory.RenderDocumentAsync("Observatory::MassReport", DocumentForm.Html);
+var asciidoc = await observatory.RenderDocumentAsync("Observatory::MassReport", DocumentForm.AsciiDoc);
 
 var plant = await connection.LoadAsync("layout.sysml");
 var view = await plant.RenderViewAsync("PlantViews::placedView",
     new RenderViewOptions { Ports = RenderViewPorts.Full, Show = [ViewNotation.EdgeLabels], Depth = 2 });
+var tree = await plant.RenderViewAsync("#tree:Plant::Loop", new RenderViewOptions { Compartments = RenderViewCompartments.Most });
 ```
 
 | Method | Answers |
 | --- | --- |
-| `QueryAsync` | A `QueryResult` of a SysML v2 API & Services `Query`: the `Elements` in its `Scope` (the whole model when empty, nested elements included) that its `Where` constraint matches, in declaration order, each a `QueryElement` with its `Id`, its metamodel `Type` and the `Properties` its `Select` asked for, a property the element does not have absent |
+| `QueryAsync` | A `QueryResult` of a SysML v2 API & Services `Query`: the `Elements` in its `Scope` (the whole model when empty, nested elements included) that its `Where` constraint matches, in the order its `OrderBy` sorts them or else in declaration order, each a `QueryElement` with its `Id`, its metamodel `Type` and the `Properties` its `Select` asked for, a property the element does not have absent |
 | `QueryOslcAsync` | The same for OSLC Query 3.0 parameter text |
 | `RunDocumentQueryAsync` | A `DocumentQueryResult` of a document query the model declares, with its entry parameters bound: the projected `Columns` and the `Rows`, each a `DocumentRow` with the `Element` it selects and a cell of `DocumentValue`s per column |
-| `RenderDocumentAsync` | A `RenderedDocument` the model declares, byte-for-byte what `sysml -render-document` writes, in Markdown or `DocumentForm.Html`, with the `FileName` a rendered set writes it to, null from a service that names none |
+| `RenderDocumentAsync` | A `RenderedDocument` the model declares, byte-for-byte what `sysml -render-document` writes, in Markdown, `DocumentForm.Html` or `DocumentForm.AsciiDoc`, with the `FileName` a rendered set writes it to, null from a service that names none |
 | `RenderViewAsync` | A `RenderedView` of a declared view or a `#<kind>:<qualified name>` pseudo-view: every field the view renderer produced |
 
 A `Query` is an immutable record; `Query.All` considers every element, and a `with`
-expression derives another. A `QueryConstraint` is a `Comparison` of one property (`Equal` to
-any of its values, `Greater` or `Less` than exactly one, optionally `Inverted`) or a
-`Composite` combining at least one constraint by `And` or `Or`, so a constraint is complete by
-construction: one without an operator, an operand or a constraint cannot be built, and a
-structured query and OSLC text are two calls, never one request. What the service still
-judges, a property it does not know, a scope element the model does not have, an order on a
-property that has none, it refuses with `InvalidArgument` rather than answering empty.
+expression derives another. Its `OrderBy` names the properties the matches are sorted by, in
+order of precedence, each ascending, as the standard's `orderBy` does: an ordered property
+such as `multiplicityLower` compares as a number, any other byte-wise as text, an element
+without the property first, and elements equal under every one keep declaration order. A
+`QueryConstraint` is a `Comparison` of one property (`Equal` to or `In` any of its values,
+`Greater`, `GreaterOrEqual`, `Less` or `LessOrEqual` than exactly one, or `InstanceOf` one of
+the metaclasses named, which compares `@type` so that a `PartUsage` is an instance of `Usage`;
+each optionally `Inverted`) or a `Composite` combining at least two constraints by `And` or
+`Or`, as the standard combines them. A constraint is complete by construction: one without an
+operator or an operand, a composite of fewer than two constraints (write a single constraint on
+its own), and `InstanceOf` on another property or with an empty name cannot be built, each an
+`ArgumentException`, and a structured query and OSLC text are two calls, never one request.
+What the service still judges, a property it does not know, a scope element the model does not
+have, an order on a property that has none, a metaclass the library does not declare, it
+refuses with `InvalidArgument` rather than answering empty.
 
 A `DocumentBinding` binds one entry parameter to its values, in order; a parameter several
 bindings name takes all their values. A value is a `DocumentValue`: an element by qualified
@@ -808,19 +831,28 @@ stays absent: a node no layout places has a null `Geometry`, one no style colour
 `Style`, a view stating no canvas a null `Canvas`, and an element the service located nowhere
 a null `Origin`, never zeros. A layout that only folds or hides a node is `Unplaced`, and one
 that states no size says so with `HasSize`. `RenderViewOptions` chooses the `Ports`, the
-optional notation to `Show` as `ViewNotation` names it, and a positive `Depth` overriding the
-view's own.
+optional notation to `Show` as `ViewNotation` names it, a positive `Depth` overriding the
+view's own, and how a tree folds owned members into `Compartments` of their owner's box:
+`Positioned` (the default) folds only what a Layout leaves unpositioned, `Most` every owned
+usage no Layout, nested definition or package keeps as a node, `Ports` the port usages. A
+folded member is a node whose `Compartment` names the compartment (`attributes`, `parts`,
+`ports`) of its `Parent`'s box, and `ChildrenOf` lists it among the boxes nested there. A node or
+port the owner has through typing, subclassification or subsetting rather than declares is
+`Inherited`, which the notation marks with `^`; its `Name` stays bare. A service older than
+`Compartments` draws every member as a node whatever it asks, since there is no capability to
+tell it by.
 
 A model the service no longer holds is a `ModelNotFoundException`; a query, document or view
 the model does not declare, or an object it does not hold, is a `ServiceException` with
 `NotFound`, and a name declaring something else one with `InvalidArgument`. A document query
 or document the model declares wrongly, an operation the engine does not support or a
 property no element has, is a `QueryException`. A malformed answer, an element with no id or
-type, a row selecting no element, a node whose parent is not drawn before it, is a
-`TransportException`. Before anything is sent the calls need `query`, and `oslc_query` for
-OSLC text; `document_query`, then `big_int_values` and `rational_values` for a bound Integer
+type, a row selecting no element, a node whose parent is not drawn before it, a node repeating
+another's id, a compartment row with no box to sit in, is a `TransportException`. Before
+anything is sent the calls need `query`, then `query_order_by` for a non-empty `OrderBy`
+(a service without it would ignore the ordering), and `oslc_query` for OSLC text; `document_query`, then `big_int_values` and `rational_values` for a bound Integer
 beyond `long` or exact Rational (one a `double` holds exactly is sent as that `double` to a
-service without `rational_values`); `render_document`, then `render_document_html` for HTML;
+service without `rational_values`); `render_document`, then `render_document_html` for HTML or `render_document_asciidoc` for AsciiDoc;
 or `render_view`.
 
 ## Editing
@@ -1326,7 +1358,10 @@ themselves on ports the kernel chooses and reach by address: once serving its de
 its grpc-go-only `grpc` transport, reached over gRPC, where Connect must be refused. Others
 start it as a private service, shared, isolated, killed and stopped. Unit tests of behavior
 every protocol shares run over all three wires too. They skip without a binary; set
-`OPENSYSML_REQUIRE_SERVICE=1` to turn that skip into a failure, as CI does. `make
+`OPENSYSML_REQUIRE_SERVICE=1` to turn that skip into a failure, as CI does. The one test that
+needs a solver's answer (the notes a `holds` verdict carries) asks the service whether its
+`solve` engine is ready, and skips when it is not, with the engine's reason; set
+`OPENSYSML_REQUIRE_SMT=1`, as CI does with z3 installed, to make that a failure too. `make
 dotnet-test` also runs the Vehicle sample against such a service, and with the binary alone,
 which it starts privately, under the same rule; the MetamodelReader sample it runs over the Python
 client's sysml-toolkit fixture with neither named, since it needs no service:

@@ -1,4 +1,42 @@
 #nullable enable
+OpenMBEE.OpenSysML.ComparisonOperator.GreaterOrEqual = 5 -> OpenMBEE.OpenSysML.ComparisonOperator
+OpenMBEE.OpenSysML.ComparisonOperator.In = 6 -> OpenMBEE.OpenSysML.ComparisonOperator
+OpenMBEE.OpenSysML.ComparisonOperator.InstanceOf = 7 -> OpenMBEE.OpenSysML.ComparisonOperator
+OpenMBEE.OpenSysML.ComparisonOperator.LessOrEqual = 4 -> OpenMBEE.OpenSysML.ComparisonOperator
+OpenMBEE.OpenSysML.Conversion.Conversion(string! content, string! fromFormat, string! toFormat, System.Collections.Generic.IEnumerable<OpenMBEE.OpenSysML.Diagnostic!>! diagnostics, bool experimental, string! experimentalNotice, System.Collections.Generic.IEnumerable<OpenMBEE.OpenSysML.LibraryReference!>! libraryReferences) -> void
+OpenMBEE.OpenSysML.Conversion.LibraryReferences.get -> OpenMBEE.OpenSysML.ValueList<OpenMBEE.OpenSysML.LibraryReference!>
+OpenMBEE.OpenSysML.ConvertOptions.IncludeLibraryStubs.get -> bool
+OpenMBEE.OpenSysML.ConvertOptions.IncludeLibraryStubs.init -> void
+OpenMBEE.OpenSysML.DocumentForm.AsciiDoc = 2 -> OpenMBEE.OpenSysML.DocumentForm
+OpenMBEE.OpenSysML.LibraryReference
+OpenMBEE.OpenSysML.LibraryReference.<Clone>$() -> OpenMBEE.OpenSysML.LibraryReference!
+OpenMBEE.OpenSysML.LibraryReference.Equals(OpenMBEE.OpenSysML.LibraryReference? other) -> bool
+OpenMBEE.OpenSysML.LibraryReference.Id.get -> string!
+OpenMBEE.OpenSysML.LibraryReference.LibraryReference(string! id, string! qualifiedName, string! type) -> void
+OpenMBEE.OpenSysML.LibraryReference.QualifiedName.get -> string!
+OpenMBEE.OpenSysML.LibraryReference.Type.get -> string!
+OpenMBEE.OpenSysML.Query.OrderBy.get -> System.Collections.Generic.IReadOnlyList<string!>!
+OpenMBEE.OpenSysML.Query.OrderBy.init -> void
+OpenMBEE.OpenSysML.RenderViewCompartments
+OpenMBEE.OpenSysML.RenderViewCompartments.Most = 1 -> OpenMBEE.OpenSysML.RenderViewCompartments
+OpenMBEE.OpenSysML.RenderViewCompartments.Ports = 2 -> OpenMBEE.OpenSysML.RenderViewCompartments
+OpenMBEE.OpenSysML.RenderViewCompartments.Positioned = 0 -> OpenMBEE.OpenSysML.RenderViewCompartments
+OpenMBEE.OpenSysML.RenderViewOptions.Compartments.get -> OpenMBEE.OpenSysML.RenderViewCompartments
+OpenMBEE.OpenSysML.RenderViewOptions.Compartments.init -> void
+OpenMBEE.OpenSysML.Verdict.Notes.get -> OpenMBEE.OpenSysML.ValueList<OpenMBEE.OpenSysML.VerdictNote!>
+OpenMBEE.OpenSysML.Verdict.Verdict(string! kind, string! elementId, string! element, bool holds, string! condition, long instanceId, string! instanceTypeId, string! error, OpenMBEE.OpenSysML.FailureReason failureReason, string! requirementId, OpenMBEE.OpenSysML.Standing! standing, string! instancePath, string! question, string! status, System.Collections.Generic.IEnumerable<OpenMBEE.OpenSysML.WitnessAssignment!>! witness, System.Collections.Generic.IEnumerable<OpenMBEE.OpenSysML.VerdictNote!>! notes) -> void
+OpenMBEE.OpenSysML.VerdictNote
+OpenMBEE.OpenSysML.VerdictNote.<Clone>$() -> OpenMBEE.OpenSysML.VerdictNote!
+OpenMBEE.OpenSysML.VerdictNote.Equals(OpenMBEE.OpenSysML.VerdictNote? other) -> bool
+OpenMBEE.OpenSysML.VerdictNote.Kind.get -> string!
+OpenMBEE.OpenSysML.VerdictNote.Subject.get -> string!
+OpenMBEE.OpenSysML.VerdictNote.Text.get -> string!
+OpenMBEE.OpenSysML.VerdictNote.VerdictNote(string! kind, string! subject, string! text) -> void
+OpenMBEE.OpenSysML.ViewNode.Compartment.get -> string!
+OpenMBEE.OpenSysML.ViewNode.Inherited.get -> bool
+OpenMBEE.OpenSysML.ViewNode.ViewNode(string! id, string! kind, string! name, bool nameSynthesized, string! type, string! detail, string! text, bool standIn, string! parent, System.Collections.Generic.IEnumerable<OpenMBEE.OpenSysML.ViewPort!>! ports, OpenMBEE.OpenSysML.SourceSpan? origin, OpenMBEE.OpenSysML.ViewGeometry? geometry, OpenMBEE.OpenSysML.ViewStyle? style, string! compartment, bool inherited) -> void
+OpenMBEE.OpenSysML.ViewPort.Inherited.get -> bool
+OpenMBEE.OpenSysML.ViewPort.ViewPort(string! id, string! name, string! type, string! direction, bool inherited) -> void
 abstract OpenMBEE.OpenSysML.Value.Equals(OpenMBEE.OpenSysML.Value? other) -> bool
 abstract OpenMBEE.OpenSysML.Value.Kind.get -> OpenMBEE.OpenSysML.ValueKind
 abstract OpenMBEE.OpenSysML.Value.NumberValue.ToDouble() -> double
@@ -17,6 +55,8 @@ const OpenMBEE.OpenSysML.Capabilities.Convert = "convert" -> string!
 const OpenMBEE.OpenSysML.Capabilities.ConvertCheckDiagnostics = "convert_check_diagnostics" -> string!
 const OpenMBEE.OpenSysML.Capabilities.ConvertCompact = "convert_compact" -> string!
 const OpenMBEE.OpenSysML.Capabilities.ConvertDocuments = "convert_documents" -> string!
+const OpenMBEE.OpenSysML.Capabilities.ConvertLibraryReferences = "convert_library_references" -> string!
+const OpenMBEE.OpenSysML.Capabilities.ConvertLibraryStubs = "convert_library_stubs" -> string!
 const OpenMBEE.OpenSysML.Capabilities.DiagnosticCodes = "diagnostic_codes" -> string!
 const OpenMBEE.OpenSysML.Capabilities.DocumentationAuthoring = "documentation_authoring" -> string!
 const OpenMBEE.OpenSysML.Capabilities.DocumentQuery = "document_query" -> string!
@@ -46,9 +86,11 @@ const OpenMBEE.OpenSysML.Capabilities.ParseSources = "parse_sources" -> string!
 const OpenMBEE.OpenSysML.Capabilities.ParseSourcesAffected = "parse_sources_affected" -> string!
 const OpenMBEE.OpenSysML.Capabilities.Performer = "performer" -> string!
 const OpenMBEE.OpenSysML.Capabilities.Query = "query" -> string!
+const OpenMBEE.OpenSysML.Capabilities.QueryOrderBy = "query_order_by" -> string!
 const OpenMBEE.OpenSysML.Capabilities.RationalValues = "rational_values" -> string!
 const OpenMBEE.OpenSysML.Capabilities.RecordRun = "record_run" -> string!
 const OpenMBEE.OpenSysML.Capabilities.RenderDocument = "render_document" -> string!
+const OpenMBEE.OpenSysML.Capabilities.RenderDocumentAsciidoc = "render_document_asciidoc" -> string!
 const OpenMBEE.OpenSysML.Capabilities.RenderDocumentFileName = "render_document_file_name" -> string!
 const OpenMBEE.OpenSysML.Capabilities.RenderDocumentHtml = "render_document_html" -> string!
 const OpenMBEE.OpenSysML.Capabilities.RenderView = "render_view" -> string!
@@ -70,6 +112,7 @@ const OpenMBEE.OpenSysML.Capabilities.TransitionAuthoring = "transition_authorin
 const OpenMBEE.OpenSysML.Capabilities.TypeFacts = "type_facts" -> string!
 const OpenMBEE.OpenSysML.Capabilities.UndeterminedValue = "undetermined_value" -> string!
 const OpenMBEE.OpenSysML.Capabilities.UnsetValue = "unset_value" -> string!
+const OpenMBEE.OpenSysML.Capabilities.VerdictNotes = "verdict_notes" -> string!
 const OpenMBEE.OpenSysML.Capabilities.Verification = "verification" -> string!
 const OpenMBEE.OpenSysML.Capabilities.VerificationArguments = "verification_arguments" -> string!
 const OpenMBEE.OpenSysML.Capabilities.VerificationObjectiveAuthoring = "verification_objective_authoring" -> string!
@@ -606,7 +649,15 @@ OpenMBEE.OpenSysML.ValueList<T>.IsEmpty.get -> bool
 OpenMBEE.OpenSysML.ValueList<T>.this[int index].get -> T
 OpenMBEE.OpenSysML.ValueList<T>.ValueList() -> void
 OpenMBEE.OpenSysML.ValueList<T>.ValueList(System.Collections.Generic.IEnumerable<T>! items) -> void
+const OpenMBEE.OpenSysML.VerdictNote.AssumedOne = "assumed_one" -> string!
+const OpenMBEE.OpenSysML.VerdictNote.Uncovered = "uncovered" -> string!
 override OpenMBEE.OpenSysML.AuthenticationException.Message.get -> string!
+override OpenMBEE.OpenSysML.LibraryReference.Equals(object? obj) -> bool
+override OpenMBEE.OpenSysML.LibraryReference.GetHashCode() -> int
+override OpenMBEE.OpenSysML.LibraryReference.ToString() -> string!
+override OpenMBEE.OpenSysML.VerdictNote.Equals(object? obj) -> bool
+override OpenMBEE.OpenSysML.VerdictNote.GetHashCode() -> int
+override OpenMBEE.OpenSysML.VerdictNote.ToString() -> string!
 override abstract OpenMBEE.OpenSysML.Value.GetHashCode() -> int
 override abstract OpenMBEE.OpenSysML.Value.ToString() -> string!
 override OpenMBEE.OpenSysML.AttributeInfo.Equals(object? obj) -> bool
@@ -793,6 +844,8 @@ static OpenMBEE.OpenSysML.Instance.operator !=(OpenMBEE.OpenSysML.Instance? left
 static OpenMBEE.OpenSysML.Instance.operator ==(OpenMBEE.OpenSysML.Instance? left, OpenMBEE.OpenSysML.Instance? right) -> bool
 static OpenMBEE.OpenSysML.Instantiation.operator !=(OpenMBEE.OpenSysML.Instantiation? left, OpenMBEE.OpenSysML.Instantiation? right) -> bool
 static OpenMBEE.OpenSysML.Instantiation.operator ==(OpenMBEE.OpenSysML.Instantiation? left, OpenMBEE.OpenSysML.Instantiation? right) -> bool
+static OpenMBEE.OpenSysML.LibraryReference.operator !=(OpenMBEE.OpenSysML.LibraryReference? left, OpenMBEE.OpenSysML.LibraryReference? right) -> bool
+static OpenMBEE.OpenSysML.LibraryReference.operator ==(OpenMBEE.OpenSysML.LibraryReference? left, OpenMBEE.OpenSysML.LibraryReference? right) -> bool
 static OpenMBEE.OpenSysML.Multiplicity.operator !=(OpenMBEE.OpenSysML.Multiplicity? left, OpenMBEE.OpenSysML.Multiplicity? right) -> bool
 static OpenMBEE.OpenSysML.Multiplicity.operator ==(OpenMBEE.OpenSysML.Multiplicity? left, OpenMBEE.OpenSysML.Multiplicity? right) -> bool
 static OpenMBEE.OpenSysML.OpenSysMLClient.LoadAsync(string! path, OpenMBEE.OpenSysML.ConnectionOptions? connection = null, OpenMBEE.OpenSysML.ParseOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<OpenMBEE.OpenSysML.Model!>!
@@ -800,6 +853,10 @@ static OpenMBEE.OpenSysML.OpenSysMLClient.LoadContentAsync(string! content, Open
 static OpenMBEE.OpenSysML.ParseOptions.Default.get -> OpenMBEE.OpenSysML.ParseOptions!
 static OpenMBEE.OpenSysML.Quantity.operator !=(OpenMBEE.OpenSysML.Quantity? left, OpenMBEE.OpenSysML.Quantity? right) -> bool
 static OpenMBEE.OpenSysML.Quantity.operator ==(OpenMBEE.OpenSysML.Quantity? left, OpenMBEE.OpenSysML.Quantity? right) -> bool
+static OpenMBEE.OpenSysML.QueryConstraint.GreaterOrEqual(string! property, string! value) -> OpenMBEE.OpenSysML.QueryConstraint.Comparison!
+static OpenMBEE.OpenSysML.QueryConstraint.In(string! property, params System.Collections.Generic.IEnumerable<string!>! values) -> OpenMBEE.OpenSysML.QueryConstraint.Comparison!
+static OpenMBEE.OpenSysML.QueryConstraint.InstanceOf(params System.Collections.Generic.IEnumerable<string!>! metaclasses) -> OpenMBEE.OpenSysML.QueryConstraint.Comparison!
+static OpenMBEE.OpenSysML.QueryConstraint.LessOrEqual(string! property, string! value) -> OpenMBEE.OpenSysML.QueryConstraint.Comparison!
 static OpenMBEE.OpenSysML.Rational.operator !=(OpenMBEE.OpenSysML.Rational? left, OpenMBEE.OpenSysML.Rational? right) -> bool
 static OpenMBEE.OpenSysML.Rational.operator <(OpenMBEE.OpenSysML.Rational? left, OpenMBEE.OpenSysML.Rational? right) -> bool
 static OpenMBEE.OpenSysML.Rational.operator <=(OpenMBEE.OpenSysML.Rational? left, OpenMBEE.OpenSysML.Rational? right) -> bool
@@ -1492,7 +1549,6 @@ OpenMBEE.OpenSysML.Verdict.Question.get -> string!
 OpenMBEE.OpenSysML.Verdict.RequirementId.get -> string!
 OpenMBEE.OpenSysML.Verdict.Standing.get -> OpenMBEE.OpenSysML.Standing!
 OpenMBEE.OpenSysML.Verdict.Status.get -> string!
-OpenMBEE.OpenSysML.Verdict.Verdict(string! kind, string! elementId, string! element, bool holds, string! condition, long instanceId, string! instanceTypeId, string! error, OpenMBEE.OpenSysML.FailureReason failureReason, string! requirementId, OpenMBEE.OpenSysML.Standing! standing, string! instancePath, string! question, string! status, System.Collections.Generic.IEnumerable<OpenMBEE.OpenSysML.WitnessAssignment!>! witness) -> void
 OpenMBEE.OpenSysML.Verdict.Violated.get -> bool
 OpenMBEE.OpenSysML.Verdict.Witness.get -> OpenMBEE.OpenSysML.ValueList<OpenMBEE.OpenSysML.WitnessAssignment!>
 OpenMBEE.OpenSysML.Verification
@@ -1634,6 +1690,8 @@ static OpenMBEE.OpenSysML.Validation.operator !=(OpenMBEE.OpenSysML.Validation? 
 static OpenMBEE.OpenSysML.Validation.operator ==(OpenMBEE.OpenSysML.Validation? left, OpenMBEE.OpenSysML.Validation? right) -> bool
 static OpenMBEE.OpenSysML.Verdict.operator !=(OpenMBEE.OpenSysML.Verdict? left, OpenMBEE.OpenSysML.Verdict? right) -> bool
 static OpenMBEE.OpenSysML.Verdict.operator ==(OpenMBEE.OpenSysML.Verdict? left, OpenMBEE.OpenSysML.Verdict? right) -> bool
+static OpenMBEE.OpenSysML.VerdictNote.operator !=(OpenMBEE.OpenSysML.VerdictNote? left, OpenMBEE.OpenSysML.VerdictNote? right) -> bool
+static OpenMBEE.OpenSysML.VerdictNote.operator ==(OpenMBEE.OpenSysML.VerdictNote? left, OpenMBEE.OpenSysML.VerdictNote? right) -> bool
 static OpenMBEE.OpenSysML.Verification.operator !=(OpenMBEE.OpenSysML.Verification? left, OpenMBEE.OpenSysML.Verification? right) -> bool
 static OpenMBEE.OpenSysML.Verification.operator ==(OpenMBEE.OpenSysML.Verification? left, OpenMBEE.OpenSysML.Verification? right) -> bool
 static OpenMBEE.OpenSysML.VerificationVerdict.operator !=(OpenMBEE.OpenSysML.VerificationVerdict? left, OpenMBEE.OpenSysML.VerificationVerdict? right) -> bool
@@ -1877,7 +1935,6 @@ OpenMBEE.OpenSysML.Connection.MigrateAsync(OpenMBEE.OpenSysML.MigrateSource! sou
 OpenMBEE.OpenSysML.Conversion
 OpenMBEE.OpenSysML.Conversion.<Clone>$() -> OpenMBEE.OpenSysML.Conversion!
 OpenMBEE.OpenSysML.Conversion.Content.get -> string!
-OpenMBEE.OpenSysML.Conversion.Conversion(string! content, string! fromFormat, string! toFormat, System.Collections.Generic.IEnumerable<OpenMBEE.OpenSysML.Diagnostic!>! diagnostics, bool experimental, string! experimentalNotice) -> void
 OpenMBEE.OpenSysML.Conversion.Diagnostics.get -> OpenMBEE.OpenSysML.ValueList<OpenMBEE.OpenSysML.Diagnostic!>
 OpenMBEE.OpenSysML.Conversion.Equals(OpenMBEE.OpenSysML.Conversion? other) -> bool
 OpenMBEE.OpenSysML.Conversion.Experimental.get -> bool
@@ -2209,7 +2266,6 @@ OpenMBEE.OpenSysML.ViewNode.StandIn.get -> bool
 OpenMBEE.OpenSysML.ViewNode.Style.get -> OpenMBEE.OpenSysML.ViewStyle?
 OpenMBEE.OpenSysML.ViewNode.Text.get -> string!
 OpenMBEE.OpenSysML.ViewNode.Type.get -> string!
-OpenMBEE.OpenSysML.ViewNode.ViewNode(string! id, string! kind, string! name, bool nameSynthesized, string! type, string! detail, string! text, bool standIn, string! parent, System.Collections.Generic.IEnumerable<OpenMBEE.OpenSysML.ViewPort!>! ports, OpenMBEE.OpenSysML.SourceSpan? origin, OpenMBEE.OpenSysML.ViewGeometry? geometry, OpenMBEE.OpenSysML.ViewStyle? style) -> void
 OpenMBEE.OpenSysML.ViewNotation
 OpenMBEE.OpenSysML.ViewNote
 OpenMBEE.OpenSysML.ViewNote.<Clone>$() -> OpenMBEE.OpenSysML.ViewNote!
@@ -2241,7 +2297,6 @@ OpenMBEE.OpenSysML.ViewPort.Equals(OpenMBEE.OpenSysML.ViewPort? other) -> bool
 OpenMBEE.OpenSysML.ViewPort.Id.get -> string!
 OpenMBEE.OpenSysML.ViewPort.Name.get -> string!
 OpenMBEE.OpenSysML.ViewPort.Type.get -> string!
-OpenMBEE.OpenSysML.ViewPort.ViewPort(string! id, string! name, string! type, string! direction) -> void
 OpenMBEE.OpenSysML.ViewRow
 OpenMBEE.OpenSysML.ViewRow.<Clone>$() -> OpenMBEE.OpenSysML.ViewRow!
 OpenMBEE.OpenSysML.ViewRow.Cells.get -> OpenMBEE.OpenSysML.ValueList<string!>

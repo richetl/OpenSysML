@@ -72,7 +72,9 @@ public sealed class ConformanceAdapterTests
         { "Query", """{"model_hash": "h", "query": {"where": {"primitive": {"property": "@type", "value": ["PartUsage"]}}}}""", "the public API names a comparison's operator, which query.where.primitive does not" },
         { "Query", """{"model_hash": "h", "query": {"where": {}}}""", "the public API names a constraint's form, which query.where does not" },
         { "Query", """{"model_hash": "h", "query": {"where": {"composite": {"constraint": [{"primitive": {"property": "name", "operator": "PRIMITIVE_OPERATOR_EQUAL", "value": ["a"]}}]}}}}""", "the public API names a composite's operator, which query.where.composite does not" },
-        { "Query", """{"model_hash": "h", "query": {"where": {"composite": {"operator": "COMPOSITE_OPERATOR_OR"}}}}""", "the public API cannot hold query.where.composite as spelled: A composite combines at least one constraint." },
+        { "Query", """{"model_hash": "h", "query": {"where": {"composite": {"operator": "COMPOSITE_OPERATOR_OR"}}}}""", "the public API cannot hold query.where.composite as spelled: A composite combines at least two constraints, got none." },
+        { "Query", """{"model_hash": "h", "query": {"where": {"composite": {"operator": "COMPOSITE_OPERATOR_AND", "constraint": [{"primitive": {"property": "name", "operator": "PRIMITIVE_OPERATOR_EQUAL", "value": ["a"]}}]}}}}""", "the public API cannot hold query.where.composite as spelled: A composite combines at least two constraints, got one; write the constraint on its own." },
+        { "Query", """{"model_hash": "h", "query": {"where": {"primitive": {"property": "name", "operator": "PRIMITIVE_OPERATOR_INSTANCE_OF", "value": ["Usage"]}}}}""", "the public API cannot hold query.where.primitive as spelled: An InstanceOf comparison compares @type, the element's metaclass, not \"name\"." },
         { "Query", """{"model_hash": "h", "query": {"where": {"composite": {"operator": "COMPOSITE_OPERATOR_AND", "constraint": [{"primitive": {"property": "multiplicityLower", "operator": "PRIMITIVE_OPERATOR_GREATER", "value": ["1", "2"]}}]}}}}""", "the public API cannot hold query.where.composite.constraint[0].primitive as spelled: A Greater comparison compares against exactly one value, not 2." },
         { "Query", """{"model_hash": "h", "query": {"where": {"primitive": {"operator": "PRIMITIVE_OPERATOR_EQUAL", "value": ["a"]}}}}""", "the public API cannot hold query.where.primitive as spelled: The value cannot be an empty string." },
         { "RunDocumentQuery", """{"model_hash": "h"}""", "the public API names a document query by a qualified name that is not empty" },
@@ -385,8 +387,9 @@ public sealed class ConformanceAdapterTests
                 OmitDerived = true,
                 KeepDerived = { "owner" },
                 IncludeCheckDiagnostics = true,
+                IncludeLibraryStubs = true,
             },
-            CompleteConversionWire.Conversion),
+            CompleteConversionWire.ApiJsonConversion),
         ["Convert from a file"] = (
             new Wire.ConvertRequest { FilePath = "/models/a.ttl", ToFormat = "sysml", IdForm = "qualified" },
             new Wire.ConvertResponse { Content = "package P;\n", FromFormat = "ttl", ToFormat = "sysml", Experimental = true, ExperimentalNotice = "n" }),
@@ -423,10 +426,25 @@ public sealed class ConformanceAdapterTests
                             {
                                 new Wire.Constraint { Primitive = new Wire.PrimitiveConstraint { Property = "@type", Operator = Wire.PrimitiveOperator.Equal, Value = { "PartUsage", "PartDefinition" } } },
                                 new Wire.Constraint { Primitive = new Wire.PrimitiveConstraint { Inverse = true, Property = "multiplicityUpper", Operator = Wire.PrimitiveOperator.Less, Value = { "4" } } },
-                                new Wire.Constraint { Composite = new Wire.CompositeConstraint { Operator = Wire.CompositeOperator.And, Constraint = { new Wire.Constraint { Primitive = new Wire.PrimitiveConstraint { Property = "multiplicityLower", Operator = Wire.PrimitiveOperator.Greater, Value = { "0" } } } } } },
+                                new Wire.Constraint
+                                {
+                                    Composite = new Wire.CompositeConstraint
+                                    {
+                                        Operator = Wire.CompositeOperator.And,
+                                        Constraint =
+                                        {
+                                            new Wire.Constraint { Primitive = new Wire.PrimitiveConstraint { Property = "multiplicityLower", Operator = Wire.PrimitiveOperator.Greater, Value = { "0" } } },
+                                            new Wire.Constraint { Primitive = new Wire.PrimitiveConstraint { Property = "multiplicityLower", Operator = Wire.PrimitiveOperator.GreaterEqual, Value = { "1" } } },
+                                            new Wire.Constraint { Primitive = new Wire.PrimitiveConstraint { Property = "multiplicityUpper", Operator = Wire.PrimitiveOperator.LessEqual, Value = { "8" } } },
+                                            new Wire.Constraint { Primitive = new Wire.PrimitiveConstraint { Property = "name", Operator = Wire.PrimitiveOperator.In, Value = { "wheels", "spare" } } },
+                                            new Wire.Constraint { Primitive = new Wire.PrimitiveConstraint { Inverse = true, Property = "@type", Operator = Wire.PrimitiveOperator.InstanceOf, Value = { "Definition" } } },
+                                        },
+                                    },
+                                },
                             },
                         },
                     },
+                    OrderBy = { "name", "qualifiedName" },
                 },
             },
             CompleteQueryDocsWire.Query),

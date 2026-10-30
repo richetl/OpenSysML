@@ -58,6 +58,13 @@ public sealed class ModelVerificationTests
         Assert.Equal(
             [new WitnessAssignment("Demo::Vehicle::mass", new Value.RealValue(1500.5), "kg", "3001/2"), new WitnessAssignment("Demo::Vehicle::gear", null, "", "Gear::low")],
             verdict.Witness);
+        Assert.Equal(
+            [
+                new VerdictNote(VerdictNote.Uncovered, "engine", "Not in the query: what engine asserts about its own objects, as it may hold more than one object; instantiate and validate an object to check it"),
+                new VerdictNote(VerdictNote.AssumedOne, "Demo::Vehicle::gear", "Assuming Demo::Vehicle::gear holds one value: it declares no multiplicity, so the default [0..*] governs it"),
+            ],
+            verdict.Notes);
+        Assert.Equal(verdict.Notes[1].Text, verdict.Notes[1].ToString());
         Assert.True(verdict.Decided);
         Assert.True(verdict.Violated);
         Assert.False(verification.Holds);
@@ -369,6 +376,8 @@ public sealed class ModelVerificationTests
         Assert.Throws<ArgumentNullException>(() => new VerifyOptions { NamedArguments = null! });
         Assert.Throws<ArgumentNullException>(() => new Verification(null!, [], [], []));
         Assert.Throws<ArgumentNullException>(() => new WitnessAssignment("f", null, null!, ""));
+        Assert.Throws<ArgumentNullException>(() => new VerdictNote("uncovered", null!, ""));
+        Assert.Equal(new VerdictNote("a_kind_from_the_future", "x", "t"), new VerdictNote("a_kind_from_the_future", "x", "t"));
         Assert.Throws<ArgumentNullException>(() => new VerificationVerdict("c", "pass", "", false, null!, 0, ""));
         Assert.Throws<ArgumentException>(() => new Satisfaction([null!], [], [], []));
         Assert.Throws<ArgumentNullException>(() => new Validation(null!, [], [], [], [], false));

@@ -13,16 +13,24 @@ namespace OpenMBEE.OpenSysML;
 /// </summary>
 public sealed record Conversion
 {
-    /// <summary>Creates a conversion, copying its diagnostics.</summary>
+    /// <summary>Creates a conversion, copying its diagnostics and library references.</summary>
     /// <param name="content">The converted model.</param>
     /// <param name="fromFormat">The format the source was read as, canonically named.</param>
     /// <param name="toFormat">The format <paramref name="content"/> is written in, canonically named.</param>
     /// <param name="diagnostics">The syntax errors tolerated, and the semantic check's diagnostics when asked for.</param>
     /// <param name="experimental">Whether either format goes through the experimental RDF mapping.</param>
     /// <param name="experimentalNotice">What is experimental about it; empty when it is not.</param>
-    /// <exception cref="ArgumentNullException">A string or <paramref name="diagnostics"/> is null.</exception>
-    /// <exception cref="ArgumentException">A diagnostic is null.</exception>
-    public Conversion(string content, string fromFormat, string toFormat, IEnumerable<Diagnostic> diagnostics, bool experimental, string experimentalNotice)
+    /// <param name="libraryReferences">The standard-library elements an <c>api-json</c> conversion refers to.</param>
+    /// <exception cref="ArgumentNullException">A string, <paramref name="diagnostics"/> or <paramref name="libraryReferences"/> is null.</exception>
+    /// <exception cref="ArgumentException">A diagnostic or a library reference is null.</exception>
+    public Conversion(
+        string content,
+        string fromFormat,
+        string toFormat,
+        IEnumerable<Diagnostic> diagnostics,
+        bool experimental,
+        string experimentalNotice,
+        IEnumerable<LibraryReference> libraryReferences)
     {
         ArgumentNullException.ThrowIfNull(content);
         ArgumentNullException.ThrowIfNull(fromFormat);
@@ -34,6 +42,7 @@ public sealed record Conversion
         Diagnostics = new ValueList<Diagnostic>(diagnostics);
         Experimental = experimental;
         ExperimentalNotice = experimentalNotice;
+        LibraryReferences = new ValueList<LibraryReference>(libraryReferences);
     }
 
     /// <summary>The converted model.</summary>
@@ -60,6 +69,14 @@ public sealed record Conversion
 
     /// <summary>What is experimental about the conversion, in the service's own wording; empty when it is not.</summary>
     public string ExperimentalNotice { get; }
+
+    /// <summary>
+    /// The standard-library elements a successful <c>api-json</c> conversion refers to, compact output included, listed
+    /// here rather than written as roots of the element array; empty for every other format, and from a service without
+    /// <see cref="Capabilities.ConvertLibraryReferences"/>. <see cref="ConvertOptions.IncludeLibraryStubs"/> writes them
+    /// as roots as well.
+    /// </summary>
+    public ValueList<LibraryReference> LibraryReferences { get; }
 
     /// <summary>
     /// Writes <see cref="Content"/> to a file, byte for byte as UTF-8: written whole to a temporary file beside it, then

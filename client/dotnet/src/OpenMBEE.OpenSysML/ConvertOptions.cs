@@ -78,6 +78,14 @@ public sealed class ConvertOptions
     /// </summary>
     public bool IncludeCheckDiagnostics { get; init; }
 
+    /// <summary>
+    /// For <c>api-json</c>, also writes the ownerless library stubs conversions wrote before 0.11.0 as roots of the
+    /// element array, for a reader that still expects them; by default a library element is a bare reference, listed
+    /// in <see cref="Conversion.LibraryReferences"/>. The service refuses it for any other target format. Needs
+    /// <see cref="Capabilities.ConvertLibraryStubs"/>.
+    /// </summary>
+    public bool IncludeLibraryStubs { get; init; }
+
     /// <summary>Whether any of the compact form's options is asked for, which the service gates as one.</summary>
     internal bool AsksCompact => Compact || OmitDerived || !keepDerived.IsEmpty;
 }

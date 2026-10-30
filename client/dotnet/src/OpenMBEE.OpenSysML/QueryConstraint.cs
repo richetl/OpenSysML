@@ -12,13 +12,18 @@ namespace OpenMBEE.OpenSysML;
 /// immutable and compared by content.
 /// </summary>
 /// <remarks>
-/// A constraint is complete by construction: a comparison always names its property and operator, <c>&gt;</c> and
-/// <c>&lt;</c> compare against exactly one value and <c>=</c> against at least one, and a composite combines at least
-/// one constraint. What the service still judges is whether the property exists and is ordered, and whether a value
-/// parses as the property's kind.
+/// A constraint is complete by construction: a comparison always names its property and operator, <c>&lt;</c>,
+/// <c>&lt;=</c>, <c>&gt;</c> and <c>&gt;=</c> compare against exactly one value, <c>=</c> and <c>in</c> against at
+/// least one, and <c>instanceOf</c> compares <c>@type</c> against at least one metaclass name; a composite combines at
+/// least two constraints, as the standard's <c>CompositeConstraint</c> does. What the service still judges is whether
+/// the property exists and is ordered, whether a value parses as the property's kind, and whether the library declares
+/// each metaclass named.
 /// </remarks>
 public abstract class QueryConstraint : IEquatable<QueryConstraint>
 {
+    /// <summary>The only property <see cref="ComparisonOperator.InstanceOf"/> compares: the element's metaclass.</summary>
+    private const string TypeProperty = "@type";
+
     private QueryConstraint()
     {
     }
@@ -39,6 +44,14 @@ public abstract class QueryConstraint : IEquatable<QueryConstraint>
     /// <exception cref="ArgumentException">The property is empty.</exception>
     public static Comparison Greater(string property, string value) => new(property, ComparisonOperator.Greater, [value]);
 
+    /// <summary>Matches an element whose ordered property is at least the value.</summary>
+    /// <param name="property">The property, as the query property table names it.</param>
+    /// <param name="value">The value.</param>
+    /// <returns>The comparison.</returns>
+    /// <exception cref="ArgumentNullException">An argument is null.</exception>
+    /// <exception cref="ArgumentException">The property is empty.</exception>
+    public static Comparison GreaterOrEqual(string property, string value) => new(property, ComparisonOperator.GreaterOrEqual, [value]);
+
     /// <summary>Matches an element whose ordered property is less than the value.</summary>
     /// <param name="property">The property, as the query property table names it.</param>
     /// <param name="value">The value.</param>
@@ -47,18 +60,45 @@ public abstract class QueryConstraint : IEquatable<QueryConstraint>
     /// <exception cref="ArgumentException">The property is empty.</exception>
     public static Comparison Less(string property, string value) => new(property, ComparisonOperator.Less, [value]);
 
+    /// <summary>Matches an element whose ordered property is at most the value.</summary>
+    /// <param name="property">The property, as the query property table names it.</param>
+    /// <param name="value">The value.</param>
+    /// <returns>The comparison.</returns>
+    /// <exception cref="ArgumentNullException">An argument is null.</exception>
+    /// <exception cref="ArgumentException">The property is empty.</exception>
+    public static Comparison LessOrEqual(string property, string value) => new(property, ComparisonOperator.LessOrEqual, [value]);
+
+    /// <summary>Matches an element whose property is one of the values, the standard's <c>in</c>.</summary>
+    /// <param name="property">The property, as the query property table names it.</param>
+    /// <param name="values">The values it may be one of; at least one.</param>
+    /// <returns>The comparison.</returns>
+    /// <exception cref="ArgumentNullException">An argument or a value is null.</exception>
+    /// <exception cref="ArgumentException">The property is empty, or there is no value.</exception>
+    public static Comparison In(string property, params IEnumerable<string> values) => new(property, ComparisonOperator.In, values);
+
+    /// <summary>
+    /// Matches an element whose metaclass conforms to any of the metaclasses named (<c>Usage</c>, <c>Feature</c>,
+    /// <c>Element</c>), the standard's <c>instanceOf</c> on <c>@type</c>. The service refuses a name the library
+    /// declares no metaclass for.
+    /// </summary>
+    /// <param name="metaclasses">The metaclass names; at least one, none empty.</param>
+    /// <returns>The comparison.</returns>
+    /// <exception cref="ArgumentNullException">The names, or one of them, are null.</exception>
+    /// <exception cref="ArgumentException">There is no name, or a name is empty.</exception>
+    public static Comparison InstanceOf(params IEnumerable<string> metaclasses) => new(TypeProperty, ComparisonOperator.InstanceOf, metaclasses);
+
     /// <summary>Matches an element every constraint matches.</summary>
-    /// <param name="constraints">The constraints; at least one.</param>
+    /// <param name="constraints">The constraints; at least two.</param>
     /// <returns>The composite.</returns>
     /// <exception cref="ArgumentNullException">The constraints, or one of them, are null.</exception>
-    /// <exception cref="ArgumentException">There is no constraint.</exception>
+    /// <exception cref="ArgumentException">There are fewer than two constraints.</exception>
     public static Composite And(params IEnumerable<QueryConstraint> constraints) => new(CompositeOperator.And, constraints);
 
     /// <summary>Matches an element at least one constraint matches.</summary>
-    /// <param name="constraints">The constraints; at least one.</param>
+    /// <param name="constraints">The constraints; at least two.</param>
     /// <returns>The composite.</returns>
     /// <exception cref="ArgumentNullException">The constraints, or one of them, are null.</exception>
-    /// <exception cref="ArgumentException">There is no constraint.</exception>
+    /// <exception cref="ArgumentException">There are fewer than two constraints.</exception>
     public static Composite Or(params IEnumerable<QueryConstraint> constraints) => new(CompositeOperator.Or, constraints);
 
     /// <inheritdoc/>
@@ -90,19 +130,32 @@ public abstract class QueryConstraint : IEquatable<QueryConstraint>
     public sealed class Comparison : QueryConstraint
     {
         /// <summary>Creates a comparison.</summary>
-        /// <param name="property">The property, as the query property table names it (<c>@type</c>, <c>name</c>).</param>
+        /// <param name="property">
+        /// The property, as the query property table names it (<c>@type</c>, <c>name</c>); <c>@type</c> for
+        /// <see cref="ComparisonOperator.InstanceOf"/>.
+        /// </param>
         /// <param name="operator">How the property is compared.</param>
-        /// <param name="values">The values: at least one for <see cref="ComparisonOperator.Equal"/>, exactly one otherwise.</param>
+        /// <param name="values">
+        /// The values: exactly one for an ordered comparison (<see cref="ComparisonOperator.Less"/>,
+        /// <see cref="ComparisonOperator.LessOrEqual"/>, <see cref="ComparisonOperator.Greater"/>,
+        /// <see cref="ComparisonOperator.GreaterOrEqual"/>), at least one otherwise, and for
+        /// <see cref="ComparisonOperator.InstanceOf"/> metaclass names, none empty.
+        /// </param>
         /// <param name="inverse">Whether the comparison's verdict is negated.</param>
         /// <exception cref="ArgumentNullException">The property, the values or a value is null.</exception>
-        /// <exception cref="ArgumentException">The property is empty, or there are not as many values as the operator compares against.</exception>
+        /// <exception cref="ArgumentException">
+        /// The property is empty, there are not as many values as the operator compares against, or an
+        /// <see cref="ComparisonOperator.InstanceOf"/> comparison is on a property other than <c>@type</c> or names an
+        /// empty metaclass.
+        /// </exception>
         /// <exception cref="ArgumentOutOfRangeException">The operator is not a <see cref="ComparisonOperator"/>.</exception>
         public Comparison(string property, ComparisonOperator @operator, IEnumerable<string> values, bool inverse = false)
         {
             ArgumentException.ThrowIfNullOrEmpty(property);
             if (!Enum.IsDefined(@operator))
             {
-                throw new ArgumentOutOfRangeException(nameof(@operator), @operator, "A comparison names its operator: Equal, Greater or Less.");
+                throw new ArgumentOutOfRangeException(
+                    nameof(@operator), @operator, "A comparison names its operator: Equal, Greater, Less, GreaterOrEqual, LessOrEqual, In or InstanceOf.");
             }
 
             var held = new ValueList<string>(values);
@@ -111,9 +164,23 @@ public abstract class QueryConstraint : IEquatable<QueryConstraint>
                 throw new ArgumentException("A comparison compares against at least one value.", nameof(values));
             }
 
-            if (@operator != ComparisonOperator.Equal && held.Count != 1)
+            if (IsOrdered(@operator) && held.Count != 1)
             {
                 throw new ArgumentException($"A {@operator} comparison compares against exactly one value, not {held.Count}.", nameof(values));
+            }
+
+            if (@operator == ComparisonOperator.InstanceOf)
+            {
+                if (property != TypeProperty)
+                {
+                    throw new ArgumentException(
+                        $"An InstanceOf comparison compares {TypeProperty}, the element's metaclass, not {ValueText.Quoted(property)}.", nameof(property));
+                }
+
+                if (held.Any(string.IsNullOrEmpty))
+                {
+                    throw new ArgumentException("An InstanceOf comparison compares against metaclass names, and one is empty.", nameof(values));
+                }
             }
 
             Property = property;
@@ -128,7 +195,10 @@ public abstract class QueryConstraint : IEquatable<QueryConstraint>
         /// <summary>How the property is compared.</summary>
         public ComparisonOperator Operator { get; }
 
-        /// <summary>The values compared against: with <see cref="ComparisonOperator.Equal"/>, an element matches any of them.</summary>
+        /// <summary>
+        /// The values compared against: with <see cref="ComparisonOperator.Equal"/>, <see cref="ComparisonOperator.In"/>
+        /// and <see cref="ComparisonOperator.InstanceOf"/>, an element matches any of them.
+        /// </summary>
         public ValueList<string> Values { get; }
 
         /// <summary>Whether the comparison's verdict is negated.</summary>
@@ -152,11 +222,20 @@ public abstract class QueryConstraint : IEquatable<QueryConstraint>
             {
                 ComparisonOperator.Equal => "=",
                 ComparisonOperator.Greater => ">",
-                _ => "<",
+                ComparisonOperator.Less => "<",
+                ComparisonOperator.GreaterOrEqual => ">=",
+                ComparisonOperator.LessOrEqual => "<=",
+                ComparisonOperator.In => "in",
+                _ => "instanceOf",
             };
-            var operands = Values.Count == 1 ? ValueText.Quoted(Values[0]) : $"({string.Join(", ", Values.Select(ValueText.Quoted))})";
+            var operands = Values.Count == 1 && Operator != ComparisonOperator.In
+                ? ValueText.Quoted(Values[0])
+                : $"({string.Join(", ", Values.Select(ValueText.Quoted))})";
             return $"{(Inverse ? "not " : string.Empty)}{Property} {symbol} {operands}";
         }
+
+        private static bool IsOrdered(ComparisonOperator @operator) => @operator is
+            ComparisonOperator.Greater or ComparisonOperator.Less or ComparisonOperator.GreaterOrEqual or ComparisonOperator.LessOrEqual;
     }
 
     /// <summary>Constraints combined by one operator, the standard's <c>CompositeConstraint</c>.</summary>
@@ -164,9 +243,9 @@ public abstract class QueryConstraint : IEquatable<QueryConstraint>
     {
         /// <summary>Creates a composite.</summary>
         /// <param name="operator">How the constraints are combined.</param>
-        /// <param name="constraints">The constraints; at least one.</param>
+        /// <param name="constraints">The constraints; at least two, as the standard combines.</param>
         /// <exception cref="ArgumentNullException">The constraints, or one of them, are null.</exception>
-        /// <exception cref="ArgumentException">There is no constraint.</exception>
+        /// <exception cref="ArgumentException">There are fewer than two constraints.</exception>
         /// <exception cref="ArgumentOutOfRangeException">The operator is not a <see cref="CompositeOperator"/>.</exception>
         public Composite(CompositeOperator @operator, IEnumerable<QueryConstraint> constraints)
         {
@@ -176,9 +255,13 @@ public abstract class QueryConstraint : IEquatable<QueryConstraint>
             }
 
             var held = new ValueList<QueryConstraint>(constraints);
-            if (held.IsEmpty)
+            if (held.Count < 2)
             {
-                throw new ArgumentException("A composite combines at least one constraint.", nameof(constraints));
+                throw new ArgumentException(
+                    held.IsEmpty
+                        ? "A composite combines at least two constraints, got none."
+                        : "A composite combines at least two constraints, got one; write the constraint on its own.",
+                    nameof(constraints));
             }
 
             Operator = @operator;

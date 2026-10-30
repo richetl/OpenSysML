@@ -23,6 +23,7 @@ public sealed class ConformanceConversionRenderingTests
         IMessage[] samples =
         [
             CompleteConversionWire.Conversion,
+            CompleteConversionWire.ApiJsonConversion,
             CompleteConversionWire.FailedConversion,
             CompleteConversionWire.Migration,
             CompleteConversionWire.FailedMigration,
@@ -33,10 +34,10 @@ public sealed class ConformanceConversionRenderingTests
     }
 
     [Fact]
-    public void AConversionIsRenderedWithItsFormatsDiagnosticsAndNotice()
+    public void AConversionIsRenderedWithItsFormatsDiagnosticsNoticeAndLibraryReferences()
     {
         var notation = new Wire.ConvertResponse { Content = "package P;\n", FromFormat = "sysml", ToFormat = "sysml" };
-        foreach (var sample in new[] { CompleteConversionWire.Conversion, notation, new Wire.ConvertResponse { FromFormat = "sysml", ToFormat = "sysml" } })
+        foreach (var sample in new[] { CompleteConversionWire.Conversion, CompleteConversionWire.ApiJsonConversion, notation, new Wire.ConvertResponse { FromFormat = "sysml", ToFormat = "sysml" } })
         {
             Assert.Equal(sample, Rendering.Conversion(ConversionWire.Conversion(sample, Connection.ConvertMethod)));
         }

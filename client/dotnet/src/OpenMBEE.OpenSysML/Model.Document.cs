@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Google.Protobuf;
@@ -66,7 +67,7 @@ public sealed partial class Model
     /// <exception cref="InvalidRequestException"><paramref name="form"/> is not a <see cref="DocumentForm"/>; nothing was sent.</exception>
     /// <exception cref="CapabilityException">
     /// The service lacks <see cref="Capabilities.RenderDocument"/>, or <see cref="Capabilities.RenderDocumentHtml"/> for
-    /// HTML, checked in that order; nothing was sent.
+    /// HTML or <see cref="Capabilities.RenderDocumentAsciidoc"/> for AsciiDoc, checked in that order; nothing was sent.
     /// </exception>
     /// <exception cref="QueryException">The model's declaration of the document, or of a query it runs, could not be planned or run.</exception>
     /// <exception cref="ModelNotFoundException">The service no longer holds the model.</exception>
@@ -86,22 +87,33 @@ public sealed partial class Model
 
         var capabilities = Connection.Capabilities;
         capabilities.Require(Capabilities.RenderDocument);
-        if (form == DocumentForm.Html)
+        switch (form)
         {
-            capabilities.Require(Capabilities.RenderDocumentHtml);
+            case DocumentForm.Html:
+                capabilities.Require(Capabilities.RenderDocumentHtml);
+                break;
+            case DocumentForm.AsciiDoc:
+                capabilities.Require(Capabilities.RenderDocumentAsciidoc);
+                break;
         }
 
         // Markdown is the form an empty one names, which every service renders.
-        var request = new Wire.RenderDocumentRequest { ModelHash = Hash, DocumentId = documentId, Form = form == DocumentForm.Html ? "html" : string.Empty };
+        var spelled = form switch
+        {
+            DocumentForm.Html => "html",
+            DocumentForm.AsciiDoc => "asciidoc",
+            _ => string.Empty,
+        };
+        var request = new Wire.RenderDocumentRequest { ModelHash = Hash, DocumentId = documentId, Form = spelled };
         var response = await DeclarationCallAsync<Wire.RenderDocumentRequest, Wire.RenderDocumentResponse>(RenderDocumentMethod, request, modelFaults: true, cancellationToken)
             .ConfigureAwait(false);
-        var (content, other) = form == DocumentForm.Html ? (response.Html, response.Markdown) : (response.Markdown, response.Html);
-        if (other.Length > 0)
+        (DocumentForm Form, string Content)[] answered = [(DocumentForm.Markdown, response.Markdown), (DocumentForm.Html, response.Html), (DocumentForm.AsciiDoc, response.Asciidoc)];
+        if (answered.Any(each => each.Form != form && each.Content.Length > 0))
         {
             throw new TransportException(StatusCode.Internal, $"{RenderDocumentMethod} answered the document in a form other than {form}, which was asked for.", RenderDocumentMethod);
         }
 
-        return new RenderedDocument(form, content, response.FileName.Length > 0 ? response.FileName : null);
+        return new RenderedDocument(form, answered.Single(each => each.Form == form).Content, response.FileName.Length > 0 ? response.FileName : null);
     }
 
     // A call naming a declaration of the model answers NotFound for the model or for that declaration; the model's is

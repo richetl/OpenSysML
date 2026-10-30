@@ -35,6 +35,7 @@ public sealed class ModelQueryDocsTests
             Where = QueryConstraint.And(
                 QueryConstraint.Equal("@type", "PartUsage", "PartDefinition"),
                 QueryConstraint.Or(QueryConstraint.Greater("multiplicityLower", "1").Inverted(), QueryConstraint.Less("multiplicityUpper", "4"))),
+            OrderBy = ["name", "qualifiedName"],
         };
 
         var result = await model.QueryAsync(query, token);
@@ -72,6 +73,7 @@ public sealed class ModelQueryDocsTests
                                 },
                             },
                         },
+                        OrderBy = { "name", "qualifiedName" },
                     },
                 },
                 new Wire.QueryRequest { ModelHash = Hash, Query = new Wire.Query() },
@@ -108,22 +110,94 @@ public sealed class ModelQueryDocsTests
         Assert.Single(handler.RequestsFor("Query"));
     }
 
+    [Theory]
+    [MemberData(nameof(Wires))]
+    public async Task TheOrderedMembershipAndMetaclassOperatorsAreSentAsTheStandardNamesThem(ClientWire wire)
+    {
+        using var handler = Serving(wire).On("Query", Wire.QueryRequest.Parser, _ => new Wire.QueryResponse());
+        await using var connection = await FakeConnection.OpenAsync(handler);
+        var model = connection.ModelByHash(Hash);
+        var token = TestContext.Current.CancellationToken;
+        QueryConstraint[] sent =
+        [
+            QueryConstraint.GreaterOrEqual("multiplicityLower", "1"),
+            QueryConstraint.LessOrEqual("multiplicityUpper", "4").Inverted(),
+            QueryConstraint.In("name", "wheels", "spare"),
+            QueryConstraint.InstanceOf("Usage", "Definition"),
+        ];
+
+        foreach (var where in sent)
+        {
+            await model.QueryAsync(new Query { Where = where }, token);
+        }
+
+        Assert.Equal(
+            [
+                Primitive("multiplicityLower", Wire.PrimitiveOperator.GreaterEqual, false, "1"),
+                Primitive("multiplicityUpper", Wire.PrimitiveOperator.LessEqual, true, "4"),
+                Primitive("name", Wire.PrimitiveOperator.In, false, "wheels", "spare"),
+                Primitive("@type", Wire.PrimitiveOperator.InstanceOf, false, "Usage", "Definition"),
+            ],
+            handler.RequestsFor("Query").Select(request => request.Message(Wire.QueryRequest.Parser).Query.Where));
+    }
+
+    [Theory]
+    [MemberData(nameof(Wires))]
+    public async Task AnOrderingIsGatedBehindItsCapabilityAndAQueryWithoutOneIsNot(ClientWire wire)
+    {
+        var token = TestContext.Current.CancellationToken;
+        var ordered = new Query { OrderBy = ["name"] };
+        using var handler = new FakeServiceHandler(wire) { Capabilities = [.. FakeModels.ModelCapabilities.Except([Capabilities.QueryOrderBy])] }
+            .On("Query", Wire.QueryRequest.Parser, _ => new Wire.QueryResponse());
+        await using var connection = await FakeConnection.OpenAsync(handler);
+
+        await connection.ModelByHash(Hash).QueryAsync(ordered with { OrderBy = [] }, token);
+
+        Assert.Equal(Capabilities.QueryOrderBy, await RefusedAsync(wire, [Capabilities.QueryOrderBy], model => model.QueryAsync(ordered, token)));
+        Assert.Equal(Capabilities.Query, await RefusedAsync(wire, [Capabilities.Query, Capabilities.QueryOrderBy], model => model.QueryAsync(ordered, token)));
+        Assert.Empty(Assert.Single(handler.RequestsFor("Query")).Message(Wire.QueryRequest.Parser).Query.OrderBy);
+    }
+
     [Fact]
     public void AConstraintCannotBeBuiltWithoutAnOperatorItsOperandsOrItsConstraints()
     {
         Assert.Throws<ArgumentOutOfRangeException>(() => new QueryConstraint.Comparison("@type", default, ["PartUsage"]));
-        Assert.Throws<ArgumentOutOfRangeException>(() => new QueryConstraint.Comparison("@type", (ComparisonOperator)4, ["PartUsage"]));
+        Assert.Throws<ArgumentOutOfRangeException>(() => new QueryConstraint.Comparison("@type", (ComparisonOperator)8, ["PartUsage"]));
         Assert.Throws<ArgumentException>(() => QueryConstraint.Equal("@type"));
         Assert.Throws<ArgumentException>(() => QueryConstraint.Equal(string.Empty, "x"));
         Assert.Throws<ArgumentNullException>(() => QueryConstraint.Equal(null!, "x"));
         Assert.Throws<ArgumentException>(() => QueryConstraint.Equal("name", [null!]));
         Assert.Throws<ArgumentException>(() => new QueryConstraint.Comparison("multiplicityLower", ComparisonOperator.Greater, ["1", "2"]));
         Assert.Throws<ArgumentException>(() => new QueryConstraint.Comparison("multiplicityLower", ComparisonOperator.Less, []));
+        Assert.Throws<ArgumentException>(() => new QueryConstraint.Comparison("multiplicityLower", ComparisonOperator.GreaterOrEqual, ["1", "2"]));
+        Assert.Throws<ArgumentException>(() => new QueryConstraint.Comparison("multiplicityLower", ComparisonOperator.LessOrEqual, ["1", "2"]));
+        Assert.Throws<ArgumentException>(() => QueryConstraint.In("name"));
+        Assert.Throws<ArgumentException>(() => QueryConstraint.InstanceOf());
+        Assert.Throws<ArgumentException>(() => QueryConstraint.InstanceOf("Usage", string.Empty));
+        Assert.Throws<ArgumentNullException>(() => QueryConstraint.InstanceOf(null!));
+        Assert.Equal("property", Assert.Throws<ArgumentException>(() => new QueryConstraint.Comparison("name", ComparisonOperator.InstanceOf, ["Usage"])).ParamName);
         Assert.Throws<ArgumentException>(() => QueryConstraint.And());
         Assert.Throws<ArgumentException>(() => QueryConstraint.Or([null!]));
-        Assert.Throws<ArgumentOutOfRangeException>(() => new QueryConstraint.Composite(default, [QueryConstraint.Equal("name", "x")]));
+        Assert.Throws<ArgumentOutOfRangeException>(() => new QueryConstraint.Composite(default, [QueryConstraint.Equal("name", "x"), QueryConstraint.Equal("name", "y")]));
         Assert.Throws<ArgumentException>(() => new Query { Scope = [null!] });
         Assert.Throws<ArgumentNullException>(() => new Query { Select = null! });
+        Assert.Throws<ArgumentNullException>(() => new Query { OrderBy = null! });
+        Assert.Throws<ArgumentException>(() => new Query { OrderBy = [null!] });
+    }
+
+    [Fact]
+    public void ACompositeOfOneConstraintIsRefusedAsTheStandardRefusesIt()
+    {
+        var one = QueryConstraint.Equal("name", "x");
+
+        var and = Assert.Throws<ArgumentException>(() => QueryConstraint.And(one));
+        var or = Assert.Throws<ArgumentException>(() => QueryConstraint.Or(one));
+        var none = Assert.Throws<ArgumentException>(() => new QueryConstraint.Composite(CompositeOperator.And, []));
+
+        Assert.StartsWith("A composite combines at least two constraints, got one; write the constraint on its own.", and.Message, StringComparison.Ordinal);
+        Assert.Equal(and.Message, or.Message);
+        Assert.StartsWith("A composite combines at least two constraints, got none.", none.Message, StringComparison.Ordinal);
+        Assert.Equal(2, QueryConstraint.And(one, one).Constraints.Count);
     }
 
     [Fact]
@@ -138,16 +212,26 @@ public sealed class ModelQueryDocsTests
         Assert.Equal(new Query { Scope = ["Demo"], Where = QueryConstraint.Equal("name", "x") }, query);
         Assert.NotEqual(query, query with { Select = ["name"] });
         Assert.Equal(Query.All, new Query());
+        Assert.Equal(new Query { OrderBy = ["name"] }, new Query { OrderBy = new List<string> { "name" } });
+        Assert.NotEqual(query, query with { OrderBy = ["name"] });
         Assert.Equal(greater, greater.Inverted().Inverted());
         Assert.NotEqual<QueryConstraint>(greater, greater.Inverted());
         Assert.Equal(greater.GetHashCode(), QueryConstraint.Greater("multiplicityLower", "1").GetHashCode());
-        Assert.NotEqual<QueryConstraint>(QueryConstraint.And(greater), QueryConstraint.Or(greater));
-        Assert.True(QueryConstraint.And(greater) == QueryConstraint.And(QueryConstraint.Greater("multiplicityLower", "1")));
+        Assert.NotEqual<QueryConstraint>(QueryConstraint.And(greater, greater.Inverted()), QueryConstraint.Or(greater, greater.Inverted()));
+        Assert.True(QueryConstraint.And(greater, greater) == QueryConstraint.And(QueryConstraint.Greater("multiplicityLower", "1"), greater));
         Assert.True(greater != greater.Inverted());
         Assert.False(greater != QueryConstraint.Greater("multiplicityLower", "1"));
-        Assert.Equal(QueryConstraint.Or(greater).GetHashCode(), QueryConstraint.Or(QueryConstraint.Greater("multiplicityLower", "1")).GetHashCode());
+        Assert.Equal(QueryConstraint.Or(greater, greater).GetHashCode(), QueryConstraint.Or(QueryConstraint.Greater("multiplicityLower", "1"), greater).GetHashCode());
+        Assert.NotEqual<QueryConstraint>(QueryConstraint.Equal("name", "x"), QueryConstraint.In("name", "x"));
         Assert.Equal("(not multiplicityLower > \"1\" or @type = (\"PartUsage\", \"PartDefinition\"))", QueryConstraint.Or(greater.Inverted(), QueryConstraint.Equal("@type", "PartUsage", "PartDefinition")).ToString());
-        Assert.Equal("(name < \"m\")", QueryConstraint.And(QueryConstraint.Less("name", "m")).ToString());
+        Assert.Equal(
+            "(name < \"m\" and name <= \"n\" and multiplicityLower >= \"1\" and name in (\"m\") and not @type instanceOf (\"Usage\", \"Definition\"))",
+            QueryConstraint.And(
+                QueryConstraint.Less("name", "m"),
+                QueryConstraint.LessOrEqual("name", "n"),
+                QueryConstraint.GreaterOrEqual("multiplicityLower", "1"),
+                QueryConstraint.In("name", "m"),
+                QueryConstraint.InstanceOf("Usage", "Definition").Inverted()).ToString());
     }
 
     [Theory]
@@ -403,7 +487,13 @@ public sealed class ModelQueryDocsTests
         {
             "unnamed" => new Wire.RenderDocumentResponse { Markdown = "# T\n" },
             "both" => new Wire.RenderDocumentResponse { Markdown = "# T\n", Html = "<h1>T</h1>" },
-            _ => request.Form == "html" ? CompleteQueryDocsWire.Html : CompleteQueryDocsWire.Markdown,
+            "also" => new Wire.RenderDocumentResponse { Asciidoc = "= T\n", Html = "<h1>T</h1>" },
+            _ => request.Form switch
+            {
+                "html" => CompleteQueryDocsWire.Html,
+                "asciidoc" => CompleteQueryDocsWire.AsciiDoc,
+                _ => CompleteQueryDocsWire.Markdown,
+            },
         });
         await using var connection = await FakeConnection.OpenAsync(handler);
         var model = connection.ModelByHash(Hash);
@@ -411,28 +501,35 @@ public sealed class ModelQueryDocsTests
 
         var markdown = await model.RenderDocumentAsync("Observatory::MassReport", cancellationToken: token);
         var html = await model.RenderDocumentAsync("Observatory::MassReport", DocumentForm.Html, token);
+        var asciidoc = await model.RenderDocumentAsync("Observatory::MassReport", DocumentForm.AsciiDoc, token);
         var unnamed = await model.RenderDocumentAsync("unnamed", DocumentForm.Markdown, token);
         var both = await Assert.ThrowsAsync<TransportException>(() => model.RenderDocumentAsync("both", DocumentForm.Html, token));
-        await Assert.ThrowsAsync<InvalidRequestException>(() => model.RenderDocumentAsync("Observatory::MassReport", (DocumentForm)2, token));
+        var also = await Assert.ThrowsAsync<TransportException>(() => model.RenderDocumentAsync("also", DocumentForm.AsciiDoc, token));
+        await Assert.ThrowsAsync<InvalidRequestException>(() => model.RenderDocumentAsync("Observatory::MassReport", (DocumentForm)3, token));
         await Assert.ThrowsAsync<ArgumentException>(() => model.RenderDocumentAsync(string.Empty, cancellationToken: token));
 
         Assert.Equal(
             [
                 new Wire.RenderDocumentRequest { ModelHash = Hash, DocumentId = "Observatory::MassReport" },
                 new Wire.RenderDocumentRequest { ModelHash = Hash, DocumentId = "Observatory::MassReport", Form = "html" },
+                new Wire.RenderDocumentRequest { ModelHash = Hash, DocumentId = "Observatory::MassReport", Form = "asciidoc" },
                 new Wire.RenderDocumentRequest { ModelHash = Hash, DocumentId = "unnamed" },
                 new Wire.RenderDocumentRequest { ModelHash = Hash, DocumentId = "both", Form = "html" },
+                new Wire.RenderDocumentRequest { ModelHash = Hash, DocumentId = "also", Form = "asciidoc" },
             ],
             handler.RequestsFor("RenderDocument").Select(sent => sent.Message(Wire.RenderDocumentRequest.Parser)));
         Assert.Equal(new RenderedDocument(DocumentForm.Markdown, "# Telescope Mass Report\n", "Observatory-MassReport.md"), markdown);
         Assert.Equal(markdown.Content, markdown.ToString());
         Assert.Equal((DocumentForm.Html, "Observatory-MassReport.html"), (html.Form, html.FileName));
         Assert.StartsWith("<!DOCTYPE html>", html.Content, StringComparison.Ordinal);
+        Assert.Equal(new RenderedDocument(DocumentForm.AsciiDoc, "= Telescope Mass Report\n", "Observatory-MassReport.adoc"), asciidoc);
         Assert.Null(unnamed.FileName);
-        Assert.Equal(StatusCode.Internal, both.StatusCode);
+        Assert.Equal((StatusCode.Internal, StatusCode.Internal), (both.StatusCode, also.StatusCode));
         Assert.Throws<ArgumentException>(() => new RenderedDocument(DocumentForm.Markdown, string.Empty, string.Empty));
         Assert.Equal(Capabilities.RenderDocument, await RefusedAsync(wire, [Capabilities.RenderDocument, Capabilities.RenderDocumentHtml], m => m.RenderDocumentAsync("D", DocumentForm.Html, token)));
         Assert.Equal(Capabilities.RenderDocumentHtml, await RefusedAsync(wire, [Capabilities.RenderDocumentHtml], m => m.RenderDocumentAsync("D", DocumentForm.Html, token)));
+        Assert.Equal(Capabilities.RenderDocument, await RefusedAsync(wire, [Capabilities.RenderDocument, Capabilities.RenderDocumentAsciidoc], m => m.RenderDocumentAsync("D", DocumentForm.AsciiDoc, token)));
+        Assert.Equal(Capabilities.RenderDocumentAsciidoc, await RefusedAsync(wire, [Capabilities.RenderDocumentAsciidoc], m => m.RenderDocumentAsync("D", DocumentForm.AsciiDoc, token)));
     }
 
     [Theory]
@@ -446,22 +543,26 @@ public sealed class ModelQueryDocsTests
 
         var view = await model.RenderViewAsync(
             "PlantViews::placedView",
-            new RenderViewOptions { Ports = RenderViewPorts.Full, Show = [ViewNotation.PortSymbols, ViewNotation.EdgeLabels], Depth = 2 },
+            new RenderViewOptions { Ports = RenderViewPorts.Full, Show = [ViewNotation.PortSymbols, ViewNotation.EdgeLabels], Depth = 2, Compartments = RenderViewCompartments.Most },
             token);
         await model.RenderViewAsync("#interconnection:Plant::Loop", cancellationToken: token);
+        await model.RenderViewAsync("#interconnection:Plant::Loop", new RenderViewOptions { Compartments = RenderViewCompartments.Ports }, token);
 
         Assert.Equal(
             [
-                new Wire.RenderViewRequest { ModelHash = Hash, View = "PlantViews::placedView", Ports = "full", Show = { "port-symbols", "edge-labels" }, Depth = 2 },
+                new Wire.RenderViewRequest { ModelHash = Hash, View = "PlantViews::placedView", Ports = "full", Show = { "port-symbols", "edge-labels" }, Depth = 2, Compartments = "most" },
                 new Wire.RenderViewRequest { ModelHash = Hash, View = "#interconnection:Plant::Loop" },
+                new Wire.RenderViewRequest { ModelHash = Hash, View = "#interconnection:Plant::Loop", Compartments = "ports" },
             ],
             handler.RequestsFor("RenderView").Select(sent => sent.Message(Wire.RenderViewRequest.Parser)));
         Assert.Equal(("PlantViews::placedView", "interconnection", "asInterconnectionDiagram"), (view.View, view.Kind, view.Stated));
-        var (loop, pump, tank) = (view.Nodes[0], view.Nodes[1], view.Nodes[2]);
+        var (loop, pump, tank, pressure) = (view.Nodes[0], view.Nodes[1], view.Nodes[2], view.Nodes[3]);
         Assert.Equal([loop], view.Roots);
         Assert.Equal([pump], view.ChildrenOf(loop));
-        Assert.Equal([tank], view.ChildrenOf(pump));
+        Assert.Equal([tank, pressure], view.ChildrenOf(pump));
         Assert.Empty(view.ChildrenOf(tank));
+        Assert.Equal((string.Empty, false), (pump.Compartment, pump.Inherited));
+        Assert.Equal(("n4", "attribute", "pressure", "Real", "n2", "attributes", true), (pressure.Id, pressure.Kind, pressure.Name, pressure.Type, pressure.Parent, pressure.Compartment, pressure.Inherited));
         Assert.Same(pump, view.Node("n2"));
         Assert.Null(view.Node("n9"));
         Assert.Equal(("n1", "part def", "Plant::Loop", false, "already shown", string.Empty), (loop.Id, loop.Kind, loop.Name, loop.NameSynthesized, loop.Detail, loop.Parent));
@@ -469,7 +570,7 @@ public sealed class ModelQueryDocsTests
         Assert.Equal(new ViewGeometry(300, 40, 120, 60.5, HasSize: true, Collapsed: true, Unplaced: false), loop.Geometry);
         Assert.Equal(new ViewStyle("#FFE8BD", "#333333", "#000000", "Arial", 11, bold: true, italic: true), loop.Style);
         Assert.Equal((true, "Pump", "pump : Pump", true, "n1"), (pump.NameSynthesized, pump.Type, pump.Text, pump.StandIn, pump.Parent));
-        Assert.Equal([new ViewPort("n2.0", "outlet", "FluidPort", "out"), new ViewPort("n2.1", "vent", string.Empty, string.Empty)], pump.Ports);
+        Assert.Equal([new ViewPort("n2.0", "outlet", "FluidPort", "out", inherited: false), new ViewPort("n2.1", "vent", string.Empty, string.Empty, inherited: true)], pump.Ports);
         Assert.Equal(new SourceSpan("lib.sysml", 0, 0, 0, 0), pump.Origin);
         Assert.Equal(new ViewGeometry(0, 0, 0, 0, HasSize: false, Collapsed: true, Unplaced: true), pump.Geometry);
         Assert.Null(pump.Style);
@@ -514,7 +615,7 @@ public sealed class ModelQueryDocsTests
 
     [Theory]
     [MemberData(nameof(Wires))]
-    public async Task InvalidViewOptionsAreRefusedBeforeSendingAndNodesOutOfOrderAreMalformed(ClientWire wire)
+    public async Task InvalidViewOptionsAreRefusedBeforeSendingAndNodesOutOfOrderOrRowsWithoutABoxAreMalformed(ClientWire wire)
     {
         using var handler = Serving(wire).On("RenderView", Wire.RenderViewRequest.Parser, request => new Wire.RenderViewResponse
         {
@@ -525,6 +626,8 @@ public sealed class ModelQueryDocsTests
                     "orphan" => [new Wire.RenderNode { Id = "n1", Parent = "n9" }],
                     "late" => [new Wire.RenderNode { Id = "n2", Parent = "n1" }, new Wire.RenderNode { Id = "n1" }],
                     "self" => [new Wire.RenderNode { Id = "n1", Parent = "n1" }],
+                    "unhoused" => [new Wire.RenderNode { Id = "n1", Compartment = "parts" }],
+                    "nested" => [new Wire.RenderNode { Id = "n1" }, new Wire.RenderNode { Id = "n2", Parent = "n1", Compartment = "parts" }, new Wire.RenderNode { Id = "n3", Parent = "n2", Compartment = "ports" }],
                     _ => new[] { new Wire.RenderNode { Id = "n1" }, new Wire.RenderNode { Id = "n1" } },
                 },
             },
@@ -536,10 +639,11 @@ public sealed class ModelQueryDocsTests
         await Assert.ThrowsAsync<InvalidRequestException>(() => model.RenderViewAsync("V", new RenderViewOptions { Depth = 0 }, token));
         await Assert.ThrowsAsync<InvalidRequestException>(() => model.RenderViewAsync("V", new RenderViewOptions { Depth = -1 }, token));
         await Assert.ThrowsAsync<InvalidRequestException>(() => model.RenderViewAsync("V", new RenderViewOptions { Ports = (RenderViewPorts)2 }, token));
+        await Assert.ThrowsAsync<InvalidRequestException>(() => model.RenderViewAsync("V", new RenderViewOptions { Compartments = (RenderViewCompartments)3 }, token));
         await Assert.ThrowsAsync<ArgumentException>(() => model.RenderViewAsync(string.Empty, cancellationToken: token));
         Assert.Throws<ArgumentException>(() => new RenderViewOptions { Show = [null!] });
         Assert.Empty(handler.RequestsFor("RenderView"));
-        string[] names = ["orphan", "late", "self", "twice"];
+        string[] names = ["orphan", "late", "self", "twice", "unhoused", "nested"];
         var malformed = names
             .Select(name => Assert.ThrowsAsync<TransportException>(() => model.RenderViewAsync(name, cancellationToken: token)))
             .ToList();
@@ -549,6 +653,8 @@ public sealed class ModelQueryDocsTests
         Assert.Contains("nodes[0] names \"n1\" as its parent", messages[1], StringComparison.Ordinal);
         Assert.Contains("nodes[0] names \"n1\" as its parent", messages[2], StringComparison.Ordinal);
         Assert.Contains("nodes[1] repeats the id \"n1\"", messages[3], StringComparison.Ordinal);
+        Assert.Contains("nodes[0] is a row of the compartment \"parts\" but names no parent whose box holds it", messages[4], StringComparison.Ordinal);
+        Assert.Contains("nodes[2] is a row of the compartment \"ports\" of \"n2\", which is itself a row and has no box", messages[5], StringComparison.Ordinal);
         Assert.Equal(Capabilities.RenderView, await RefusedAsync(wire, [Capabilities.RenderView], m => m.RenderViewAsync("V", cancellationToken: token)));
     }
 

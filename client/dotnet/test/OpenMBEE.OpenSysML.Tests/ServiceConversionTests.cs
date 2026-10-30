@@ -21,7 +21,7 @@ namespace OpenMBEE.OpenSysML.Tests;
 [Trait(Category.Name, Category.Integration)]
 public sealed class ServiceConversionTests(ServiceFixture services) : IClassFixture<ServiceFixture>, IDisposable
 {
-    private const string Withheld = "convert_documents,convert_compact,convert_check_diagnostics,migrate";
+    private const string Withheld = "convert_documents,convert_library_stubs,convert_compact,convert_check_diagnostics,migrate";
 
     private readonly string directory = Directory.CreateTempSubdirectory("opensysml-conversion-").FullName;
 
@@ -90,6 +90,34 @@ public sealed class ServiceConversionTests(ServiceFixture services) : IClassFixt
         Assert.Equal(StatusCode.InvalidArgument, unknown.StatusCode);
         Assert.Contains("c.sysml", unknown.ServiceMessage, StringComparison.Ordinal);
         Assert.Equal(StatusCode.FailedPrecondition, several.StatusCode);
+    }
+
+    [Theory]
+    [MemberData(nameof(Wires))]
+    public async Task TheLibraryAModelRefersToIsListedBesideItsElementsAndWrittenAsRootsOnlyWhenAsked(ClientWire wire)
+    {
+        await using var connection = await OpenAsync(wire);
+        var model = (await connection.LoadContentAsync("package P { private import SI::*; attribute time = 20 [s]; }", cancellationToken: Token)).RequireNoErrors();
+
+        var bare = await model.ToApiJsonAsync(cancellationToken: Token);
+        var stubbed = await model.ToApiJsonAsync(new ConvertOptions { IncludeLibraryStubs = true }, Token);
+        var compact = await model.ToApiJsonAsync(new ConvertOptions { Compact = true }, Token);
+        var turtle = await model.ToTurtleAsync(cancellationToken: Token);
+        var refused = await Assert.ThrowsAsync<ServiceException>(() => model.ToTurtleAsync(new ConvertOptions { IncludeLibraryStubs = true }, Token));
+
+        Assert.Equal([("SI::second", "AttributeUsage"), ("SI", "LibraryPackage")], bare.LibraryReferences.Select(reference => (reference.QualifiedName, reference.Type)));
+        var bareIds = Ids(bare.Content);
+        var stubbedIds = Ids(stubbed.Content);
+        Assert.All(bare.LibraryReferences, reference => Assert.DoesNotContain(reference.Id, bareIds));
+        Assert.Equal(bareIds.Union(bare.LibraryReferences.Select(reference => reference.Id)).Order(StringComparer.Ordinal), stubbedIds.Order(StringComparer.Ordinal));
+        Assert.Equal(bare.LibraryReferences, stubbed.LibraryReferences);
+        Assert.Equal(bare.LibraryReferences, compact.LibraryReferences);
+        Assert.Empty(turtle.LibraryReferences);
+        Assert.Equal(StatusCode.InvalidArgument, refused.StatusCode);
+        Assert.Contains("api-json", refused.ServiceMessage, StringComparison.Ordinal);
+
+        static string[] Ids(string content) =>
+            [.. System.Text.Json.JsonDocument.Parse(content).RootElement.EnumerateArray().Select(element => element.GetProperty("@id").GetString()!)];
     }
 
     [Theory]
@@ -271,6 +299,7 @@ public sealed class ServiceConversionTests(ServiceFixture services) : IClassFixt
         var refused = new[]
         {
             await Assert.ThrowsAsync<CapabilityException>(() => model.ToTurtleAsync(new ConvertOptions { Documents = ["a.sysml"], Compact = true }, Token)),
+            await Assert.ThrowsAsync<CapabilityException>(() => model.ToApiJsonAsync(new ConvertOptions { IncludeLibraryStubs = true, Compact = true }, Token)),
             await Assert.ThrowsAsync<CapabilityException>(() => model.ToApiJsonAsync(new ConvertOptions { Compact = true, IncludeCheckDiagnostics = true }, Token)),
             await Assert.ThrowsAsync<CapabilityException>(() => model.ToNotationAsync(new ConvertOptions { IncludeCheckDiagnostics = true }, Token)),
             await Assert.ThrowsAsync<CapabilityException>(() => connection.MigrateAsync(MigrateSource.FromFile(Path.Combine(directory, "a.xmi")), "sysml", cancellationToken: Token)),
@@ -278,7 +307,7 @@ public sealed class ServiceConversionTests(ServiceFixture services) : IClassFixt
         };
 
         Assert.Equal(
-            [Capabilities.ConvertDocuments, Capabilities.ConvertCompact, Capabilities.ConvertCheckDiagnostics, Capabilities.Migrate, Capabilities.Convert],
+            [Capabilities.ConvertDocuments, Capabilities.ConvertLibraryStubs, Capabilities.ConvertCompact, Capabilities.ConvertCheckDiagnostics, Capabilities.Migrate, Capabilities.Convert],
             refused.Select(error => error.Capability));
         Assert.Equal(["GetServerInfo"], counting.Methods);
     }

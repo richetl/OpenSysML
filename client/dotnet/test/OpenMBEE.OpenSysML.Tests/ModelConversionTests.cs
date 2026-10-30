@@ -29,7 +29,7 @@ public sealed class ModelConversionTests
     [MemberData(nameof(Wires))]
     public async Task ConvertSendsEverySourceAndOptionAndReadsEveryField(ClientWire wire)
     {
-        using var handler = Serving(wire).On("Convert", Wire.ConvertRequest.Parser, _ => CompleteConversionWire.Conversion);
+        using var handler = Serving(wire).On("Convert", Wire.ConvertRequest.Parser, request => request.ToFormat == "api-json" ? CompleteConversionWire.ApiJsonConversion : CompleteConversionWire.Conversion);
         await using var connection = await FakeConnection.OpenAsync(handler);
         var token = TestContext.Current.CancellationToken;
         var options = new ConvertOptions
@@ -42,11 +42,12 @@ public sealed class ModelConversionTests
             OmitDerived = true,
             KeepDerived = ["owner", "qualifiedName"],
             IncludeCheckDiagnostics = true,
+            IncludeLibraryStubs = true,
         };
 
         var conversion = await connection.ConvertAsync(ConvertSource.Inline("package P;"), "turtle", options, token);
         await connection.ConvertAsync(ConvertSource.FromFile("/models/a.ttl"), ConversionFormat.SysML, new ConvertOptions { IdForm = IdForm.Qualified }, token);
-        await connection.ModelByHash(Hash).ConvertAsync(ConversionFormat.ApiJson, cancellationToken: token);
+        var apiJson = await connection.ModelByHash(Hash).ConvertAsync(ConversionFormat.ApiJson, cancellationToken: token);
         await connection.ConvertAsync(ConvertSource.FromModelHash(Hash), string.Empty, cancellationToken: token);
 
         Assert.Equal(
@@ -63,6 +64,7 @@ public sealed class ModelConversionTests
                     OmitDerived = true,
                     KeepDerived = { "owner", "qualifiedName" },
                     IncludeCheckDiagnostics = true,
+                    IncludeLibraryStubs = true,
                 },
                 new Wire.ConvertRequest { FilePath = "/models/a.ttl", ToFormat = "sysml", IdForm = "qualified" },
                 new Wire.ConvertRequest { ModelHash = Hash, ToFormat = "api-json" },
@@ -76,6 +78,9 @@ public sealed class ModelConversionTests
         Assert.Equal("RDF conversion is experimental", conversion.ExperimentalNotice);
         Assert.Equal(["warning", "hint"], conversion.Diagnostics.Select(diagnostic => diagnostic.SeverityName));
         Assert.Equal(CompleteWire.Diagnostic.Code, conversion.Diagnostics[0].Code);
+        Assert.Empty(conversion.LibraryReferences);
+        Assert.Equal([new LibraryReference("0c539f7c-20a1-520d-bae0-f3f855517aea", "SI::second", "AttributeUsage"), new LibraryReference("2a413ac9-972d-5182-afd3-46cdde4e0eba", "SI", "LibraryPackage")], apiJson.LibraryReferences);
+        Assert.Equal("SI (LibraryPackage)", apiJson.LibraryReferences[1].ToString());
     }
 
     [Theory]
@@ -206,11 +211,13 @@ public sealed class ModelConversionTests
     public async Task ConvertGatesAreCheckedInTheServicesOrderBeforeAnythingIsSent(ClientWire wire)
     {
         var token = TestContext.Current.CancellationToken;
-        var all = new ConvertOptions { Documents = ["a.sysml"], KeepDerived = ["owner"], IncludeCheckDiagnostics = true };
+        var all = new ConvertOptions { Documents = ["a.sysml"], IncludeLibraryStubs = true, KeepDerived = ["owner"], IncludeCheckDiagnostics = true };
         Task Convert(Model model, ConvertOptions options) => model.ConvertAsync("ttl", options, token);
 
         Assert.Equal(Capabilities.Convert, await RefusedAsync(wire, [Capabilities.Convert, Capabilities.ConvertDocuments], model => Convert(model, all)));
-        Assert.Equal(Capabilities.ConvertDocuments, await RefusedAsync(wire, [Capabilities.ConvertDocuments, Capabilities.ConvertCompact], model => Convert(model, all)));
+        Assert.Equal(Capabilities.ConvertDocuments, await RefusedAsync(wire, [Capabilities.ConvertDocuments, Capabilities.ConvertLibraryStubs], model => Convert(model, all)));
+        Assert.Equal(Capabilities.ConvertLibraryStubs, await RefusedAsync(wire, [Capabilities.ConvertLibraryStubs, Capabilities.ConvertCompact], model => Convert(model, all)));
+        Assert.Equal(Capabilities.ConvertLibraryStubs, await RefusedAsync(wire, [Capabilities.ConvertLibraryStubs], model => Convert(model, new ConvertOptions { IncludeLibraryStubs = true })));
         Assert.Equal(Capabilities.ConvertCompact, await RefusedAsync(wire, [Capabilities.ConvertCompact, Capabilities.ConvertCheckDiagnostics], model => Convert(model, all)));
         Assert.Equal(Capabilities.ConvertCheckDiagnostics, await RefusedAsync(wire, [Capabilities.ConvertCheckDiagnostics], model => Convert(model, all)));
         Assert.Equal(Capabilities.ConvertCompact, await RefusedAsync(wire, [Capabilities.ConvertCompact], model => Convert(model, new ConvertOptions { Compact = true })));
@@ -467,13 +474,16 @@ public sealed class ModelConversionTests
         Assert.Throws<ArgumentNullException>(() => new MigrationReport("s", "e", "m", 0, 0, 0, 0, [], null!));
         Assert.Throws<ArgumentException>(() => new MigrationReport("s", "e", "m", 0, 0, 0, 0, [null!], ""));
         Assert.Throws<ArgumentNullException>(() => new MigrationReport("s", "e", "m", 0, 0, 0, 0, [], "").ByVerdict(null!));
-        Assert.Throws<ArgumentNullException>(() => new Conversion("c", "sysml", "sysml", [], false, null!));
+        Assert.Throws<ArgumentNullException>(() => new Conversion("c", "sysml", "sysml", [], false, null!, []));
+        Assert.Throws<ArgumentNullException>(() => new Conversion("c", "sysml", "sysml", [], false, string.Empty, null!));
+        Assert.Throws<ArgumentException>(() => new Conversion("c", "sysml", "sysml", [], false, string.Empty, [null!]));
+        Assert.Throws<ArgumentNullException>(() => new LibraryReference("SI::s", null!, "AttributeUsage"));
         Assert.Throws<ArgumentNullException>(() => new Migration("c", "xmi", "sysml", null!, "", [], true, "n", null));
         Assert.Throws<ArgumentException>(() => new Migration("c", "xmi", "sysml", new MigrationReport("s", "e", "m", 0, 0, 0, 0, [], ""), "", [null!], true, "n", null));
         Assert.Throws<ArgumentNullException>(() => new ConversionException("m", Connection.ConvertMethod, [], "sysml", null!, false, ""));
         Assert.Throws<ArgumentNullException>(() => new MigrationException("m", Connection.MigrateMethod, null!, "sysml", true, ""));
         Assert.Throws<ArgumentNullException>(() => new UnwritableException("m", null!));
-        var conversion = new Conversion("c", "sysml", "sysml", [], false, string.Empty);
+        var conversion = new Conversion("c", "sysml", "sysml", [], false, string.Empty, []);
         await Assert.ThrowsAsync<ArgumentException>(() => conversion.SaveAsync(string.Empty, cancellationToken: TestContext.Current.CancellationToken));
         await Assert.ThrowsAsync<ArgumentNullException>(() =>
             new Migration("c", "xmi", "sysml", new MigrationReport("s", "e", "m", 0, 0, 0, 0, [], ""), "", [], true, "n", null).WriteAsync(null!, cancellationToken: TestContext.Current.CancellationToken));

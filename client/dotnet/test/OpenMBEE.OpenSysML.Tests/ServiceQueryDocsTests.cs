@@ -75,13 +75,23 @@ public sealed class ServiceQueryDocsTests(ServiceFixture services) : IClassFixtu
         var scoped = await model.QueryAsync(new Query { Scope = ["Demo::vehicle"], Select = ["name", "owner"] }, Token);
         var either = await model.QueryAsync(new Query { Where = QueryConstraint.Or(QueryConstraint.Equal("name", "spare"), QueryConstraint.Equal("name", "Wheel")) }, Token);
         var notParts = await model.QueryAsync(
-            new Query { Scope = ["Demo::vehicle"], Where = QueryConstraint.And(new QueryConstraint.Comparison("@type", ComparisonOperator.Equal, ["PartUsage"], inverse: true)) },
+            new Query { Scope = ["Demo::vehicle"], Where = new QueryConstraint.Comparison("@type", ComparisonOperator.Equal, ["PartUsage"], inverse: true) },
             Token);
         var many = await model.QueryAsync(new Query { Where = QueryConstraint.Greater("multiplicityLower", "1") }, Token);
         var few = await model.QueryAsync(new Query { Where = QueryConstraint.And(QueryConstraint.Equal("@type", "PartUsage"), QueryConstraint.Less("multiplicityUpper", "5")) }, Token);
+        var atLeast = await model.QueryAsync(new Query { Where = QueryConstraint.GreaterOrEqual("multiplicityLower", "4") }, Token);
+        var atMost = await model.QueryAsync(new Query { Where = QueryConstraint.LessOrEqual("multiplicityUpper", "4") }, Token);
+        var below = await model.QueryAsync(new Query { Where = QueryConstraint.Less("multiplicityUpper", "4") }, Token);
+        var member = await model.QueryAsync(new Query { Where = QueryConstraint.In("name", "spare", "Wheel") }, Token);
+        var usages = await model.QueryAsync(new Query { Scope = ["Demo::vehicle"], Where = QueryConstraint.InstanceOf("Usage") }, Token);
+        var definitions = await model.QueryAsync(new Query { Scope = ["Demo"], Where = QueryConstraint.InstanceOf("Definition") }, Token);
+        var byName = await model.QueryAsync(new Query { Scope = ["Demo"], OrderBy = ["name"] }, Token);
+        var byType = await model.QueryAsync(new Query { Where = QueryConstraint.Equal("@type", "PartUsage", "AttributeUsage"), OrderBy = ["@type"] }, Token);
         var oslc = await model.QueryOslcAsync("oslc.where=rdf:type=\"PartUsage\"&oslc.select=sysml:name", Token);
         var scope = await Assert.ThrowsAsync<ServiceException>(() => model.QueryAsync(new Query { Scope = ["Demo::Missing"] }, Token));
         var property = await Assert.ThrowsAsync<ServiceException>(() => model.QueryAsync(new Query { Where = QueryConstraint.Equal("nope", "x") }, Token));
+        var metaclass = await Assert.ThrowsAsync<ServiceException>(() => model.QueryAsync(new Query { Where = QueryConstraint.InstanceOf("Nope") }, Token));
+        var sortedBy = await Assert.ThrowsAsync<ServiceException>(() => model.QueryAsync(new Query { OrderBy = ["nope"] }, Token));
         var gone = await Assert.ThrowsAsync<ModelNotFoundException>(() => connection.ModelByHash("0000").QueryAsync(Query.All, Token));
 
         Assert.Equal(
@@ -96,8 +106,25 @@ public sealed class ServiceQueryDocsTests(ServiceFixture services) : IClassFixtu
         Assert.Equal(["Demo::vehicle::vin"], notParts.Elements.Select(element => element.Id));
         Assert.Equal(["Demo::vehicle::wheels"], many.Elements.Select(element => element.Id));
         Assert.Equal(["Demo::vehicle::wheels"], few.Elements.Select(element => element.Id));
+        // wheels is [4]: both bounds meet the inclusive comparisons and miss the strict one.
+        Assert.Equal(["Demo::vehicle::wheels"], atLeast.Elements.Select(element => element.Id));
+        Assert.Equal(["Demo::vehicle::wheels"], atMost.Elements.Select(element => element.Id));
+        Assert.Empty(below.Elements);
+        Assert.Equal(["Demo::Wheel", "Demo::spare"], member.Elements.Select(element => element.Id));
+        Assert.Equal(["Demo::vehicle", "Demo::vehicle::wheels", "Demo::vehicle::vin"], usages.Elements.Select(element => element.Id));
+        Assert.Equal(["Demo::Vehicle", "Demo::Wheel"], definitions.Elements.Select(element => element.Id));
+        // Names compare byte-wise, so capitals sort first.
+        Assert.Equal(
+            ["Demo", "Demo::Vehicle", "Demo::Wheel", "Demo::Vehicle::mass", "Demo::spare", "Demo::vehicle", "Demo::vehicle::vin", "Demo::vehicle::wheels"],
+            byName.Elements.Select(element => element.Id));
+        // Elements of one type keep the order the model declares them in.
+        Assert.Equal(
+            ["Demo::Vehicle::mass", "Demo::vehicle::vin", "Demo::vehicle", "Demo::vehicle::wheels", "Demo::spare"],
+            byType.Elements.Select(element => element.Id));
         Assert.Equal(parts.Elements.Select(element => element.Id), oslc.Elements.Select(element => element.Id));
-        Assert.Equal([StatusCode.InvalidArgument, StatusCode.InvalidArgument], new[] { scope.StatusCode, property.StatusCode });
+        Assert.Equal(
+            [StatusCode.InvalidArgument, StatusCode.InvalidArgument, StatusCode.InvalidArgument, StatusCode.InvalidArgument],
+            new[] { scope.StatusCode, property.StatusCode, metaclass.StatusCode, sortedBy.StatusCode });
         Assert.Equal(StatusCode.NotFound, gone.StatusCode);
     }
 
@@ -206,13 +233,14 @@ public sealed class ServiceQueryDocsTests(ServiceFixture services) : IClassFixtu
 
     [Theory]
     [MemberData(nameof(Wires))]
-    public async Task ADocumentRendersToMarkdownAndHtmlNamingTheFileARenderedSetWrites(ClientWire wire)
+    public async Task ADocumentRendersToMarkdownHtmlAndAsciiDocNamingTheFileARenderedSetWrites(ClientWire wire)
     {
         await using var connection = await OpenAsync(wire);
         var observatory = (await connection.LoadAsync(Fixture("document.sysml"), cancellationToken: Token)).RequireNoErrors();
 
         var markdown = await observatory.RenderDocumentAsync("Observatory::MassReport", cancellationToken: Token);
         var html = await observatory.RenderDocumentAsync("Observatory::MassReport", DocumentForm.Html, Token);
+        var asciidoc = await observatory.RenderDocumentAsync("Observatory::MassReport", DocumentForm.AsciiDoc, Token);
 
         Assert.Equal(DocumentForm.Markdown, markdown.Form);
         Assert.StartsWith("# Telescope Mass Report", markdown.Content, StringComparison.Ordinal);
@@ -223,6 +251,11 @@ public sealed class ServiceQueryDocsTests(ServiceFixture services) : IClassFixtu
         Assert.EndsWith(".md", markdown.FileName, StringComparison.Ordinal);
         Assert.EndsWith(".html", html.FileName, StringComparison.Ordinal);
         Assert.Equal(Path.GetFileNameWithoutExtension(markdown.FileName), Path.GetFileNameWithoutExtension(html.FileName));
+        Assert.Equal(DocumentForm.AsciiDoc, asciidoc.Form);
+        Assert.StartsWith("= Telescope Mass Report", asciidoc.Content, StringComparison.Ordinal);
+        Assert.Contains("mount", asciidoc.Content, StringComparison.Ordinal);
+        Assert.EndsWith(".adoc", asciidoc.FileName, StringComparison.Ordinal);
+        Assert.Equal(Path.GetFileNameWithoutExtension(markdown.FileName), Path.GetFileNameWithoutExtension(asciidoc.FileName));
     }
 
     [Theory]
@@ -260,6 +293,45 @@ public sealed class ServiceQueryDocsTests(ServiceFixture services) : IClassFixtu
         Assert.Equal(stated.Nodes.Select(node => node.Id), shallow.Nodes.Select(node => node.Id));
         Assert.True(deeper.Nodes.Count > stated.Nodes.Count, $"{deeper.Nodes.Count} nodes at three levels, {stated.Nodes.Count} at the view's one");
         Assert.Equal(StatusCode.InvalidArgument, notation.StatusCode);
+    }
+
+    [Theory]
+    [MemberData(nameof(Wires))]
+    public async Task CompartmentsFoldMembersIntoRowsOfTheirOwnersBoxAndWhatAnOwnerHasFromItsTypeIsMarkedInherited(ClientWire wire)
+    {
+        await using var connection = await OpenAsync(wire);
+        var views = (await connection.LoadAsync(Fixture("views.sysml"), cancellationToken: Token)).RequireNoErrors();
+        var tree = (await connection.LoadAsync(ViewTestdata("depth-tree.sysml"), cancellationToken: Token)).RequireNoErrors();
+        var inheriting = (await connection.LoadAsync(ViewTestdata("inherited-prefix.sysml"), cancellationToken: Token)).RequireNoErrors();
+
+        var positioned = await tree.RenderViewAsync("DepthViews::depth1", cancellationToken: Token);
+        var most = await tree.RenderViewAsync("DepthViews::depth1", new RenderViewOptions { Compartments = RenderViewCompartments.Most }, Token);
+        var ports = await tree.RenderViewAsync("DepthViews::depth1", new RenderViewOptions { Compartments = RenderViewCompartments.Ports }, Token);
+        var typed = await inheriting.RenderViewAsync("InheritedPrefixViews::part1Tree", new RenderViewOptions { Compartments = RenderViewCompartments.Most }, Token);
+        var linked = await views.RenderViewAsync("RenderViewDemo::connections", new RenderViewOptions { Ports = RenderViewPorts.Full }, Token);
+
+        // The tree no Layout positions folds nothing by default.
+        Assert.All(positioned.Nodes, node => Assert.Empty(node.Compartment));
+        var vehicle = Assert.Single(most.Roots);
+        Assert.Equal(
+            [("mass", "attributes"), ("wheel", "parts"), ("engine", "parts")],
+            most.ChildrenOf(vehicle).Select(row => (row.Name, row.Compartment)));
+        var engine = Assert.Single(ports.Nodes, node => node.Name == "engine");
+        Assert.Equal(string.Empty, engine.Compartment);
+        Assert.Equal([("fuelIn", "ports")], ports.ChildrenOf(engine).Select(row => (row.Name, row.Compartment)));
+        Assert.Equal(1, ports.Nodes.Count(node => node.Compartment.Length > 0));
+
+        // part1 : APart declares nothing of its own, so every member it lists is APart's.
+        var part1 = Assert.Single(typed.Roots);
+        Assert.False(part1.Inherited);
+        Assert.Equal(
+            [("mass", "attributes", true), ("engine", "parts", true), ("aPort", "ports", true)],
+            typed.ChildrenOf(part1).Select(row => (row.Name, row.Compartment, row.Inherited)));
+
+        // sender : Sender and receiver : Receiver have their ports from their types.
+        Assert.Equal(
+            [("sender", "api", true), ("sender", "spare", true), ("receiver", "api", true)],
+            linked.Nodes.SelectMany(node => node.Ports.Select(port => (node.Name, port.Name, port.Inherited))));
     }
 
     [Theory]
@@ -374,6 +446,26 @@ public sealed class ServiceQueryDocsTests(ServiceFixture services) : IClassFixtu
             [Capabilities.Query, Capabilities.Query, Capabilities.DocumentQuery, Capabilities.RenderDocumentHtml, Capabilities.RenderView],
             refused.Select(error => error.Capability));
         Assert.Equal(["GetServerInfo"], counting.Methods);
+    }
+
+    [Theory]
+    [MemberData(nameof(Wires))]
+    public async Task AWithheldOrderingOrAsciiDocIsRefusedBeforeAnythingIsSentWhileTheRestIsServed(ClientWire wire)
+    {
+        var withheld = await services.ServiceAsync("connect", "query_order_by,render_document_asciidoc");
+        using var counting = new CountingHandler();
+        await using var connection = await Connection.OpenAsync(
+            new ConnectionOptions { Address = withheld.Address, Protocol = wire.Protocol(), Encoding = wire.Encoding(), HttpMessageHandler = counting },
+            Token);
+        var model = (await connection.LoadAsync(Fixture("document.sysml"), cancellationToken: Token)).RequireNoErrors();
+
+        var ordering = await Assert.ThrowsAsync<CapabilityException>(() => model.QueryAsync(new Query { OrderBy = ["name"] }, Token));
+        var asciidoc = await Assert.ThrowsAsync<CapabilityException>(() => model.RenderDocumentAsync("Observatory::MassReport", DocumentForm.AsciiDoc, Token));
+        await model.QueryAsync(Query.All, Token);
+        await model.RenderDocumentAsync("Observatory::MassReport", DocumentForm.Html, Token);
+
+        Assert.Equal([Capabilities.QueryOrderBy, Capabilities.RenderDocumentAsciidoc], new[] { ordering.Capability, asciidoc.Capability });
+        Assert.Equal(["GetServerInfo", "ParseFile", "Query", "RenderDocument"], counting.Methods);
     }
 
     private static string Fixture(string name) => Repository.PathOf("conformance", "fixtures", name);

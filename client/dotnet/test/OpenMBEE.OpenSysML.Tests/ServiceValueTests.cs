@@ -17,7 +17,7 @@ public sealed class ServiceValueTests(ServiceFixture services) : IClassFixture<S
     private const string Model = """
         package Echo {
             private import ScalarValues::*;
-            calc def Same { in x; return r = x; }
+            calc def Same { in x; return r[1] = x; }
             calc same : Same;
             calc def Many { in x[0..*]; return r[0..*] = x; }
             calc many : Many;

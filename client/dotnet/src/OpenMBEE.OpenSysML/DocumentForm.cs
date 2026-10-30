@@ -8,4 +8,7 @@ public enum DocumentForm
 
     /// <summary>A standalone HTML page with the default stylesheet. Needs <see cref="Capabilities.RenderDocumentHtml"/>.</summary>
     Html,
+
+    /// <summary>AsciiDoc. Needs <see cref="Capabilities.RenderDocumentAsciidoc"/>.</summary>
+    AsciiDoc,
 }

@@ -104,6 +104,15 @@ what its RPC can use; a combination its RPC cannot answer, such as an exploring 
 `ExecuteActionAsync`, is refused before anything is sent. A false verdict, a failed sweep row and
 a failed run among repeated runs are answers, never exceptions.
 
+A `Query` filters with `QueryConstraint`s (`Equal`, `In`, `Greater`, `GreaterOrEqual`, `Less`,
+`LessOrEqual`, `InstanceOf`, and `And`/`Or` composites of at least two) and sorts by `OrderBy`,
+which needs `query_order_by`. `RenderDocumentAsync` renders `DocumentForm.Markdown`, `Html` or
+`AsciiDoc`. `RenderViewOptions.Compartments` (`RenderViewCompartments`) folds a tree's members into
+rows, each a `ViewNode` naming its `Compartment`; `ViewNode.Inherited` and `ViewPort.Inherited` mark
+what an owner has from its type. A solver's `Verdict.Notes` are the `VerdictNote`s its answer rests
+on, and an `api-json` `Conversion` lists the `LibraryReference`s it refers to, which
+`ConvertOptions.IncludeLibraryStubs` also writes as roots.
+
 ## Writing files
 
 Nothing is written to disk until `Model.SaveAsync`, `Conversion.SaveAsync`,
@@ -380,6 +389,8 @@ never retried.
   compact form, and computes no derived property an export omits. Its typed-class generator is a
   checkout console, not a Roslyn source generator, MSBuild task or packaged `dotnet` tool.
 - It never retries a call, falls back to another protocol, or bypasses TLS validation.
+- It does not decode the `QueryOutcome` detail a refused query carries: the refusal is a
+  `ServiceException` with its status and message, as in the other clients.
 - It starts no service implicitly from the compiler or MSBuild.
 
 ## Conformance

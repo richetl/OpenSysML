@@ -65,6 +65,33 @@ public sealed class ServiceVerificationTests(ServiceFixture services) : IClassFi
 
     [Theory]
     [MemberData(nameof(Wires))]
+    public async Task ASolversAnswerCarriesTheAssumptionItRestsOnAndAnEvaluationCarriesNone(ClientWire wire)
+    {
+        const string Tanks = """
+            package Tanks {
+                private import ScalarValues::Real;
+                class Tank {
+                    feature level : Real;
+                    inv nonNegative { level >= 0.0 }
+                }
+            }
+            """;
+        await using var connection = await OpenAsync(wire);
+        await SolverGate.FromProcess.RequireAsync(connection, Token);
+        var model = (await connection.LoadContentAsync(Tanks, new ParseOptions { Language = SourceLanguage.KerML }, Token)).RequireNoErrors();
+
+        var held = await model.VerifyConstraintAsync("Tanks::Tank::nonNegative", new VerifyOptions { Question = VerifyOptions.Holds }, Token);
+        var evaluated = await model.VerifyConstraintAsync("Tanks::Tank::nonNegative", cancellationToken: Token);
+
+        Assert.Equal("violated", held.Verdict.Status);
+        Assert.Equal(
+            [new VerdictNote(VerdictNote.AssumedOne, "Tanks::Tank::level", "Assuming Tanks::Tank::level holds one value: it declares no multiplicity, so the default [0..*] governs it")],
+            held.Verdict.Notes);
+        Assert.Empty(evaluated.Verdict.Notes);
+    }
+
+    [Theory]
+    [MemberData(nameof(Wires))]
     public async Task SatisfactionsAndValidationsAnswerEveryAssertionWithTheirVerificationCases(ClientWire wire)
     {
         await using var connection = await OpenAsync(wire);
@@ -137,10 +164,10 @@ public sealed class ServiceVerificationTests(ServiceFixture services) : IClassFi
         var notCalc = await Assert.ThrowsAsync<VerificationException>(() =>
             function.CalcAsync("F::apply", [new Value.FunctionValue("F::holder", null), new Value.RealValue(2)], cancellationToken: Token));
 
-        Assert.Equal(new Value.IntegerValue(5), added.Value);
-        Assert.Equal(new Value.RealValue(5), length.Result);
-        Assert.Equal(new Value.RealValue(8), applied.Result);
-        Assert.Equal(new Value.IntegerValue(3), members.Result);
+        Assert.Equal(Held(new Value.IntegerValue(5)), added.Value);
+        Assert.Equal(Held(new Value.RealValue(5)), length.Result);
+        Assert.Equal(Held(new Value.RealValue(8)), applied.Result);
+        Assert.Equal(Held(new Value.IntegerValue(3)), members.Result);
         Assert.Empty(added.Outputs);
         Assert.Equal((Model.EvaluateCalcMethod, FailureReason.WrongKind), (wrong.Method, wrong.Reason));
         Assert.Equal(FailureReason.Evaluation, notCalc.Reason);
@@ -165,20 +192,20 @@ public sealed class ServiceVerificationTests(ServiceFixture services) : IClassFi
         var wrong = await Assert.ThrowsAsync<AnalysisException>(() => model.RunAnalysisAsync("An::ship", cancellationToken: Token));
         var schedule = await Assert.ThrowsAsync<ServiceException>(() => model.RunAnalysisAsync("An::plain", new AnalysisOptions { Schedule = "seed:abc" }, Token));
 
-        Assert.Equal([new CalcOutput("total", new Value.RealValue(12))], ship.Outputs);
+        Assert.Equal([new CalcOutput("total", Held(new Value.RealValue(12)))], ship.Outputs);
         var objective = ship.Objective!;
         Assert.Equal(("objective", "An::CostAnalysis::affordable", "affordable", true, "An::ship"), (objective.Kind, objective.ElementId, objective.Element, objective.Holds, objective.InstanceTypeId));
         Assert.True(ship.Holds);
         Assert.NotEmpty(ship.Instances);
         Assert.Null(ship.ToolDryRun);
-        Assert.Equal([new CalcOutput("x", new Value.RealValue(3))], plain.Outputs);
+        Assert.Equal([new CalcOutput("x", Held(new Value.RealValue(3)))], plain.Outputs);
         Assert.Empty(plain.Verdicts);
-        Assert.Equal(new Value.RealValue(37), barge.Outputs[0].Value);
+        Assert.Equal(Held(new Value.RealValue(37)), barge.Outputs[0].Value);
         Assert.True(barge.Objective!.Violated);
         Assert.True(named.Holds);
         Assert.False(positional.Holds);
         Assert.True(explored.Complete);
-        Assert.Equal(new Value.RealValue(12), Assert.Single(explored.Outcomes).Outputs["total"]);
+        Assert.Equal(Held(new Value.RealValue(12)), Assert.Single(explored.Outcomes).Outputs["total"]);
         Assert.Equal(FailureReason.Evaluation, noSubject.Reason);
         Assert.Contains("subject", noSubject.Message, StringComparison.Ordinal);
         Assert.Equal(FailureReason.WrongKind, wrong.Reason);
@@ -210,7 +237,7 @@ public sealed class ServiceVerificationTests(ServiceFixture services) : IClassFi
 
         Assert.Equal(["b"], stepped.Parameters);
         Assert.False(stepped.Sampled);
-        Assert.Equal([1.0, 3.0, 5.0], stepped.Rows.Select(row => ((Value.RealValue)Assert.Single(row.Outputs).Value).Value));
+        Assert.Equal([Held(new Value.RealValue(1)), Held(new Value.RealValue(3)), Held(new Value.RealValue(5))], stepped.Rows.Select(row => Assert.Single(row.Outputs).Value));
         Assert.Equal([0.0, 2.0, 4.0], stepped.Rows.Select(row => ((Value.RealValue)Assert.Single(row.Inputs).Value).Value));
         Assert.All(stepped.Rows, row => Assert.True(row.ElapsedMicroseconds >= 0));
         Assert.Equal([false, true], analysis.Rows.Select(row => Assert.Single(row.Verdicts).Holds));
@@ -272,6 +299,9 @@ public sealed class ServiceVerificationTests(ServiceFixture services) : IClassFi
     }
 
     private static string Fixture(string name) => Repository.PathOf("conformance", "fixtures", name);
+
+    // A result or out parameter stating no multiplicity is [0..*], so the service holds one value as a sequence.
+    private static Value.SequenceValue Held(Value value) => new([value]);
 
     private static async Task<Model> LoadAsync(Connection connection, string fixture) =>
         (await connection.LoadContentAsync(File.ReadAllText(Fixture(fixture)), cancellationToken: Token)).RequireNoErrors();

@@ -12,7 +12,7 @@ internal static class CompleteVerificationWire
     internal static IReadOnlyList<Wire.Bound> Bounds { get; } =
         [new Wire.Bound { Name = "solver", Limit = 5000, Reached = true }, new Wire.Bound { Name = "depth", Limit = 64 }];
 
-    /// <summary>A violated verdict with every fact set, its witness one assignment with a value and one without.</summary>
+    /// <summary>A violated verdict with every fact set, its witness one assignment with a value and one without, and a note of each kind.</summary>
     internal static Wire.Verdict Verdict => new()
     {
         Kind = "constraint",
@@ -33,6 +33,11 @@ internal static class CompleteVerificationWire
         {
             new Wire.WitnessAssignment { Feature = "Demo::Vehicle::mass", Value = new Wire.Value { RealValue = 1500.5 }, Unit = "kg", Exact = "3001/2" },
             new Wire.WitnessAssignment { Feature = "Demo::Vehicle::gear", Exact = "Gear::low" },
+        },
+        Notes =
+        {
+            new Wire.VerdictNote { Kind = "uncovered", Subject = "engine", Text = "Not in the query: what engine asserts about its own objects, as it may hold more than one object; instantiate and validate an object to check it" },
+            new Wire.VerdictNote { Kind = "assumed_one", Subject = "Demo::Vehicle::gear", Text = "Assuming Demo::Vehicle::gear holds one value: it declares no multiplicity, so the default [0..*] governs it" },
         },
     };
 

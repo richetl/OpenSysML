@@ -1569,12 +1569,14 @@ jobs:
       DOTNET_NOLOGO: "1"
       DOTNET_CLI_TELEMETRY_OPTOUT: "1"
     steps:
-      # The SDK image runs as root and carries neither make nor an SSH client for checkout.
+      # The SDK image runs as root and carries neither make nor an SSH client for checkout,
+      # nor the solver the verdict-notes test asks the service a question with.
       - run:
           name: Install build prerequisites
           command: |
             apt-get update
-            apt-get install -y --no-install-recommends ca-certificates curl git make openssh-client python3
+            apt-get install -y --no-install-recommends ca-certificates curl git make openssh-client python3 z3
+            z3 --version
 
       - checkout
 
@@ -1612,13 +1614,14 @@ jobs:
           name: Build sysml-grpc
           command: make build-grpc
 
-      # A test that needs the service or buf fails rather than skips without one.
+      # A test that needs the service, buf or a solver fails rather than skips without one.
       - run:
           name: Run .NET client tests
           command: |
             OPENSYSML_GRPC_BINARY="$PWD/bin/sysml-grpc" \
             OPENSYSML_REQUIRE_SERVICE=1 \
             OPENSYSML_REQUIRE_BUF=1 \
+            OPENSYSML_REQUIRE_SMT=1 \
               make dotnet-test
 
       - run:
@@ -1627,6 +1630,7 @@ jobs:
             OPENSYSML_GRPC_BINARY="$PWD/bin/sysml-grpc" \
             OPENSYSML_REQUIRE_SERVICE=1 \
             OPENSYSML_REQUIRE_BUF=1 \
+            OPENSYSML_REQUIRE_SMT=1 \
               make dotnet-coverage
 
       - run:

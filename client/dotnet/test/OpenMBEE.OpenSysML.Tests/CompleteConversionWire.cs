@@ -19,6 +19,21 @@ internal static class CompleteConversionWire
         ExperimentalNotice = "RDF conversion is experimental",
     };
 
+    /// <summary>Notation written as the API's JSON, with the standard-library elements it refers to listed beside it.</summary>
+    internal static Wire.ConvertResponse ApiJsonConversion => new()
+    {
+        Content = "[{\"@id\":\"P\",\"@type\":\"Package\"}]",
+        FromFormat = "sysml",
+        ToFormat = "api-json",
+        Experimental = true,
+        ExperimentalNotice = "API JSON conversion is experimental",
+        LibraryReferences =
+        {
+            new Wire.LibraryReference { Id = "0c539f7c-20a1-520d-bae0-f3f855517aea", QualifiedName = "SI::second", Type = "AttributeUsage" },
+            new Wire.LibraryReference { Id = "2a413ac9-972d-5182-afd3-46cdde4e0eba", QualifiedName = "SI", Type = "LibraryPackage" },
+        },
+    };
+
     /// <summary>A conversion the mapping refused, keeping its formats, diagnostics and notice.</summary>
     internal static Wire.ConvertResponse FailedConversion => new()
     {

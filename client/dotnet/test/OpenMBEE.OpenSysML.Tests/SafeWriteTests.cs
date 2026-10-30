@@ -342,7 +342,7 @@ public sealed class SafeWriteTests : IDisposable
         Assert.Contains("exists", notOverwriting.Message, StringComparison.Ordinal);
     }
 
-    private static Conversion Converted(string content) => new(content, "sysml", "sysml", [], false, string.Empty);
+    private static Conversion Converted(string content) => new(content, "sysml", "sysml", [], false, string.Empty, []);
 
     private static Migration Migrated(string? source, params (string Name, byte[] Content)[] files) =>
         new(

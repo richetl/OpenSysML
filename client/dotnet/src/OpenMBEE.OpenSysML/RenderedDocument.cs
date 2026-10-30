@@ -27,7 +27,7 @@ public sealed record RenderedDocument
     /// <summary>The form it was rendered to.</summary>
     public DocumentForm Form { get; }
 
-    /// <summary>The rendered Markdown or HTML.</summary>
+    /// <summary>The rendered Markdown, HTML or AsciiDoc.</summary>
     public string Content { get; }
 
     /// <summary>

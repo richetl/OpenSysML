@@ -11,6 +11,7 @@ internal static class QueryWire
         Scope = { query.Scope },
         Select = { query.Select },
         Where = query.Where is { } where ? ToWire(where) : null,
+        OrderBy = { query.OrderBy },
     };
 
     /// <summary>Reads what a query selected; an element the schema says always names its id and type must.</summary>

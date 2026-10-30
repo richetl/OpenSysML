@@ -94,6 +94,12 @@ public sealed class Capabilities : IEquatable<Capabilities>
     /// </summary>
     public const string ConvertDocuments = "convert_documents";
 
+    /// <summary>Names ConvertResponse.library_references.</summary>
+    public const string ConvertLibraryReferences = "convert_library_references";
+
+    /// <summary>Names ConvertRequest.include_library_stubs.</summary>
+    public const string ConvertLibraryStubs = "convert_library_stubs";
+
     /// <summary>
     /// Names the capability of populating Diagnostic.code, so an empty code is a finding none was assigned
     /// rather than an older service.
@@ -249,6 +255,12 @@ public sealed class Capabilities : IEquatable<Capabilities>
     public const string Query = "query";
 
     /// <summary>
+    /// Names the capability of Query's order_by field, which sorts the matched elements; a service without
+    /// it would ignore the field.
+    /// </summary>
+    public const string QueryOrderBy = "query_order_by";
+
+    /// <summary>
     /// Names the capability of carrying an exact Rational that is no Integer as Value.rational_value,
     /// Quantity.rational_magnitude and DocumentValue.rational_value, rather than as an unsupported null. A
     /// service without it reads the arm sent to it as null, so a client must not send one.
@@ -263,6 +275,12 @@ public sealed class Capabilities : IEquatable<Capabilities>
 
     /// <summary>Names the capability of the RenderDocument RPC, which renders a named document to Markdown.</summary>
     public const string RenderDocument = "render_document";
+
+    /// <summary>
+    /// Names the capability of RenderDocumentRequest's form field taking "asciidoc", answered in
+    /// RenderDocumentResponse.asciidoc.
+    /// </summary>
+    public const string RenderDocumentAsciidoc = "render_document_asciidoc";
 
     /// <summary>
     /// Names RenderDocumentResponse.file_name: the file a rendered set writes the document to, which the
@@ -368,6 +386,12 @@ public sealed class Capabilities : IEquatable<Capabilities>
     /// the empty object it materializes.
     /// </summary>
     public const string UnsetValue = "unset_value";
+
+    /// <summary>
+    /// Names the <c>notes</c> field of every Verdict: the assumptions and omissions behind a solver's answer,
+    /// as the REPL prints them.
+    /// </summary>
+    public const string VerdictNotes = "verdict_notes";
 
     /// <summary>
     /// Names the capability of the verification RPCs, which answer the questions the REPL's %constraint,

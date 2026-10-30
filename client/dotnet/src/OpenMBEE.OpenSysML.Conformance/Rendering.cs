@@ -304,6 +304,7 @@ internal static class Rendering
             InstancePath = verdict.InstancePath,
             Question = verdict.Question,
             Status = verdict.Status,
+            Notes = { verdict.Notes.Select(note => new Wire.VerdictNote { Kind = note.Kind, Subject = note.Subject, Text = note.Text }) },
         };
         foreach (var assignment in verdict.Witness)
         {
@@ -560,7 +561,7 @@ internal static class Rendering
         Sample = sample is null ? null : Runs(sample),
     };
 
-    /// <summary>A conversion, with its formats, diagnostics and whether it is experimental.</summary>
+    /// <summary>A conversion, with its formats, diagnostics, library references and whether it is experimental.</summary>
     internal static Wire.ConvertResponse Conversion(Conversion conversion)
     {
         ArgumentNullException.ThrowIfNull(conversion);
@@ -572,6 +573,10 @@ internal static class Rendering
             Diagnostics = { Diagnostics(conversion.Diagnostics) },
             Experimental = conversion.Experimental,
             ExperimentalNotice = conversion.ExperimentalNotice,
+            LibraryReferences =
+            {
+                conversion.LibraryReferences.Select(reference => new Wire.LibraryReference { Id = reference.Id, QualifiedName = reference.QualifiedName, Type = reference.Type }),
+            },
         };
     }
 
@@ -878,13 +883,17 @@ internal static class Rendering
     {
         ArgumentNullException.ThrowIfNull(document);
         var rendered = new Wire.RenderDocumentResponse { FileName = document.FileName ?? string.Empty };
-        if (document.Form == DocumentForm.Html)
+        switch (document.Form)
         {
-            rendered.Html = document.Content;
-        }
-        else
-        {
-            rendered.Markdown = document.Content;
+            case DocumentForm.Html:
+                rendered.Html = document.Content;
+                break;
+            case DocumentForm.AsciiDoc:
+                rendered.Asciidoc = document.Content;
+                break;
+            default:
+                rendered.Markdown = document.Content;
+                break;
         }
 
         return rendered;
@@ -912,7 +921,7 @@ internal static class Rendering
                     Text = node.Text,
                     StandIn = node.StandIn,
                     Parent = node.Parent,
-                    Ports = { node.Ports.Select(port => new Wire.RenderPort { Id = port.Id, Name = port.Name, Type = port.Type, Direction = port.Direction }) },
+                    Ports = { node.Ports.Select(port => new Wire.RenderPort { Id = port.Id, Name = port.Name, Type = port.Type, Direction = port.Direction, Inherited = port.Inherited }) },
                     Origin = Span(node.Origin),
                     Geometry = node.Geometry is { } geometry
                         ? new Wire.RenderGeometry
@@ -927,6 +936,8 @@ internal static class Rendering
                         }
                         : null,
                     Style = Style(node.Style),
+                    Compartment = node.Compartment,
+                    Inherited = node.Inherited,
                 }),
             },
             Edges =

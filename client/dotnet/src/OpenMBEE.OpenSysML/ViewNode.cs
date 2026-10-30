@@ -20,6 +20,8 @@ public sealed record ViewNode
     /// <param name="origin">Where the element is declared; null when the service located it nowhere.</param>
     /// <param name="geometry">Where a layout draws it; null when no layout annotates it.</param>
     /// <param name="style">How a style draws it; null when no style colours it.</param>
+    /// <param name="compartment">The compartment of its parent's box it is a row of (<c>attributes</c>, <c>parts</c>); empty for a node drawn as a box.</param>
+    /// <param name="inherited">Whether the owner it is drawn or listed under has it through typing, subclassification or subsetting rather than declares it.</param>
     /// <exception cref="ArgumentNullException">An argument other than the origin, geometry or style is null.</exception>
     /// <exception cref="ArgumentException">A port is null.</exception>
     public ViewNode(
@@ -35,7 +37,9 @@ public sealed record ViewNode
         IEnumerable<ViewPort> ports,
         SourceSpan? origin,
         ViewGeometry? geometry,
-        ViewStyle? style)
+        ViewStyle? style,
+        string compartment,
+        bool inherited)
     {
         ArgumentNullException.ThrowIfNull(id);
         ArgumentNullException.ThrowIfNull(kind);
@@ -44,6 +48,7 @@ public sealed record ViewNode
         ArgumentNullException.ThrowIfNull(detail);
         ArgumentNullException.ThrowIfNull(text);
         ArgumentNullException.ThrowIfNull(parent);
+        ArgumentNullException.ThrowIfNull(compartment);
         Id = id;
         Kind = kind;
         Name = name;
@@ -57,6 +62,8 @@ public sealed record ViewNode
         Origin = origin;
         Geometry = geometry;
         Style = style;
+        Compartment = compartment;
+        Inherited = inherited;
     }
 
     /// <summary>The node's id within the rendering, which an edge and a child's <see cref="Parent"/> name.</summary>
@@ -97,4 +104,17 @@ public sealed record ViewNode
 
     /// <summary>How a style draws the node; null when no style colours it.</summary>
     public ViewStyle? Style { get; }
+
+    /// <summary>
+    /// The compartment of the <see cref="Parent"/> node's box this node is drawn as a row of (<c>attributes</c>,
+    /// <c>parts</c>, <c>ports</c>), as <see cref="RenderViewOptions.Compartments"/> folds them; empty for a node drawn as
+    /// a box.
+    /// </summary>
+    public string Compartment { get; }
+
+    /// <summary>
+    /// Whether the owner the node is drawn or listed under has the usage through typing, subclassification or subsetting
+    /// rather than declares it, which the notation marks with <c>^</c> before the name. <see cref="Name"/> stays the bare name.
+    /// </summary>
+    public bool Inherited { get; }
 }

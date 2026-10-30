@@ -20,15 +20,15 @@ public sealed partial class Connection
     /// </summary>
     /// <param name="source">The model to convert.</param>
     /// <param name="toFormat">The format to write, named as <see cref="ConversionFormat"/> names one; the service refuses an empty or unknown one, or a v1 format.</param>
-    /// <param name="options">The source's format, how tolerant to be, how ids are spelled, the documents written, the compact form and the check's diagnostics; null for <see cref="ConvertOptions.Default"/>.</param>
+    /// <param name="options">The source's format, how tolerant to be, how ids are spelled, the documents written, the compact form, the check's diagnostics and the library stubs; null for <see cref="ConvertOptions.Default"/>.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
-    /// <returns>The converted model, its formats, its diagnostics, and whether the mapping it went through is experimental.</returns>
+    /// <returns>The converted model, its formats, its diagnostics, the library elements it refers to, and whether the mapping it went through is experimental.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="source"/> or <paramref name="toFormat"/> is null.</exception>
     /// <exception cref="InvalidRequestException"><see cref="ConvertOptions.FromFormat"/> is empty, or <see cref="ConvertOptions.IdForm"/> is not an <see cref="IdForm"/>; nothing was sent.</exception>
     /// <exception cref="CapabilityException">
     /// The service lacks <see cref="Capabilities.Convert"/>, or <see cref="Capabilities.ConvertDocuments"/>,
-    /// <see cref="Capabilities.ConvertCompact"/> or <see cref="Capabilities.ConvertCheckDiagnostics"/> for an option
-    /// that needs it, checked in that order; nothing was sent.
+    /// <see cref="Capabilities.ConvertLibraryStubs"/>, <see cref="Capabilities.ConvertCompact"/> or
+    /// <see cref="Capabilities.ConvertCheckDiagnostics"/> for an option that needs it, checked in that order; nothing was sent.
     /// </exception>
     /// <exception cref="ConversionException">The source would not parse, or the mapping refused what it cannot write; the exception keeps the diagnostics and formats.</exception>
     /// <exception cref="ModelFileNotFoundException">The service could not read the file.</exception>
@@ -59,6 +59,11 @@ public sealed partial class Connection
             capabilities.Require(OpenSysML.Capabilities.ConvertDocuments);
         }
 
+        if (options.IncludeLibraryStubs)
+        {
+            capabilities.Require(OpenSysML.Capabilities.ConvertLibraryStubs);
+        }
+
         if (options.AsksCompact)
         {
             capabilities.Require(OpenSysML.Capabilities.ConvertCompact);
@@ -85,6 +90,7 @@ public sealed partial class Connection
             OmitDerived = options.OmitDerived,
             KeepDerived = { options.KeepDerived },
             IncludeCheckDiagnostics = options.IncludeCheckDiagnostics,
+            IncludeLibraryStubs = options.IncludeLibraryStubs,
         };
         Wire.ConvertResponse response;
         if (source.FilePath is { } file)

@@ -44,6 +44,9 @@ internal static class CompleteQueryDocsWire
     /// <summary>A document rendered to HTML, with the file a rendered set writes it to.</summary>
     internal static Wire.RenderDocumentResponse Html => new() { Html = "<!DOCTYPE html>\n<h1>Telescope Mass Report</h1>\n", FileName = "Observatory-MassReport.html" };
 
+    /// <summary>A document rendered to AsciiDoc, with the file a rendered set writes it to.</summary>
+    internal static Wire.RenderDocumentResponse AsciiDoc => new() { Asciidoc = "= Telescope Mass Report\n", FileName = "Observatory-MassReport.adoc" };
+
     /// <summary>A located span.</summary>
     internal static Wire.Span Origin(int line) => new() { File = "views.sysml", StartLine = line, StartCol = 3, EndLine = line + 1, EndCol = 9 };
 
@@ -78,12 +81,13 @@ internal static class CompleteQueryDocsWire
                 Ports =
                 {
                     new Wire.RenderPort { Id = "n2.0", Name = "outlet", Type = "FluidPort", Direction = "out" },
-                    new Wire.RenderPort { Id = "n2.1", Name = "vent" },
+                    new Wire.RenderPort { Id = "n2.1", Name = "vent", Inherited = true },
                 },
                 Origin = new Wire.Span { File = "lib.sysml" },
                 Geometry = new Wire.RenderGeometry { Collapsed = true, Unplaced = true },
             },
             new Wire.RenderNode { Id = "n3", Kind = "part", Name = "tank", Parent = "n2" },
+            new Wire.RenderNode { Id = "n4", Kind = "attribute", Name = "pressure", Type = "Real", Parent = "n2", Compartment = "attributes", Inherited = true },
         },
         Edges =
         {
@@ -127,5 +131,5 @@ internal static class CompleteQueryDocsWire
 
     /// <summary>Every sample, for a test proving they set every reachable field.</summary>
     internal static Google.Protobuf.IMessage[] All =>
-        [Query, DocumentQuery, Markdown, Html, View, .. CompleteExecutionWire.DocumentValues.Select(value => (Google.Protobuf.IMessage)value)];
+        [Query, DocumentQuery, Markdown, Html, AsciiDoc, View, .. CompleteExecutionWire.DocumentValues.Select(value => (Google.Protobuf.IMessage)value)];
 }

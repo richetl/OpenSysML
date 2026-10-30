@@ -33,7 +33,8 @@ internal static class VerificationWire
                 assignment.Feature,
                 assignment.Value is { } value ? ValueWire.FromWire(value, method, $"{path}.witness[{i}].value") : null,
                 assignment.Unit,
-                assignment.Exact)));
+                assignment.Exact)),
+            verdict.Notes.Select(note => new VerdictNote(note.Kind, note.Subject, note.Text)));
 
     /// <summary>Reads the verdicts of a repeated field, in order.</summary>
     internal static List<Verdict> Verdicts(RepeatedField<Wire.Verdict> verdicts, string method, string path) =>

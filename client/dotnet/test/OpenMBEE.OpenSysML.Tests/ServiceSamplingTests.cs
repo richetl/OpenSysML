@@ -153,7 +153,7 @@ public sealed class ServiceSamplingTests(ServiceFixture services) : IClassFixtur
         var sampled = await model.RecordRunAsync("MC::Mc", new RecordOptions { SubjectSymbolId = "MC::probe", Runs = 2, Seed = 3 }, Token);
         var merged = await sweep.RecordRunAsync("Sw::CostAnalysis", new RecordOptions { SubjectSymbolId = "Sw::barge", RecordInto = "Sw" }, Token);
 
-        Assert.Equal(new CalcOutput("total", new Value.RealValue(6)), Assert.Single(once.Run!.Outputs));
+        Assert.Equal(new CalcOutput("total", new Value.SequenceValue([new Value.RealValue(6)])), Assert.Single(once.Run!.Outputs));
         Assert.Equal(("Records", "Records::CostRun"), (once.Package, once.Definition));
         Assert.Equal(["Records::Cost_run1"], once.Records);
         Assert.Contains("part Cost_run1 : CostRun", once.Source, StringComparison.Ordinal);

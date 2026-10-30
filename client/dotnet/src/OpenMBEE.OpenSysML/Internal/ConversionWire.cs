@@ -29,7 +29,14 @@ internal static class ConversionWire
             throw new TransportException(StatusCode.Internal, $"{method} answered neither the formats of a conversion nor a failure.", method);
         }
 
-        return new Conversion(response.Content, response.FromFormat, response.ToFormat, diagnostics, response.Experimental, response.ExperimentalNotice);
+        return new Conversion(
+            response.Content,
+            response.FromFormat,
+            response.ToFormat,
+            diagnostics,
+            response.Experimental,
+            response.ExperimentalNotice,
+            response.LibraryReferences.Select(reference => new LibraryReference(reference.Id, reference.QualifiedName, reference.Type)));
     }
 
     /// <summary>Reads a migration.</summary>

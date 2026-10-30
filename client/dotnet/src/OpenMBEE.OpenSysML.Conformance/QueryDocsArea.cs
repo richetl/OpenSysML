@@ -20,7 +20,7 @@ internal static class QueryDocsArea
         RpcAdapter.Of<Wire.QueryRequest>("Query", ["model_hash", "query", "oslc_query"], QueryAsync),
         RpcAdapter.Of<Wire.RunDocumentQueryRequest>("RunDocumentQuery", ["model_hash", "query_id", "bindings"], RunDocumentQueryAsync),
         RpcAdapter.Of<Wire.RenderDocumentRequest>("RenderDocument", ["model_hash", "document_id", "form"], RenderDocumentAsync),
-        RpcAdapter.Of<Wire.RenderViewRequest>("RenderView", ["model_hash", "view", "ports", "show", "depth"], RenderViewAsync),
+        RpcAdapter.Of<Wire.RenderViewRequest>("RenderView", ["model_hash", "view", "ports", "show", "depth", "compartments"], RenderViewAsync),
     ];
 
     private static async Task<ScenarioAnswer> QueryAsync(Connection connection, Wire.QueryRequest request, CancellationToken cancellationToken)
@@ -67,6 +67,7 @@ internal static class QueryDocsArea
         {
             "" => DocumentForm.Markdown,
             "html" => DocumentForm.Html,
+            "asciidoc" => DocumentForm.AsciiDoc,
             "markdown" => throw new UnexpressibleRequestException("the public API sends the Markdown form as the empty form it defaults to"),
             var other => throw new UnexpressibleRequestException($"the public API names a form as a DocumentForm, which has none spelled \"{other}\""),
         };
@@ -99,13 +100,26 @@ internal static class QueryDocsArea
             },
             Show = request.Show,
             Depth = request.Depth == 0 ? null : request.Depth,
+            Compartments = request.Compartments switch
+            {
+                "" => RenderViewCompartments.Positioned,
+                "most" => RenderViewCompartments.Most,
+                "ports" => RenderViewCompartments.Ports,
+                "positioned" => throw new UnexpressibleRequestException("the public API sends positioned compartments as the empty selection they default to"),
+                var other => throw new UnexpressibleRequestException($"the public API names compartments as a RenderViewCompartments, which has none spelled \"{other}\""),
+            },
         };
         return new ScenarioAnswer.Answered(Rendering.RenderedView(await model.RenderViewAsync(request.View, options, cancellationToken).ConfigureAwait(false)));
     }
 
     // A structured query, its constraint read form by form; one the public types refuse is unexpressible.
-    private static Query Query(Wire.Query query) =>
-        new() { Scope = query.Scope, Select = query.Select, Where = query.Where is { } where ? Constraint(where, "query.where") : null };
+    private static Query Query(Wire.Query query) => new()
+    {
+        Scope = query.Scope,
+        Select = query.Select,
+        Where = query.Where is { } where ? Constraint(where, "query.where") : null,
+        OrderBy = query.OrderBy,
+    };
 
     private static QueryConstraint Constraint(Wire.Constraint constraint, string path)
     {
