@@ -10,7 +10,7 @@ when done; a finished session records its commit and implementation notes under 
 |---|---------|------------|------|--------|
 | 1 | Regenerate the C# protocol code and gate it against drift | — | Small–medium | **Done** (`28733b9de`) |
 | 2 | Keep `OPENSYSML_GRPC_TOKEN` out of private services; add first-class token support | — | Medium | **Done** (`d654510ae`) |
-| 3 | Bump the client version to 0.11.0 and resync the embedded release digests | — | Small | Not started |
+| 3 | Bump the client version to 0.11.0 and resync the embedded release digests | — | Small | **Done** (`f0d664ab4`) |
 | 4 | Implement the missing service features and adjudicate the failing integration tests | **1** (needs the regenerated wire types) | Large | Not started |
 
 Sessions 1, 2 and 3 are independent of each other. Session 4 must start from a tree that has
@@ -490,6 +490,36 @@ The repro passes, the client sends a token like its peers, `Unauthenticated` fro
 
 > Before starting: read [`AGENTS.md`](../../../AGENTS.md) and the **Common setup** section above. `AGENTS.md` governs how everything in this session is implemented, tested, committed and documented; where this section and `AGENTS.md` differ, follow `AGENTS.md`.
 
+### Status: done
+
+`f0d664ab4` *chore(dotnet): release in lockstep at 0.11.0 and pin its digests*, on branch
+`fix/dotnet-version-lockstep`, fast-forwarded into `feat/dotnet-client` and pushed.
+
+Implementation notes:
+
+- `sync-release-digests.py` touched only the .NET copy (+12 lines, `v0.11.0`); no other client
+  had drifted. `Directory.Build.props` is `0.11.0` (no pre-release, so `check_version.py`'s
+  spelling is the plain version). `dotnet restore --force-evaluate` changed exactly the three
+  `"OpenMBEE.OpenSysML": "[0.10.1, )"` lines (Tests, Generate.Tests, Conformance.Tests); no
+  package moved.
+- Remaining `0.10.1` left on purpose: `ReleaseRequestTests` (must name a *published* release),
+  the `v0.10.1` tag examples in `ConnectionOptions.cs` and the README (still valid tags), and
+  `dotnet-gates-test.py`'s `IDENTITY` strings, which are fixture text checked against a fake
+  sample host, not the built version.
+- **Gates:** `sync-release-digests.py --check` and `CIRCLE_TAG=v0.11.0 check_version.py --dotnet`
+  (prints `0.11.0`) pass; `client/python/tests/test_check_version.py` 98 passed. The six focused
+  suites: 229 passed. `make dotnet-test`: 3,352 tests, **27** failing, all session 4's (the two
+  `ReleaseDigestsTests` now pass); samples print `0.11.0`; `make conformance-dotnet` green.
+- **Manual download check (step 7) needs a different program.** The Vehicle sample deliberately
+  does nothing beyond its version line unless `OPENSYSML_SERVICE` or `OPENSYSML_GRPC_BINARY` is set
+  (`SampleGate`), so it never exercises the default download. A throwaway console with a
+  `ProjectReference` calling `Connection.OpenAsync()`, run with a throwaway `HOME` and those
+  variables unset, downloaded `v0.11.0` into the throwaway `~/.opensysml/bin`, recorded digest
+  `730a6049…ca9a`, which is the pinned `sysml-grpc-darwin-arm64` entry, and answered
+  `sysml-grpc v0.11.0, 72 capabilities`.
+- No changelog fragment: the bump is release bookkeeping.
+
+
 ### Goal
 
 Both release-lockstep gates pass, in one commit, because neither is safe alone.
@@ -605,7 +635,11 @@ beside them then prove the rendering), not by excluding deferred fields.
 - `make conformance-dotnet` is green. `make conformance-dotnet-check` reports only
   `nodes.1.ports.0.inherited: only the reference run has it`, for the two `render_view` scenarios
   over all three protocols.
-- `DOTNET_MIN_TESTS` is now 3274.
+- `DOTNET_MIN_TESTS` was 3274 after session 1; it is 3352 after session 2. After session 3 the
+  two `ReleaseDigestsTests` pass, so session 4 starts from **27** failures: the 22 real ones of
+  the baseline table that are not about digests, plus the 5 above. Session 2 also made a
+  service-sent `Unauthenticated` an `AuthenticationException`, which a renderer or adapter that
+  switches on exact exception types must allow for.
 - `QueryOutcome` and its children are unreachable from any response, so `parity.json` does not list
   them. If 4b decodes the error detail, add whatever the checker then asks for.
 
