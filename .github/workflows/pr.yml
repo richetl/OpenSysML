@@ -1656,7 +1656,7 @@ jobs:
           exe=""
           if [ "$RUNNER_OS" = Windows ]; then exe=.exe; fi
           mkdir -p bin
-          CGO_ENABLED=0 go build -ldflags "-s -w -X main.Version=pr-${{ github.event.pull_request.number }} -X main.Commit=$(git rev-parse --short HEAD)" \
+          CGO_ENABLED=0 go build -ldflags "-s -w -X main.Version=${{ github.event_name == 'merge_group' && 'merge-queue' || format('pr-{0}', github.event.pull_request.number) }} -X main.Commit=$(git rev-parse --short HEAD)" \
             -o "bin/sysml-grpc$exe" ./cmd/sysml-grpc
           binary="$PWD/bin/sysml-grpc$exe"
           if [ "$RUNNER_OS" = Windows ]; then binary=$(cygpath -w "$binary"); fi

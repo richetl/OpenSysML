@@ -4684,7 +4684,7 @@ workflows:
           filters: *integration-branches
       - dotnet-test:
           name: .NET client tests
-          requires: *scan-inputs
+          requires: *client-inputs
           filters: *integration-branches
       - julia-client:
           name: Julia client tests
